@@ -56,6 +56,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Iade Talepleri', href: '/admin/returns', icon: RotateCcw },
           { label: 'Siparisler', href: '/admin/orders', icon: ShoppingCart },
           { label: 'Cari Hesaplar', href: '/admin/cari', icon: CreditCard },
+          { label: 'Laboratuvarlar', href: '/admin/laboratories', icon: TestTubes },
         ]},
         { title: 'Sistem', items: [
           { label: 'Sablonlar', href: '/admin/templates', icon: FileText },

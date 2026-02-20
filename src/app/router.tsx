@@ -30,6 +30,7 @@ const CariPage = lazy(() => import('@/features/admin/cari/pages/cari-page').then
 const AuditLogsPage = lazy(() => import('@/features/admin/audit/pages/audit-logs-page').then(m => ({ default: m.AuditLogsPage })))
 const TemplatesPage = lazy(() => import('@/features/admin/templates/pages/templates-page').then(m => ({ default: m.TemplatesPage })))
 const ReturnRequestsPage = lazy(() => import('@/features/admin/returns/pages/return-requests-page').then(m => ({ default: m.ReturnRequestsPage })))
+const LaboratoriesPage = lazy(() => import('@/features/admin/laboratories/pages/laboratories-page').then(m => ({ default: m.LaboratoriesPage })))
 
 // Dietitian
 const DietitianDashboardPage = lazy(() => import('@/features/dietitian/dashboard/dietitian-dashboard-page').then(m => ({ default: m.DietitianDashboardPage })))
@@ -100,6 +101,7 @@ export const router = createBrowserRouter([
       { path: '/admin/returns', element: <SuspensePage><ReturnRequestsPage /></SuspensePage> },
       { path: '/admin/orders', element: <SuspensePage><OrdersPage /></SuspensePage> },
       { path: '/admin/cari', element: <SuspensePage><CariPage /></SuspensePage> },
+      { path: '/admin/laboratories', element: <SuspensePage><LaboratoriesPage /></SuspensePage> },
       { path: '/admin/audit', element: <SuspensePage><AuditLogsPage /></SuspensePage> },
       { path: '/admin/templates', element: <SuspensePage><TemplatesPage /></SuspensePage> },
     ],
