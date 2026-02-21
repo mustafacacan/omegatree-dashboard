@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Card, CardContent, Button, Input, Badge, Avatar,
+  Card, CardHeader, CardTitle, CardContent, Button, Input, Badge, Avatar,
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
@@ -178,78 +178,85 @@ export function UsersListPage() {
       )}
 
       <Tabs defaultValue="all">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <TabsList>
-            <TabsTrigger value="all">Tumunu ({users.length})</TabsTrigger>
-            <TabsTrigger value="active">Aktif ({users.filter(u => u.status === UserStatus.ACTIVE).length})</TabsTrigger>
-            <TabsTrigger value="pending">Bekleyen ({pendingUsers.length})</TabsTrigger>
-          </TabsList>
-
-          <div className="flex items-center gap-3">
-            <Input
-              placeholder="Kullanici ara..."
-              leftIcon={<Search className="h-4 w-4" />}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-64"
-            />
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-44">
-                <Filter className="h-4 w-4 mr-2 text-surface-400" />
-                <SelectValue placeholder="Rol Filtrele" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tum Roller</SelectItem>
-                <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
-                <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
-                <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
-                <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
-                <SelectItem value={UserRole.DANISAN}>Danisan</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="icon" onClick={handleExportCsv}>
-              <Download className="h-4 w-4" />
-            </Button>
-            <Button variant="primary" onClick={() => setNewUserOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Yeni Kullanici
-            </Button>
-          </div>
-        </div>
-
-        <TabsContent value="all">
-          <UserTable
-            users={filteredUsers}
-            currentUserId={currentUser?.id}
-            onApprove={handleApprove}
-            onSuspend={suspendUser}
-            onActivate={activateUser}
-            onEditRole={openRoleEditor}
-            onViewProfile={openProfile}
-          />
-        </TabsContent>
-        <TabsContent value="active">
-          <UserTable
-            users={filteredUsers.filter(u => u.status === UserStatus.ACTIVE)}
-            currentUserId={currentUser?.id}
-            onApprove={handleApprove}
-            onSuspend={suspendUser}
-            onActivate={activateUser}
-            onEditRole={openRoleEditor}
-            onViewProfile={openProfile}
-          />
-        </TabsContent>
-        <TabsContent value="pending">
-          <UserTable
-            users={filteredUsers.filter(u => u.status === UserStatus.PENDING)}
-            currentUserId={currentUser?.id}
-            onApprove={handleApprove}
-            onSuspend={suspendUser}
-            onActivate={activateUser}
-            onEditRole={openRoleEditor}
-            onViewProfile={openProfile}
-          />
-        </TabsContent>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <CardTitle>Kullanicilar</CardTitle>
+                <TabsList>
+                  <TabsTrigger value="all">Tumunu ({users.length})</TabsTrigger>
+                  <TabsTrigger value="active">Aktif ({users.filter(u => u.status === UserStatus.ACTIVE).length})</TabsTrigger>
+                  <TabsTrigger value="pending">Bekleyen ({pendingUsers.length})</TabsTrigger>
+                </TabsList>
+              </div>
+              <div className="flex items-center gap-3">
+                <Input
+                  placeholder="Kullanici ara..."
+                  leftIcon={<Search className="h-4 w-4" />}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-64"
+                />
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-44">
+                    <Filter className="h-4 w-4 mr-2 text-surface-400" />
+                    <SelectValue placeholder="Rol Filtrele" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tum Roller</SelectItem>
+                    <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
+                    <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
+                    <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
+                    <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
+                    <SelectItem value={UserRole.DANISAN}>Danisan</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="icon" onClick={handleExportCsv}>
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button variant="primary" onClick={() => setNewUserOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Yeni Kullanici
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <TabsContent value="all">
+              <UserTable
+                users={filteredUsers}
+                currentUserId={currentUser?.id}
+                onApprove={handleApprove}
+                onSuspend={suspendUser}
+                onActivate={activateUser}
+                onEditRole={openRoleEditor}
+                onViewProfile={openProfile}
+              />
+            </TabsContent>
+            <TabsContent value="active">
+              <UserTable
+                users={filteredUsers.filter(u => u.status === UserStatus.ACTIVE)}
+                currentUserId={currentUser?.id}
+                onApprove={handleApprove}
+                onSuspend={suspendUser}
+                onActivate={activateUser}
+                onEditRole={openRoleEditor}
+                onViewProfile={openProfile}
+              />
+            </TabsContent>
+            <TabsContent value="pending">
+              <UserTable
+                users={filteredUsers.filter(u => u.status === UserStatus.PENDING)}
+                currentUserId={currentUser?.id}
+                onApprove={handleApprove}
+                onSuspend={suspendUser}
+                onActivate={activateUser}
+                onEditRole={openRoleEditor}
+                onViewProfile={openProfile}
+              />
+            </TabsContent>
+          </CardContent>
+        </Card>
       </Tabs>
 
       {/* Approval Modal */}
@@ -492,27 +499,26 @@ function UserTable({
   }, [users.length, page, pageSize])
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Kullanici</TableHead>
+            <TableHead>Rol</TableHead>
+            <TableHead>Durum</TableHead>
+            <TableHead>Kayit Tarihi</TableHead>
+            <TableHead>Son Giris</TableHead>
+            <TableHead className="w-20" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {users.length === 0 && (
             <TableRow>
-              <TableHead>Kullanici</TableHead>
-              <TableHead>Rol</TableHead>
-              <TableHead>Durum</TableHead>
-              <TableHead>Kayit Tarihi</TableHead>
-              <TableHead>Son Giris</TableHead>
-              <TableHead className="w-12" />
+              <TableCell colSpan={6} className="py-10 text-center text-sm text-surface-500">
+                Filtreye uygun kullanici bulunamadi.
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-sm text-surface-500">
-                  Filtreye uygun kullanici bulunamadi.
-                </TableCell>
-              </TableRow>
-            )}
+          )}
             {paginatedUsers.map((user) => (
               <TableRow key={user.id}>
                 <TableCell>
@@ -596,19 +602,18 @@ function UserTable({
                 </TableCell>
               </TableRow>
             ))}
-          </TableBody>
-        </Table>
-        <TablePagination
-          totalItems={users.length}
-          page={page}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={(next) => {
-            setPageSize(next)
-            setPage(1)
-          }}
-        />
-      </CardContent>
-    </Card>
+        </TableBody>
+      </Table>
+      <TablePagination
+        totalItems={users.length}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(next) => {
+          setPageSize(next)
+          setPage(1)
+        }}
+      />
+    </>
   )
 }

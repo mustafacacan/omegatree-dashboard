@@ -1,6 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore, useCurrentUser } from '@/stores/auth.store'
-import { useNotificationStore } from '@/stores/notification.store'
 import { useSidebarStore } from '@/stores/sidebar.store'
 import {
   Avatar,
@@ -11,9 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui'
+import { NotificationDropdown } from '@/features/auth/components/notification-dropdown'
 import { USER_ROLE_LABELS } from '@/utils/constants'
 import {
-  Bell,
   LogOut,
   Settings,
   User,
@@ -92,7 +91,6 @@ function getPageTitle(pathname: string): string {
 export function Header() {
   const user = useCurrentUser()
   const { logout } = useAuthStore()
-  const { unreadCount } = useNotificationStore()
   const { mobileOpen, setMobileOpen } = useSidebarStore()
   const navigate = useNavigate()
   const location = useLocation()
@@ -134,25 +132,8 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
-          {/* Notification bell */}
-          <button
-            type="button"
-            onClick={() => navigate(`${basePath}/notifications`)}
-            className="relative p-2.5 rounded-xl transition-colors"
-            style={{ color: W.text }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-          >
-            <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span
-                className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full text-[9px] font-bold text-white px-1"
-                style={{ background: W.orange }}
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
+          {/* Notification dropdown */}
+          <NotificationDropdown />
 
           {/* Divider */}
           <div className="h-6 w-px mx-1.5" style={{ background: W.warmBorder }} />

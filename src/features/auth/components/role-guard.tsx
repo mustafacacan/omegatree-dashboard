@@ -26,10 +26,6 @@ export function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
     return <Navigate to="/pending-approval" replace />
   }
 
-  if (!user.kvkkConsentDate) {
-    return <Navigate to="/kvkk-consent" replace />
-  }
-
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={ROLE_HOME_ROUTES[user.role]} replace />
   }

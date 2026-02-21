@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Card, CardContent, Button, Input, Badge,
+  Card, CardHeader, CardTitle, CardContent, Button, Input, Badge,
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
@@ -213,32 +213,38 @@ export function LaboratoriesPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <Input
-          placeholder="Laboratuvar ara..."
-          leftIcon={<Search className="h-4 w-4" />}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-64"
-        />
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" onClick={handleExportCsv}>
-            <Download className="h-4 w-4" />
-          </Button>
-          <Button variant="primary" onClick={() => setNewLabOpen(true)}>
-            <Plus className="h-4 w-4" />
-            Yeni Laboratuvar
-          </Button>
-        </div>
-      </div>
-
-      <LaboratoryTable
-        laboratories={filteredLaboratories}
-        users={users}
-        onEdit={openEditLab}
-        onDelete={openDeleteLab}
-        onAssignDietitian={openAssignDietitian}
-      />
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Laboratuvarlar</CardTitle>
+            <div className="flex items-center gap-3">
+              <Input
+                placeholder="Laboratuvar ara..."
+                leftIcon={<Search className="h-4 w-4" />}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-64"
+              />
+              <Button variant="outline" size="icon" onClick={handleExportCsv}>
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button variant="primary" onClick={() => setNewLabOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Yeni Laboratuvar
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <LaboratoryTable
+            laboratories={filteredLaboratories}
+            users={users}
+            onEdit={openEditLab}
+            onDelete={openDeleteLab}
+            onAssignDietitian={openAssignDietitian}
+          />
+        </CardContent>
+      </Card>
 
       {/* Create Laboratory Modal */}
       <Modal open={newLabOpen} onOpenChange={setNewLabOpen}>
@@ -487,28 +493,27 @@ function LaboratoryTable({
   }, [laboratories.length, page, pageSize])
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Laboratuvar</TableHead>
+            <TableHead>Adres</TableHead>
+            <TableHead>İletişim</TableHead>
+            <TableHead>Atanan Diyetisyenler</TableHead>
+            <TableHead>Oluşturulma</TableHead>
+            <TableHead className="w-20" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {laboratories.length === 0 && (
             <TableRow>
-              <TableHead>Laboratuvar</TableHead>
-              <TableHead>Adres</TableHead>
-              <TableHead>İletişim</TableHead>
-              <TableHead>Atanan Diyetisyenler</TableHead>
-              <TableHead>Oluşturulma</TableHead>
-              <TableHead className="w-12" />
+              <TableCell colSpan={6} className="py-10 text-center text-sm text-surface-500">
+                Laboratuvar bulunamadı.
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {laboratories.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-sm text-surface-500">
-                  Laboratuvar bulunamadı.
-                </TableCell>
-              </TableRow>
-            )}
-            {paginatedLabs.map((lab) => {
+          )}
+          {paginatedLabs.map((lab) => {
               const assignedDietitians = lab.assignedDietitians
                 .map((id) => users.find((u) => u.id === id))
                 .filter(Boolean)
@@ -600,20 +605,19 @@ function LaboratoryTable({
                 </TableRow>
               )
             })}
-          </TableBody>
-        </Table>
-        <TablePagination
-          totalItems={laboratories.length}
-          page={page}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={(next) => {
-            setPageSize(next)
-            setPage(1)
-          }}
-        />
-      </CardContent>
-    </Card>
+        </TableBody>
+      </Table>
+      <TablePagination
+        totalItems={laboratories.length}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(next) => {
+          setPageSize(next)
+          setPage(1)
+        }}
+      />
+    </>
   )
 }
 

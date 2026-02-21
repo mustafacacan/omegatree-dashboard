@@ -1,16 +1,18 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/page-header'
-import { Badge, Button } from '@/components/ui'
-import { motion } from 'framer-motion'
+import { Badge, Button, Modal, ModalContent, ModalHeader, ModalTitle, ModalBody } from '@/components/ui'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Package, Boxes, ShoppingCart, AlertTriangle, ScanLine, RotateCcw,
-  TrendingUp, TrendingDown, Search,
+  TrendingUp, TrendingDown, Search, CheckCircle, ArrowRight, Loader2,
 } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { KitStatus } from '@/utils/constants'
 import { formatDate } from '@/lib/utils'
+
+type BarcodeState = 'idle' | 'checking' | 'success' | 'error'
 
 const W = {
   olive: '#8B9A4B', oliveLight: '#EEF2DE',
@@ -27,8 +29,52 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 export function MyStockPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
-  const { kits } = useWorkflowStore()
+  const { kits, receiveKitByBarcode } = useWorkflowStore()
   const [searchQuery, setSearchQuery] = useState('')
+  const [receiveKitModalOpen, setReceiveKitModalOpen] = useState(false)
+  const [barcodeInput, setBarcodeInput] = useState('')
+  const [barcodeState, setBarcodeState] = useState<BarcodeState>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleBarcodeSubmit = () => {
+    const trimmed = barcodeInput.trim()
+    if (!trimmed) return
+    setBarcodeState('checking')
+    setErrorMessage('')
+    setTimeout(() => {
+      const result = receiveKitByBarcode(
+        trimmed,
+        user?.id || '',
+        `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Diyetisyen'
+      )
+      if (result.ok) {
+        setBarcodeState('success')
+      } else {
+        setBarcodeState('error')
+        setErrorMessage(result.message || 'Barkod eslesmedi.')
+      }
+    }, 600)
+  }
+
+  const resetBarcode = () => {
+    setBarcodeInput('')
+    setBarcodeState('idle')
+    setErrorMessage('')
+    inputRef.current?.focus()
+  }
+
+  const closeReceiveKitModal = () => {
+    setReceiveKitModalOpen(false)
+    resetBarcode()
+  }
+
+  useEffect(() => {
+    if (receiveKitModalOpen && barcodeState === 'idle') {
+      const t = setTimeout(() => inputRef.current?.focus(), 150)
+      return () => clearTimeout(t)
+    }
+  }, [receiveKitModalOpen, barcodeState])
 
   const myKits = useMemo(() => {
     return kits
@@ -111,7 +157,7 @@ export function MyStockPage() {
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.15 }}>
         <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
 
-          {/* Header */}
+          {/* Header — tablonun ustunde Kit Teslim Al butonu */}
           <div className="p-5 flex items-center justify-between gap-3 flex-wrap" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
             <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Stoktaki Kitler</h3>
             <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -128,7 +174,13 @@ export function MyStockPage() {
                   onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
                 />
               </div>
-              <Button variant="outline" size="sm" onClick={() => navigate('/dietitian/kits')}>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setReceiveKitModalOpen(true)}
+                className="gap-1.5"
+                style={{ background: W.olive }}
+              >
                 <ScanLine className="h-3.5 w-3.5" /> Kit Teslim Al
               </Button>
               <Button variant="outline" size="sm" onClick={() => navigate('/dietitian/kits')}>
@@ -204,15 +256,119 @@ export function MyStockPage() {
             <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: W.oliveLight }}>
               <ScanLine className="h-4 w-4 shrink-0" style={{ color: W.olive }} />
               <p className="text-[11px]" style={{ color: '#5A6B2A' }}>
-                Bu stok, barkod numarasi ile teslim aldiginiz kitleri gosterir. Yeni kit almak icin
-                <button type="button" onClick={() => navigate('/dietitian/kits')} className="font-semibold underline ml-1" style={{ color: '#5A6B2A' }}>Kit Teslim Al</button> sayfasini kullanin.
-                Iade talebi olusturmak icin de ayni sayfadaki kit kartlarinda
-                <span className="font-semibold ml-1">Iade Talebi Olustur</span> aksiyonunu kullanabilirsiniz.
+                Bu stok, barkod numarasi ile teslim aldiginiz kitleri gosterir. Yeni kit eklemek icin yukaridaki
+                <button type="button" onClick={() => setReceiveKitModalOpen(true)} className="font-semibold underline ml-1" style={{ color: '#5A6B2A' }}>Kit Teslim Al</button> butonunu kullanin.
+                Iade talebi icin <button type="button" onClick={() => navigate('/dietitian/kits')} className="font-semibold underline" style={{ color: '#5A6B2A' }}>Kitlerim</button> sayfasindaki surec takibinden olusturabilirsiniz.
               </p>
             </div>
           </div>
         </div>
       </motion.div>
+
+      {/* Kit Teslim Al modali */}
+      <Modal open={receiveKitModalOpen} onOpenChange={(open) => !open && closeReceiveKitModal()}>
+        <ModalContent className="max-w-md">
+          <ModalHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: W.oliveLight }}>
+                <ScanLine className="h-5 w-5" style={{ color: W.olive }} />
+              </div>
+              <div>
+                <ModalTitle>Kit Teslim Al</ModalTitle>
+                <p className="text-xs text-surface-500 mt-0.5">
+                  Kargonuz geldiginde kit uzerindeki barkod numarasini girin
+                </p>
+              </div>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            <AnimatePresence mode="wait">
+              {barcodeState === 'success' ? (
+                <motion.div
+                  key="success"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="text-center py-4"
+                >
+                  <div className="h-14 w-14 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ background: W.greenLight }}>
+                    <CheckCircle className="h-7 w-7" style={{ color: W.green }} />
+                  </div>
+                  <h4 className="text-[15px] font-bold text-surface-800">Kit Basariyla Teslim Alindi!</h4>
+                  <p className="text-[12px] mt-2 text-surface-500">
+                    <code className="font-mono font-semibold text-primary-600">{barcodeInput}</code> barkodlu kit stogunuza eklendi.
+                  </p>
+                  <div className="flex items-center justify-center gap-2 mt-4">
+                    <Button variant="outline" size="sm" onClick={resetBarcode}>
+                      <ScanLine className="h-3.5 w-3.5" /> Baska Kit Teslim Al
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={closeReceiveKitModal} className="gap-1.5">
+                      <ArrowRight className="h-3.5 w-3.5" /> Listeyi Guncelle
+                    </Button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div key="input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={barcodeInput}
+                        onChange={(e) => {
+                          setBarcodeInput(e.target.value.toUpperCase())
+                          if (barcodeState === 'error') setBarcodeState('idle')
+                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleBarcodeSubmit() }}
+                        placeholder="Barkod (orn: OT-2025-00160)"
+                        className="w-full pl-9 pr-3 py-3 text-sm font-mono rounded-xl border border-surface-200 bg-surface-50 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-200"
+                        style={{ borderColor: barcodeState === 'error' ? '#E87070' : undefined }}
+                        disabled={barcodeState === 'checking'}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleBarcodeSubmit}
+                      disabled={!barcodeInput.trim() || barcodeState === 'checking'}
+                      className="shrink-0 gap-1.5"
+                      style={{ background: W.olive }}
+                    >
+                      {barcodeState === 'checking' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Teslim Al'}
+                    </Button>
+                  </div>
+                  {barcodeState === 'error' && errorMessage && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-start gap-2 mt-3 p-3 rounded-xl bg-red-50 border border-red-200"
+                    >
+                      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-red-600" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-red-700">{errorMessage}</p>
+                        <button type="button" onClick={resetBarcode} className="text-xs font-semibold mt-1 underline text-red-700">Tekrar Dene</button>
+                      </div>
+                    </motion.div>
+                  )}
+                  <div className="flex items-center gap-4 mt-4 pt-4 border-t border-surface-200">
+                    {[
+                      { step: 1, text: 'Kit kargonuz gelsin' },
+                      { step: 2, text: 'Barkod girin' },
+                      { step: 3, text: 'Stoga eklensin' },
+                    ].map((s) => (
+                      <div key={s.step} className="flex items-center gap-1.5">
+                        <div className="h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-primary-100 text-primary-700">{s.step}</div>
+                        <span className="text-[11px] text-surface-500">{s.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   )
 }

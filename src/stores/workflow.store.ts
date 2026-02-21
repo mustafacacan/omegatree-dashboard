@@ -58,12 +58,29 @@ export interface DietitianOrder {
   assignedBarcodes: string[]
 }
 
+export interface PriceBundle {
+  /** Paket kac adet */
+  quantity: number
+  /** Paket toplam fiyat (TL, indirimli) */
+  total: number
+}
+
+export interface PriceTiers {
+  /** Tekil kit birim fiyati (TL) - tum kitler icin gecerli */
+  singleKitPrice: number
+  /** Birden fazla paket tanimi (ornek: 5 adet=7000 TL, 10 adet=13000 TL) */
+  bundles: PriceBundle[]
+}
+
 interface WorkflowState {
   kitPrice: number
+  priceTiers: PriceTiers
   kits: WorkflowKit[]
   orders: DietitianOrder[]
   auditLogs: AuditLogEntry[]
   setKitPrice: (price: number, actor: string, ip?: string) => void
+  setPricingTiers: (singleKitPrice: number, bundles: PriceBundle[], actor: string, ip?: string) => void
+  getOrderTotal: (qty: number) => number
   updateKitPrice: (barcode: string, price: number, actor: string, ip?: string) => { ok: boolean; message: string }
   assignBarcodeToKit: (
     barcode: string,
@@ -104,6 +121,7 @@ interface WorkflowState {
     options?: { photoUrl?: string; ip?: string }
   ) => { ok: boolean; message: string }
   adminApproveReturn: (barcode: string, actor: string, ip?: string) => { ok: boolean; message: string }
+  adminRejectReturn: (barcode: string, actor: string, ip?: string) => { ok: boolean; message: string }
 }
 
 const nowIso = () => new Date().toISOString()
@@ -146,10 +164,16 @@ function appendLog(logs: AuditLogEntry[], partial: Omit<AuditLogEntry, 'id' | 't
   ]
 }
 
+const defaultPriceTiers: PriceTiers = {
+  singleKitPrice: 1500,
+  bundles: [{ quantity: 5, total: 7000 }],
+}
+
 export const useWorkflowStore = create<WorkflowState>()(
   persist(
     (set, get) => ({
       kitPrice: 1500,
+      priceTiers: defaultPriceTiers,
       kits: seedKits,
       orders: [],
       auditLogs: [],
@@ -157,6 +181,7 @@ export const useWorkflowStore = create<WorkflowState>()(
       setKitPrice: (price, actor, ip) =>
         set((state) => ({
           kitPrice: price,
+          priceTiers: { ...state.priceTiers, singleKitPrice: price },
           kits: state.kits.map((k) => ({ ...k, price })),
           auditLogs: appendLog(state.auditLogs, {
             user: actor,
@@ -167,6 +192,39 @@ export const useWorkflowStore = create<WorkflowState>()(
             ip: defaultIp(ip),
           }),
         })),
+
+      setPricingTiers: (singleKitPrice, bundles, actor, ip) =>
+        set((state) => ({
+          kitPrice: singleKitPrice,
+          priceTiers: { singleKitPrice, bundles: bundles.filter((b) => b.quantity >= 2 && b.total > 0) },
+          kits: state.kits.map((k) => ({ ...k, price: singleKitPrice })),
+          auditLogs: appendLog(state.auditLogs, {
+            user: actor,
+            action: 'PRICING_TIERS_UPDATED',
+            entity: 'Pricing',
+            entityId: 'TIERS',
+            details: `Fiyat gruplari guncellendi: tekil ${singleKitPrice} TL, ${bundles.length} paket`,
+            ip: defaultIp(ip),
+          }),
+        })),
+
+      getOrderTotal: (qty) => {
+        const { priceTiers } = get()
+        const { singleKitPrice, bundles } = priceTiers
+        if (qty <= 0) return 0
+        const dp: number[] = [0]
+        for (let q = 1; q <= qty; q++) {
+          let best = singleKitPrice + dp[q - 1]
+          for (const b of bundles) {
+            if (b.quantity > 0 && b.total > 0 && q >= b.quantity) {
+              const candidate = b.total + (dp[q - b.quantity] ?? 0)
+              if (candidate < best) best = candidate
+            }
+          }
+          dp[q] = best
+        }
+        return dp[qty]
+      },
 
       updateKitPrice: (barcode, price, actor, ip) => {
         if (!Number.isFinite(price) || price <= 0) {
@@ -316,7 +374,7 @@ export const useWorkflowStore = create<WorkflowState>()(
 
       createDietitianOrder: (dietitianId, dietitianName, qty, actor, ip) =>
         set((state) => {
-          const total = qty * state.kitPrice
+          const total = get().getOrderTotal(qty)
           const order: DietitianOrder = {
             id: generateId('ord-'),
             dietitianId,
@@ -649,8 +707,8 @@ export const useWorkflowStore = create<WorkflowState>()(
             k.barcode === barcode
               ? {
                   ...k,
-                  status: KitStatus.IN_STOCK,
-                  location: 'Ana Depo',
+                  status: KitStatus.DAMAGED,
+                  location: 'Iade kabul - yeniden gönderilmez',
                   assignedDietitianId: undefined,
                   assignedDietitianName: undefined,
                   assignedClientId: undefined,
@@ -672,26 +730,70 @@ export const useWorkflowStore = create<WorkflowState>()(
             action: 'RETURN_APPROVED',
             entity: 'Kit',
             entityId: barcode,
-            details: `${barcode} iade talebi onaylandi ve kit ana stoga alindi`,
+            details: `${barcode} iade talebi onaylandi; kit hasarli olarak isaretlendi (yeniden gönderilmez)`,
             ip: defaultIp(ip),
           }),
         }))
 
-        return { ok: true, message: 'Iade kabul edildi ve kit ana stoga alindi.' }
+        return { ok: true, message: 'Iade kabul edildi. Kit hasarli olarak isaretlendi ve yeniden gönderilmeyecek.' }
+      },
+
+      adminRejectReturn: (barcode, actor, ip) => {
+        const target = get().kits.find((k) => k.barcode === barcode)
+        if (!target) return { ok: false, message: 'Kit bulunamadi.' }
+        if (target.status !== KitStatus.RETURN_REQUESTED) {
+          return { ok: false, message: 'Bu kit icin bekleyen iade talebi yok.' }
+        }
+        const dietitianName = target.assignedDietitianName || 'Bilinmiyor'
+        set((state) => ({
+          kits: state.kits.map((k) =>
+            k.barcode === barcode
+              ? {
+                  ...k,
+                  status: KitStatus.DELIVERED,
+                  location: 'Diyetisyen Stok',
+                  returnRequest: undefined,
+                }
+              : k
+          ),
+          auditLogs: appendLog(state.auditLogs, {
+            user: actor,
+            action: 'RETURN_REJECTED',
+            entity: 'Kit',
+            entityId: barcode,
+            details: `${barcode} iade talebi reddedildi (${dietitianName})`,
+            ip: defaultIp(ip),
+          }),
+        }))
+        return { ok: true, message: 'Iade talebi reddedildi.' }
       },
     }),
     {
       name: 'omegatree-workflow',
-      version: 3,
-      migrate: () => {
+      version: 5,
+      migrate: (persisted: unknown) => {
+        const p = persisted as { kitPrice?: number; priceTiers?: PriceTiers & { bundle5Total?: number; bundleTotal?: number; bundleQuantity?: number; bundles?: PriceBundle[] }; kits?: WorkflowKit[]; orders?: DietitianOrder[]; auditLogs?: AuditLogEntry[] }
+        const tiers = p?.priceTiers
+        let priceTiers: PriceTiers = defaultPriceTiers
+        if (tiers) {
+          const old = tiers as { bundles?: PriceBundle[]; singleKitPrice?: number; bundle5Total?: number; bundleTotal?: number; bundleQuantity?: number }
+          if (Array.isArray(old.bundles) && old.bundles.length > 0) {
+            priceTiers = { singleKitPrice: tiers.singleKitPrice ?? 1500, bundles: old.bundles }
+          } else {
+            const qty = old.bundleQuantity && old.bundleQuantity > 0 ? old.bundleQuantity : 5
+            const total = old.bundleTotal && old.bundleTotal > 0 ? old.bundleTotal : (old.bundle5Total ?? 7000)
+            priceTiers = { singleKitPrice: tiers.singleKitPrice ?? 1500, bundles: [{ quantity: qty, total }] }
+          }
+        }
         return {
-          kitPrice: 1500,
-          kits: seedKits,
-          orders: seedOrders,
-          auditLogs: [],
+          kitPrice: p?.kitPrice ?? 1500,
+          priceTiers,
+          kits: p?.kits ?? seedKits,
+          orders: p?.orders ?? seedOrders,
+          auditLogs: p?.auditLogs ?? [],
         }
       },
-      partialize: (s) => ({ kitPrice: s.kitPrice, kits: s.kits, orders: s.orders, auditLogs: s.auditLogs }),
+      partialize: (s) => ({ kitPrice: s.kitPrice, priceTiers: s.priceTiers, kits: s.kits, orders: s.orders, auditLogs: s.auditLogs }),
     }
   )
 )

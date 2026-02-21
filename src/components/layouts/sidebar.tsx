@@ -2,7 +2,8 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar.store'
 import { useCurrentRole } from '@/stores/auth.store'
-import { UserRole } from '@/utils/constants'
+import { useWorkflowStore } from '@/stores/workflow.store'
+import { UserRole, KitStatus } from '@/utils/constants'
 import { Tooltip, TooltipProvider } from '@/components/ui'
 import {
   LayoutDashboard,
@@ -125,10 +126,17 @@ export function Sidebar() {
   const { collapsed, toggle, mobileOpen, setMobileOpen } = useSidebarStore()
   const role = useCurrentRole()
   const location = useLocation()
+  const kits = useWorkflowStore((s) => s.kits)
+  const returnRequestCount = kits.filter((k) => k.status === KitStatus.RETURN_REQUESTED).length
 
   if (!role) return null
 
   const navGroups = getNavGroups(role)
+
+  const getBadge = (item: NavItem): number | undefined => {
+    if (item.href === '/admin/returns') return returnRequestCount
+    return item.badge
+  }
 
   return (
     <TooltipProvider>
@@ -199,6 +207,7 @@ export function Sidebar() {
                     location.pathname === item.href ||
                     (item.href !== '/' + role.toLowerCase() &&
                       location.pathname.startsWith(item.href))
+                  const badge = getBadge(item)
 
                   const linkContent = (
                     <NavLink
@@ -231,12 +240,12 @@ export function Sidebar() {
                       {!collapsed && (
                         <span className="truncate flex-1">{item.label}</span>
                       )}
-                      {!collapsed && item.badge != null && item.badge > 0 && (
+                      {!collapsed && badge != null && badge > 0 && (
                         <span
                           className="flex h-5 min-w-5 items-center justify-center rounded-full text-[10px] font-bold px-1"
                           style={{ background: W.oliveLight, color: W.olive }}
                         >
-                          {item.badge}
+                          {badge}
                         </span>
                       )}
                     </NavLink>
