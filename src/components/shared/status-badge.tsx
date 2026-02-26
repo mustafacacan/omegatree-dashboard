@@ -6,6 +6,7 @@ const STATUS_VARIANT: Record<string, string> = {
   IN_STOCK: 'bg-surface-100 text-surface-600',
   ASSIGNED: 'bg-primary-50 text-primary-700',
   DELIVERED: 'bg-green-50 text-green-700',
+  CLIENT_RECEIVED: 'bg-green-50 text-green-700',
   RETURN_REQUESTED: 'bg-amber-50 text-amber-700',
   DAMAGED: 'bg-red-50 text-red-700',
   SAMPLE_SENT: 'bg-violet-50 text-violet-700',
