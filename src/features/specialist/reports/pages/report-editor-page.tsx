@@ -1,9 +1,10 @@
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Textarea, Badge } from '@/components/ui'
-import { Upload, Send, FileText, Table as TableIcon, Save } from 'lucide-react'
+import { Upload, Send, FileText, Table as TableIcon, Save, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useWorkflowStore } from '@/stores/workflow.store'
+import { useCurrentUser } from '@/stores/auth.store'
 
 const labData = [
   { marker: 'EPA (C20:5n-3)', value: '2.4', unit: '%', reference: '1.5 - 3.0', status: 'normal' },
@@ -15,8 +16,38 @@ const labData = [
 
 export function ReportEditorPage() {
   const [params] = useSearchParams()
-  const { specialistSubmitReport } = useWorkflowStore()
-  const barcode = params.get('barcode') || 'OT-2025-00130'
+  const navigate = useNavigate()
+  const user = useCurrentUser()
+  const { kits, specialistSubmitReport } = useWorkflowStore()
+  const barcode = params.get('barcode') || ''
+  const kit = barcode ? kits.find((k) => k.barcode === barcode) : null
+  const canSubmit = kit?.reportStatus === 'SPECIALIST_POOL'
+  const isAdminApproval = kit?.reportStatus === 'ADMIN_APPROVAL'
+  const actor = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Uzman' : 'Uzman'
+
+  if (!barcode || !kit) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <PageHeader />
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-6 flex items-start gap-3">
+            <AlertCircle className="h-10 w-10 text-amber-600 shrink-0" />
+            <div>
+              <p className="font-semibold text-amber-900">Barkod bulunamadi</p>
+              <p className="text-sm text-amber-800 mt-1">
+                {!barcode
+                  ? 'URLde barcode parametresi yok. Atanan islerden &quot;Basla&quot; ile girin.'
+                  : `"${barcode}" sistemde bulunamadi veya rapor havuzunda degil.`}
+              </p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate('/specialist/assignments')}>
+                Atanan Islere Don
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -27,21 +58,30 @@ export function ReportEditorPage() {
               <Save className="h-4 w-4" />
               Taslak Kaydet
             </Button>
-            <Button
-              variant="gradient"
-              onClick={() => {
-                specialistSubmitReport(barcode, 'Uzm. Dyt.')
-                toast.success('Rapor admin onayina gonderildi')
-              }}
-            >
-              <Send className="h-4 w-4" />
-              Onaya Gonder
-            </Button>
+            {canSubmit && (
+              <Button
+                variant="gradient"
+                onClick={() => {
+                  specialistSubmitReport(barcode, actor)
+                  toast.success('Rapor admin onayina gonderildi')
+                  navigate('/specialist/assignments')
+                }}
+              >
+                <Send className="h-4 w-4" />
+                Onaya Gonder
+              </Button>
+            )}
+            {isAdminApproval && (
+              <Badge variant="info">Admin onayinda — rapor gonderildi</Badge>
+            )}
           </div>
         }
       />
       <div className="text-xs text-surface-500 -mt-4">
         Calisilan barkod: <code className="font-mono font-semibold">{barcode}</code>
+        {kit.assignedClientName && (
+          <span className="ml-2">· Danisan: {kit.assignedClientName}</span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

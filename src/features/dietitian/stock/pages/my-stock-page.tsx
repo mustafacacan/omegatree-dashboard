@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
-import { KitStatus } from '@/utils/constants'
+import { useDietitianSettingsStore } from '@/stores/dietitian-settings.store'
 import { formatDate } from '@/lib/utils'
 
 type BarcodeState = 'idle' | 'checking' | 'success' | 'error'
@@ -30,7 +30,9 @@ export function MyStockPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
   const { kits, receiveKitByBarcode } = useWorkflowStore()
+  const { minStockAlert, setMinStockAlert } = useDietitianSettingsStore()
   const [searchQuery, setSearchQuery] = useState('')
+  const [minStockInput, setMinStockInput] = useState('')
   const [receiveKitModalOpen, setReceiveKitModalOpen] = useState(false)
   const [barcodeInput, setBarcodeInput] = useState('')
   const [barcodeState, setBarcodeState] = useState<BarcodeState>('idle')
@@ -106,7 +108,7 @@ export function MyStockPage() {
         {[
           { title: 'Kullanilabilir', value: availableKits.length, icon: Package, iconColor: W.olive, iconBg: W.oliveLight, change: 2 },
           { title: 'Danisana Atanmis', value: assignedKits.length, icon: Boxes, iconColor: W.orange, iconBg: W.orangeLight, change: 1 },
-          { title: 'Minimum Stok', value: 3, icon: AlertTriangle, iconColor: W.amber, iconBg: W.amberLight, change: 0 },
+          { title: 'Minimum stok limiti', value: minStockAlert || '—', icon: AlertTriangle, iconColor: W.amber, iconBg: W.amberLight, change: 0 },
         ].map((s, i) => {
           const Icon = s.icon
           return (
@@ -135,16 +137,33 @@ export function MyStockPage() {
         })}
       </div>
 
+      {/* ═══ MIN STOK LİMİTİ AYARI ═══ */}
+      <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.08 }}>
+        <div className="rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+          <span className="text-sm font-medium text-surface-700">Minimum stok uyari limiti:</span>
+          <input
+            type="number"
+            min={0}
+            value={minStockInput !== '' ? minStockInput : minStockAlert}
+            onChange={(e) => setMinStockInput(e.target.value)}
+            onBlur={() => { const n = parseInt(minStockInput, 10); if (!Number.isNaN(n) && n >= 0) setMinStockAlert(n); setMinStockInput('') }}
+            placeholder={String(minStockAlert || 0)}
+            className="w-20 rounded-lg border border-surface-200 px-2 py-1.5 text-sm"
+          />
+          <span className="text-xs text-surface-500">Stok bu sayinin altina dustugunde uyari alirsiniz.</span>
+        </div>
+      </motion.div>
+
       {/* ═══ STOCK WARNING ═══ */}
-      {availableKits.length <= 3 && (
+      {minStockAlert > 0 && availableKits.length < minStockAlert && (
         <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
           <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: W.amberLight, border: '1px solid #F0DFA0' }}>
             <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#F5E6A0' }}>
               <AlertTriangle className="h-5 w-5" style={{ color: '#B8960A' }} />
             </div>
             <div className="flex-1">
-              <p className="text-[12px] font-semibold" style={{ color: '#78600A' }}>Stok Uyarisi</p>
-              <p className="text-[11px]" style={{ color: '#9C7D0A' }}>Kullanilabilir kit sayiniz azaliyor. Yeni siparis vermenizi oneririz.</p>
+              <p className="text-[12px] font-semibold" style={{ color: '#78600A' }}>Stok uyarisi</p>
+              <p className="text-[11px]" style={{ color: '#9C7D0A' }}>Kullanilabilir kit sayiniz ({availableKits.length}) minimum limitinizin ({minStockAlert}) altinda. Yeni siparis vermenizi oneririz.</p>
             </div>
             <Button variant="outline" size="sm" onClick={() => navigate('/dietitian/orders')} style={{ borderColor: '#D4B830', color: '#78600A' }}>
               Siparis Ver

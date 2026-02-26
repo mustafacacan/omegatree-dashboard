@@ -4,10 +4,11 @@ import { Timeline } from '@/components/shared/timeline'
 import { Avatar, Button } from '@/components/ui'
 import { KitStatus } from '@/utils/constants'
 import { useCurrentUser } from '@/stores/auth.store'
+import { useLaboratoriesStore } from '@/stores/laboratories.store'
 import { motion } from 'framer-motion'
 import {
   Users, FlaskConical, Package, FileCheck, TrendingUp, TrendingDown,
-  ArrowUpRight, Plus, ShoppingCart, Clock,
+  ArrowUpRight, Clock, MapPin,
   CheckCircle, AlertTriangle,
 } from 'lucide-react'
 import {
@@ -66,13 +67,17 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 export function DietitianDashboardPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
+  const laboratories = useLaboratoriesStore((s) => s.laboratories)
+  const assignedLab = user?.id
+    ? laboratories.find((l) => l.assignedDietitians.includes(user.id))
+    : null
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Gunaydin' : hour < 18 ? 'Iyi gunler' : 'Iyi aksamlar'
 
   return (
     <div className="space-y-5 animate-fade-in">
 
-      {/* ═══ GREETING ═══ */}
+      {/* ═══ GREETING + ATANAN LABORATUVAR ADRESI ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -83,13 +88,27 @@ export function DietitianDashboardPage() {
               Danisanlariniz, kitler ve raporlara genel bakis
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate('/dietitian/orders')}>
-              <ShoppingCart className="h-3.5 w-3.5" /> Siparis Ver
-            </Button>
-            <Button variant="primary" size="sm" onClick={() => navigate('/dietitian/clients/new')}>
-              <Plus className="h-3.5 w-3.5" /> Yeni Danisan
-            </Button>
+          <div className="min-w-0 max-w-full sm:max-w-md">
+            {assignedLab ? (
+              <div className="rounded-xl p-3.5 border" style={{ background: W.oliveLight, borderColor: W.warmBorder }}>
+                <div className="flex items-start gap-2.5">
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5" style={{ color: W.olive }} />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>Size atanan laboratuvar</p>
+                    <p className="text-[13px] font-semibold mt-0.5" style={{ color: W.dark }}>{assignedLab.name}</p>
+                    <p className="text-[12px] mt-1 leading-snug" style={{ color: W.text }}>
+                      {assignedLab.address}
+                      {assignedLab.district ? `, ${assignedLab.district}` : ''} / {assignedLab.city}
+                      {assignedLab.postalCode ? ` ${assignedLab.postalCode}` : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl p-3.5 border" style={{ background: W.cream, borderColor: W.warmBorder }}>
+                <p className="text-[12px]" style={{ color: W.textLight }}>Size atanmis laboratuvar bulunmuyor.</p>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>

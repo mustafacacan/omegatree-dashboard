@@ -55,6 +55,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith('/admin/cari')) return 'Cari Hesaplar'
   if (pathname.startsWith('/admin/templates')) return 'Sablonlar'
   if (pathname.startsWith('/admin/audit')) return 'Denetim Izi'
+  if (pathname.startsWith('/admin/reports')) return 'Rapor Onaylari'
   if (pathname.startsWith('/admin/notifications')) return 'Bildirimler'
 
   if (pathname === '/dietitian') return 'Diyetisyen Dashboard'

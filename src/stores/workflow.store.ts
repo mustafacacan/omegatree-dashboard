@@ -45,6 +45,8 @@ export interface WorkflowKit {
     approvedAt?: string
     approvedBy?: string
   }
+  /** Lab numune reddi – döküman şart: fotoğraf zorunlu */
+  rejectPhotoUrl?: string
 }
 
 export interface DietitianOrder {
@@ -54,8 +56,20 @@ export interface DietitianOrder {
   qty: number
   total: number
   paid: boolean
+  paidAt?: string
   createdAt: string
   assignedBarcodes: string[]
+}
+
+export interface CariPayment {
+  id: string
+  dietitianId: string
+  dietitianName: string
+  amount: number
+  date: string
+  note?: string
+  createdAt: string
+  createdBy: string
 }
 
 export interface PriceBundle {
@@ -77,7 +91,10 @@ interface WorkflowState {
   priceTiers: PriceTiers
   kits: WorkflowKit[]
   orders: DietitianOrder[]
+  payments: CariPayment[]
   auditLogs: AuditLogEntry[]
+  markOrderPaid: (orderId: string, actor: string, ip?: string) => { ok: boolean; message: string }
+  addCariPayment: (dietitianId: string, dietitianName: string, amount: number, note: string, actor: string, ip?: string) => void
   setKitPrice: (price: number, actor: string, ip?: string) => void
   setPricingTiers: (singleKitPrice: number, bundles: PriceBundle[], actor: string, ip?: string) => void
   getOrderTotal: (qty: number) => number
@@ -108,8 +125,9 @@ interface WorkflowState {
   ) => { ok: boolean; message: string }
   assignKitToClient: (barcode: string, dietitianId: string, clientId: string, clientName: string, actor: string, ip?: string) => { ok: boolean; message: string }
   markSampleSent: (barcode: string, dietitianId: string, actor: string, ip?: string) => void
+  markSampleSentByClient: (barcode: string, clientId: string, clientName: string, actor?: string, ip?: string) => { ok: boolean; message: string }
   labAcceptSample: (barcode: string, actor: string, ip?: string) => void
-  labRejectSample: (barcode: string, reason: string, actor: string, ip?: string) => void
+  labRejectSample: (barcode: string, reason: string, actor: string, ip?: string, rejectPhotoUrl?: string) => { ok: boolean; message: string }
   labCompleteAnalysis: (barcode: string, actor: string, ip?: string) => void
   specialistSubmitReport: (barcode: string, actor: string, ip?: string) => void
   adminApproveReport: (barcode: string, actor: string, ip?: string) => void
@@ -122,6 +140,8 @@ interface WorkflowState {
   ) => { ok: boolean; message: string }
   adminApproveReturn: (barcode: string, actor: string, ip?: string) => { ok: boolean; message: string }
   adminRejectReturn: (barcode: string, actor: string, ip?: string) => { ok: boolean; message: string }
+  /** Hasarlı kit onaylandıktan sonra telafi kiti atandığında, hasarlı kitin diyetisyen bilgisini temizler */
+  markDamagedCompensationAssigned: (damagedBarcode: string, actor: string, ip?: string) => void
 }
 
 const nowIso = () => new Date().toISOString()
@@ -136,8 +156,8 @@ const seedKits: WorkflowKit[] = [
   { barcode: 'OT-2025-00153', status: KitStatus.SAMPLE_SENT, location: 'Laboratuvar Havuzu', createdAt: '2025-06-15T14:10:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1500, assignedDietitianId: 'u-dietitian-1', assignedDietitianName: 'Ayse Yilmaz', assignedClientId: '20250601002', assignedClientName: 'Selin Kara', reportStatus: 'NONE' },
   { barcode: 'OT-2025-00152', status: KitStatus.IN_ANALYSIS, location: 'Laboratuvar Analiz', createdAt: '2025-06-14T09:50:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1500, analysisProgress: 55, reportStatus: 'NONE' },
   { barcode: 'OT-2025-00151', status: KitStatus.ANALYSIS_COMPLETE, location: 'Uzman Havuzu', createdAt: '2025-06-13T10:20:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1500, analysisProgress: 100, reportStatus: 'SPECIALIST_POOL' },
-  { barcode: 'OT-2025-00150', status: KitStatus.ADMIN_APPROVAL, location: 'Admin Onayi', createdAt: '2025-06-12T16:00:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1500, reportStatus: 'ADMIN_APPROVAL' },
-  { barcode: 'OT-2025-00149', status: KitStatus.COMPLETED, location: 'Arsiv', createdAt: '2025-06-11T12:30:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1550, reportStatus: 'APPROVED' },
+  { barcode: 'OT-2025-00150', status: KitStatus.ADMIN_APPROVAL, location: 'Admin Onayi', createdAt: '2025-06-12T16:00:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1500, reportStatus: 'ADMIN_APPROVAL', assignedDietitianId: 'u-dietitian-1', assignedDietitianName: 'Ayse Yilmaz', assignedClientId: 'u-danisan-1', assignedClientName: 'Ahmet Yildiz' },
+  { barcode: 'OT-2025-00149', status: KitStatus.COMPLETED, location: 'Arsiv', createdAt: '2025-06-11T12:30:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1550, reportStatus: 'APPROVED', assignedDietitianId: 'u-dietitian-1', assignedDietitianName: 'Ayse Yilmaz', assignedClientId: 'u-danisan-1', assignedClientName: 'Ahmet Yildiz' },
 ]
 
 const seedOrders: DietitianOrder[] = [
@@ -176,6 +196,7 @@ export const useWorkflowStore = create<WorkflowState>()(
       priceTiers: defaultPriceTiers,
       kits: seedKits,
       orders: [],
+      payments: [],
       auditLogs: [],
 
       setKitPrice: (price, actor, ip) =>
@@ -381,7 +402,7 @@ export const useWorkflowStore = create<WorkflowState>()(
             dietitianName,
             qty,
             total,
-            paid: true,
+            paid: false,
             createdAt: nowIso(),
             assignedBarcodes: [],
           }
@@ -389,10 +410,55 @@ export const useWorkflowStore = create<WorkflowState>()(
             orders: [order, ...state.orders],
             auditLogs: appendLog(state.auditLogs, {
               user: actor,
-              action: 'ORDER_PAID',
+              action: 'ORDER_CREATED',
               entity: 'Order',
               entityId: order.id,
-              details: `${dietitianName} icin ${qty} kit siparisi odendi`,
+              details: `${dietitianName} icin ${qty} kit siparisi olusturuldu — ${total} TL (odeme bekleniyor)`,
+              ip: defaultIp(ip),
+            }),
+          }
+        }),
+
+      markOrderPaid: (orderId, actor, ip) => {
+        const order = get().orders.find((o) => o.id === orderId)
+        if (!order) return { ok: false, message: 'Siparis bulunamadi.' }
+        if (order.paid) return { ok: false, message: 'Siparis zaten odendi.' }
+        set((state) => ({
+          orders: state.orders.map((o) =>
+            o.id === orderId ? { ...o, paid: true, paidAt: nowIso() } : o
+          ),
+          auditLogs: appendLog(state.auditLogs, {
+            user: actor,
+            action: 'ORDER_PAID',
+            entity: 'Order',
+            entityId: orderId,
+            details: `${order.dietitianName} siparisi odendi: ${order.total} TL`,
+            ip: defaultIp(ip),
+          }),
+        }))
+        return { ok: true, message: 'Siparis odendi olarak isaretlendi.' }
+      },
+
+      addCariPayment: (dietitianId, dietitianName, amount, note, actor, ip) =>
+        set((state) => {
+          const payment: CariPayment = {
+            id: generateId('pay-'),
+            dietitianId,
+            dietitianName,
+            amount,
+            date: nowIso().slice(0, 10),
+            note,
+            createdAt: nowIso(),
+            createdBy: actor,
+          }
+          return {
+            payments: [payment, ...state.payments],
+            auditLogs: appendLog(state.auditLogs, {
+              user: actor,
+              action: 'CARI_PAYMENT',
+              entity: 'Cari',
+              entityId: payment.id,
+              details: `${dietitianName} icin ${amount} TL odeme kaydedildi${note ? `: ${note}` : ''}`,
               ip: defaultIp(ip),
             }),
           }
@@ -571,6 +637,32 @@ export const useWorkflowStore = create<WorkflowState>()(
           }),
         })),
 
+      markSampleSentByClient: (barcode, clientId, clientName, actor, ip) => {
+        const target = get().kits.find((k) => k.barcode === barcode)
+        if (!target) return { ok: false, message: 'Barkod bulunamadi.' }
+        if (target.assignedClientId !== clientId) return { ok: false, message: 'Bu kit size atanmamis.' }
+        if (target.status !== KitStatus.CLIENT_RECEIVED) {
+          return { ok: false, message: 'Numune ancak kit teslim alindiktan sonra gonderildi olarak isaretlenebilir.' }
+        }
+        const who = actor || clientName
+        set((state) => ({
+          kits: state.kits.map((k) =>
+            k.barcode === barcode && k.assignedClientId === clientId
+              ? { ...k, status: KitStatus.SAMPLE_SENT, location: 'Laboratuvar Havuzu' }
+              : k
+          ),
+          auditLogs: appendLog(state.auditLogs, {
+            user: who,
+            action: 'SAMPLE_SENT_BY_CLIENT',
+            entity: 'Kit',
+            entityId: barcode,
+            details: `${barcode} numunesi danisan ${clientName} tarafindan laboratuvara gonderildi olarak isaretlendi`,
+            ip: defaultIp(ip),
+          }),
+        }))
+        return { ok: true, message: 'Numune gonderildi olarak isaretlendi.' }
+      },
+
       labAcceptSample: (barcode, actor, ip) =>
         set((state) => ({
           kits: state.kits.map((k) =>
@@ -586,10 +678,13 @@ export const useWorkflowStore = create<WorkflowState>()(
           }),
         })),
 
-      labRejectSample: (barcode, reason, actor, ip) =>
+      labRejectSample: (barcode, reason, actor, ip, rejectPhotoUrl) => {
+        if (!rejectPhotoUrl?.trim()) return { ok: false, message: 'Numune reddi icin fotoğraf yuklemeniz zorunludur.' }
         set((state) => ({
           kits: state.kits.map((k) =>
-            k.barcode === barcode ? { ...k, status: KitStatus.REJECTED, location: 'Numune Reddedildi' } : k
+            k.barcode === barcode
+              ? { ...k, status: KitStatus.REJECTED, location: 'Numune Reddedildi', rejectPhotoUrl }
+              : k
           ),
           auditLogs: appendLog(state.auditLogs, {
             user: actor,
@@ -599,7 +694,9 @@ export const useWorkflowStore = create<WorkflowState>()(
             details: `${barcode} reddedildi: ${reason}`,
             ip: defaultIp(ip),
           }),
-        })),
+        }))
+        return { ok: true, message: 'Numune reddedildi.' }
+      },
 
       labCompleteAnalysis: (barcode, actor, ip) =>
         set((state) => ({
@@ -655,6 +752,7 @@ export const useWorkflowStore = create<WorkflowState>()(
       requestKitReturn: (barcode, dietitianId, reason, actor, options) => {
         const trimmedReason = reason.trim()
         if (!trimmedReason) return { ok: false, message: 'Iade nedeni zorunludur.' }
+        if (!options?.photoUrl) return { ok: false, message: 'Hasar bildirimi icin fotoğraf yuklemeniz zorunludur.' }
 
         const target = get().kits.find((k) => k.barcode === barcode)
         if (!target) return { ok: false, message: 'Kit bulunamadi.' }
@@ -708,9 +806,7 @@ export const useWorkflowStore = create<WorkflowState>()(
               ? {
                   ...k,
                   status: KitStatus.DAMAGED,
-                  location: 'Iade kabul - yeniden gönderilmez',
-                  assignedDietitianId: undefined,
-                  assignedDietitianName: undefined,
+                  location: 'Hasarlı – telafi kiti atanacak',
                   assignedClientId: undefined,
                   assignedClientName: undefined,
                   trackingNo: undefined,
@@ -722,6 +818,7 @@ export const useWorkflowStore = create<WorkflowState>()(
                         approvedBy: actor,
                       }
                     : undefined,
+                  // Diyetisyen bilgisi tutulur; admin telafi kiti atayacak
                 }
               : k
           ),
@@ -767,6 +864,23 @@ export const useWorkflowStore = create<WorkflowState>()(
         }))
         return { ok: true, message: 'Iade talebi reddedildi.' }
       },
+
+      markDamagedCompensationAssigned: (damagedBarcode, actor, ip) =>
+        set((state) => ({
+          kits: state.kits.map((k) =>
+            k.barcode === damagedBarcode && k.status === KitStatus.DAMAGED
+              ? { ...k, assignedDietitianId: undefined, assignedDietitianName: undefined, location: 'Hasarlı (telafi atandı)' }
+              : k
+          ),
+          auditLogs: appendLog(state.auditLogs, {
+            user: actor,
+            action: 'DAMAGED_COMPENSATION_ASSIGNED',
+            entity: 'Kit',
+            entityId: damagedBarcode,
+            details: `${damagedBarcode} hasarli kit icin telafi kiti atandi`,
+            ip: defaultIp(ip),
+          }),
+        })),
     }),
     {
       name: 'omegatree-workflow',
@@ -793,7 +907,7 @@ export const useWorkflowStore = create<WorkflowState>()(
           auditLogs: p?.auditLogs ?? [],
         }
       },
-      partialize: (s) => ({ kitPrice: s.kitPrice, priceTiers: s.priceTiers, kits: s.kits, orders: s.orders, auditLogs: s.auditLogs }),
+      partialize: (s) => ({ kitPrice: s.kitPrice, priceTiers: s.priceTiers, kits: s.kits, orders: s.orders, payments: s.payments, auditLogs: s.auditLogs }),
     }
   )
 )

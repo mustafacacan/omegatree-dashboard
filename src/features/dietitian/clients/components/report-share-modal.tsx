@@ -3,7 +3,8 @@ import {
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription,
   ModalBody, ModalFooter, Button, Input,
 } from '@/components/ui'
-import { Link2, QrCode, Copy, Check, Clock, Shield } from 'lucide-react'
+import { Link2, Copy, Check, Clock, Shield } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import toast from 'react-hot-toast'
 
 interface ReportShareModalProps {
@@ -22,7 +23,7 @@ export function ReportShareModal({ open, onOpenChange, reportId, clientName }: R
   const handleGenerate = async () => {
     setGenerating(true)
     await new Promise((r) => setTimeout(r, 800))
-    setShareLink(`https://app.omegatree.com/share/${reportId}?token=sec_${Date.now().toString(36)}`)
+    setShareLink(`${typeof window !== 'undefined' ? window.location.origin : ''}/share/${reportId}?token=sec_${Date.now().toString(36)}`)
     setGenerating(false)
   }
 
@@ -107,12 +108,10 @@ export function ReportShareModal({ open, onOpenChange, reportId, clientName }: R
                 </Button>
               </div>
 
-              {/* QR Code placeholder */}
+              {/* QR Code – danışan bu kodu okutarak güvenli linke gider, sistem içinde görüntüler */}
               <div className="border border-surface-200 rounded-lg p-6 flex flex-col items-center gap-3">
-                <div className="h-32 w-32 bg-surface-100 rounded-lg flex items-center justify-center">
-                  <QrCode className="h-16 w-16 text-surface-300" />
-                </div>
-                <p className="text-xs text-surface-500">Danisan bu QR kodu okutarak rapora erisebilir</p>
+                <QRCodeSVG value={shareLink} size={160} level="M" className="rounded-lg" />
+                <p className="text-xs text-surface-500">Danisan bu QR kodu okutarak rapora guvenli link uzerinden erisir (indirme yok, sadece goruntuleme)</p>
               </div>
             </div>
           )}

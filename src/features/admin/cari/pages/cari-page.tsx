@@ -3,21 +3,27 @@ import { PageHeader } from '@/components/shared/page-header'
 import {
   Card, CardHeader, CardTitle, CardContent, Badge, Avatar,
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
-  Button, Input,
+  Button, Input, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
 } from '@/components/ui'
-import { formatCurrency } from '@/lib/utils'
-import { Search, TrendingUp, TrendingDown } from 'lucide-react'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { Search, TrendingUp, TrendingDown, Plus, History } from 'lucide-react'
 import { useUsersStore } from '@/stores/users.store'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { UserRole } from '@/utils/constants'
 import { TablePagination } from '@/components/shared/table-pagination'
+import toast from 'react-hot-toast'
 
 export function CariPage() {
   const { users } = useUsersStore()
-  const { kits } = useWorkflowStore()
+  const { kits, payments = [], addCariPayment } = useWorkflowStore()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [paymentModalUserId, setPaymentModalUserId] = useState<string | null>(null)
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentNote, setPaymentNote] = useState('')
+  const [historyUserId, setHistoryUserId] = useState<string | null>(null)
+
   const demoCari = useMemo(
     () =>
       users
@@ -25,21 +31,19 @@ export function CariPage() {
         .map((u) => {
           const name = `${u.firstName} ${u.lastName}`.trim()
           const userKits = kits.filter((k) => k.assignedDietitianId === u.id)
-          const totalPurchased = userKits.length * (userKits[0]?.price || 1500)
-          const deliveredCount = userKits.filter((k) =>
-            ['DELIVERED', 'SAMPLE_SENT', 'IN_ANALYSIS', 'COMPLETED'].includes(k.status)
-          ).length
-          const totalPaid = deliveredCount * (userKits[0]?.price || 1500)
+          const totalKitCharge = userKits.reduce((sum, k) => sum + (k.price || 0), 0)
+          const totalPayments = (payments || []).filter((p) => p.dietitianId === u.id).reduce((sum, p) => sum + p.amount, 0)
+          const balance = totalPayments - totalKitCharge
           return {
             id: u.id,
             name,
             email: u.email,
-            totalPaid,
-            totalPurchased,
-            balance: totalPaid - totalPurchased,
+            totalPayments,
+            totalKitCharge,
+            balance,
           }
         }),
-    [kits, users]
+    [kits, users, payments]
   )
   const filteredCari = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -87,15 +91,16 @@ export function CariPage() {
               <TableRow>
                 <TableHead>Diyetisyen</TableHead>
                 <TableHead>Toplam Odeme</TableHead>
-                <TableHead>Toplam Alis</TableHead>
+                <TableHead>Kit Borcu</TableHead>
                 <TableHead>Bakiye</TableHead>
                 <TableHead>Durum</TableHead>
+                <TableHead className="w-32">Islem</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedCari.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-sm text-surface-500">
+                  <TableCell colSpan={6} className="py-10 text-center text-sm text-surface-500">
                     Filtreye uygun cari kaydi bulunamadi.
                   </TableCell>
                 </TableRow>
@@ -112,10 +117,10 @@ export function CariPage() {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium text-primary-700">
-                    {formatCurrency(item.totalPaid)}
+                    {formatCurrency(item.totalPayments)}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {formatCurrency(item.totalPurchased)}
+                    {formatCurrency(item.totalKitCharge)}
                   </TableCell>
                   <TableCell>
                     <span className={item.balance >= 0 ? 'font-semibold text-primary-700' : 'font-semibold text-danger'}>
@@ -130,6 +135,12 @@ export function CariPage() {
                     ) : (
                       <Badge variant="default">Dengeli</Badge>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" onClick={() => setHistoryUserId(item.id)}><History className="h-3.5 w-3.5" /></Button>
+                      <Button variant="outline" size="sm" onClick={() => { setPaymentModalUserId(item.id); setPaymentAmount(''); setPaymentNote('') }}><Plus className="h-3.5 w-3.5" /> Odeme</Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -147,6 +158,65 @@ export function CariPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Ödeme ekle modal */}
+      <Modal open={!!paymentModalUserId} onOpenChange={(open) => !open && setPaymentModalUserId(null)}>
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle>Odeme kaydi</ModalTitle>
+            <ModalDescription>
+              {paymentModalUserId && demoCari.find((c) => c.id === paymentModalUserId)?.name} icin odenen tutari girin.
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-3">
+            <Input type="number" placeholder="Tutar (TL)" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
+            <Input placeholder="Not (opsiyonel)" value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setPaymentModalUserId(null)}>Iptal</Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                const user = paymentModalUserId && demoCari.find((c) => c.id === paymentModalUserId)
+                if (!user || !paymentAmount.trim() || Number.isNaN(Number(paymentAmount)) || Number(paymentAmount) <= 0) {
+                  toast.error('Gecerli bir tutar girin')
+                  return
+                }
+                addCariPayment(user.id, user.name, Number(paymentAmount), paymentNote.trim(), 'Admin')
+                toast.success('Odeme kaydedildi')
+                setPaymentModalUserId(null)
+                setPaymentAmount('')
+                setPaymentNote('')
+              }}
+            >
+              Kaydet
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Ödeme geçmişi modal */}
+      <Modal open={!!historyUserId} onOpenChange={(open) => !open && setHistoryUserId(null)}>
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle>Odeme gecmisi</ModalTitle>
+            <ModalDescription>{historyUserId && demoCari.find((c) => c.id === historyUserId)?.name}</ModalDescription>
+          </ModalHeader>
+          <ModalBody>
+            <ul className="space-y-2 max-h-64 overflow-auto">
+              {(payments || []).filter((p) => p.dietitianId === historyUserId).length === 0 && (
+                <li className="text-sm text-surface-500">Henuz odeme kaydi yok.</li>
+              )}
+              {(payments || []).filter((p) => p.dietitianId === historyUserId).map((p) => (
+                <li key={p.id} className="flex justify-between text-sm py-2 border-b border-surface-100 last:border-0">
+                  <span>{formatDate(p.date)} — {p.note || '-'}</span>
+                  <span className="font-medium text-primary-700">{formatCurrency(p.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   )
 }

@@ -22,7 +22,7 @@ const statusVariant: Record<OrderStatus, 'warning' | 'info' | 'primary' | 'succe
 }
 
 export function OrdersPage() {
-  const { orders, kits, assignKitsToDietitian } = useWorkflowStore()
+  const { orders, kits, assignKitsToDietitian, markOrderPaid } = useWorkflowStore()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -162,13 +162,14 @@ export function OrdersPage() {
                 <TableHead>Tutar</TableHead>
                 <TableHead>Kargoya Verilen</TableHead>
                 <TableHead>Tarih</TableHead>
+                <TableHead>Odeme</TableHead>
                 <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedOrders.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-sm text-surface-500">
+                  <TableCell colSpan={8} className="py-10 text-center text-sm text-surface-500">
                     Filtreye uygun siparis bulunamadi.
                   </TableCell>
                 </TableRow>
@@ -185,6 +186,23 @@ export function OrdersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-surface-500">{formatDate(order.createdAt)}</TableCell>
+                  <TableCell>
+                    {order.paid ? (
+                      <Badge variant="success" dot>Odendi</Badge>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const r = markOrderPaid(order.id, 'Admin')
+                          if (r.ok) toast.success(r.message)
+                          else toast.error(r.message)
+                        }}
+                      >
+                        Odendi isaretle
+                      </Button>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon-sm" onClick={() => handleOpenOrder(order.id)}>

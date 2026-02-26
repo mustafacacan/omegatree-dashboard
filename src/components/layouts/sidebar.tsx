@@ -1,8 +1,9 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar.store'
-import { useCurrentRole } from '@/stores/auth.store'
+import { useCurrentRole, useCurrentUser } from '@/stores/auth.store'
 import { useWorkflowStore } from '@/stores/workflow.store'
+import { useLaboratoriesStore } from '@/stores/laboratories.store'
 import { UserRole, KitStatus } from '@/utils/constants'
 import { Tooltip, TooltipProvider } from '@/components/ui'
 import {
@@ -27,6 +28,7 @@ import {
   BookOpen,
   ClipboardList,
   RotateCcw,
+  MapPin,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -58,6 +60,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Siparisler', href: '/admin/orders', icon: ShoppingCart },
           { label: 'Cari Hesaplar', href: '/admin/cari', icon: CreditCard },
           { label: 'Laboratuvarlar', href: '/admin/laboratories', icon: TestTubes },
+          { label: 'Rapor Onaylari', href: '/admin/reports', icon: FileCheck },
         ]},
         { title: 'Sistem', items: [
           { label: 'Sablonlar', href: '/admin/templates', icon: FileText },
@@ -125,9 +128,14 @@ const W = {
 export function Sidebar() {
   const { collapsed, toggle, mobileOpen, setMobileOpen } = useSidebarStore()
   const role = useCurrentRole()
+  const user = useCurrentUser()
   const location = useLocation()
   const kits = useWorkflowStore((s) => s.kits)
+  const laboratories = useLaboratoriesStore((s) => s.laboratories)
   const returnRequestCount = kits.filter((k) => k.status === KitStatus.RETURN_REQUESTED).length
+  const assignedLab = role === UserRole.DIETITIAN && user?.id
+    ? laboratories.find((l) => l.assignedDietitians.includes(user.id))
+    : null
 
   if (!role) return null
 
@@ -265,6 +273,54 @@ export function Sidebar() {
             </div>
           ))}
         </nav>
+
+        {/* Diyetisyen: Atanan laboratuvar adresi (her sayfada görünür) */}
+        {role === UserRole.DIETITIAN && (
+          <div className="px-3 pb-2" style={{ borderTop: `1px solid ${W.creamDark}` }}>
+            {collapsed ? (
+              assignedLab && (
+                <Tooltip
+                  content={
+                    <span className="block max-w-[220px] text-left">
+                      <strong>{assignedLab.name}</strong>
+                      <br />
+                      {assignedLab.address}, {assignedLab.district ?? ''} {assignedLab.city}
+                    </span>
+                  }
+                  side="right"
+                >
+                  <div
+                    className="flex justify-center py-2 rounded-xl"
+                    style={{ background: W.oliveLight }}
+                  >
+                    <MapPin className="h-5 w-5 shrink-0" style={{ color: W.olive }} />
+                  </div>
+                </Tooltip>
+              )
+            ) : assignedLab ? (
+              <div
+                className="rounded-xl p-3 border"
+                style={{ background: W.oliveLight, borderColor: W.warmBorder }}
+              >
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5" style={{ color: W.olive }} />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>Laboratuvarim</p>
+                    <p className="text-[12px] font-semibold mt-0.5 truncate" style={{ color: W.dark }} title={assignedLab.name}>{assignedLab.name}</p>
+                    <p className="text-[11px] mt-1 leading-snug line-clamp-2" style={{ color: W.text }} title={`${assignedLab.address}${assignedLab.district ? `, ${assignedLab.district}` : ''} / ${assignedLab.city}`}>
+                      {assignedLab.address}
+                      {assignedLab.district ? `, ${assignedLab.district}` : ''} / {assignedLab.city}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl p-3 border" style={{ background: W.cream, borderColor: W.warmBorder }}>
+                <p className="text-[11px]" style={{ color: W.textLight }}>Atanmis laboratuvar yok.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Collapse toggle */}
         <div className="p-3" style={{ borderTop: `1px solid ${W.creamDark}` }}>

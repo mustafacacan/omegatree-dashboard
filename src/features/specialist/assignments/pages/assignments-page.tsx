@@ -15,14 +15,19 @@ export function AssignmentsPage() {
   const navigate = useNavigate()
   const { kits } = useWorkflowStore()
   const assignments = kits
-    .filter((k) => ['ANALYSIS_COMPLETE', 'ADMIN_APPROVAL', 'COMPLETED'].includes(k.status))
+    .filter(
+      (k) =>
+        k.reportStatus === 'SPECIALIST_POOL' ||
+        k.reportStatus === 'ADMIN_APPROVAL' ||
+        k.reportStatus === 'APPROVED'
+    )
     .map((k) => ({
       barcode: k.barcode,
       assignedAt: k.createdAt,
       status:
-        k.status === 'ANALYSIS_COMPLETE'
+        k.reportStatus === 'SPECIALIST_POOL'
           ? 'pending'
-          : k.status === 'ADMIN_APPROVAL'
+          : k.reportStatus === 'ADMIN_APPROVAL'
             ? 'in_progress'
             : 'completed',
     }))

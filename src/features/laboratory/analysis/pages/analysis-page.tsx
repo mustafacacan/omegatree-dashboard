@@ -1,69 +1,95 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/page-header'
-import toast from 'react-hot-toast'
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription,
   Button, Badge,
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+  Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody,
 } from '@/components/ui'
-import { SampleStatus } from '@/utils/constants'
-import { Upload, Clock, CheckCircle } from 'lucide-react'
+import { KitStatus, KIT_STATUS_LABELS } from '@/utils/constants'
+import { Upload, Clock, CheckCircle, Eye } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { TablePagination } from '@/components/shared/table-pagination'
+import { formatDate, formatDateTime } from '@/lib/utils'
+import toast from 'react-hot-toast'
 
-const statusBadge: Record<SampleStatus, { variant: 'warning' | 'info' | 'success' | 'danger' | 'default'; label: string }> = {
-  [SampleStatus.PENDING]: { variant: 'warning', label: 'Bekliyor' },
-  [SampleStatus.ACCEPTED]: { variant: 'info', label: 'Kabul Edildi' },
-  [SampleStatus.REJECTED]: { variant: 'danger', label: 'Reddedildi' },
-  [SampleStatus.IN_ANALYSIS]: { variant: 'info', label: 'Analizde' },
-  [SampleStatus.COMPLETED]: { variant: 'success', label: 'Tamamlandi' },
-}
+const LAB_ACTOR = 'Lab Teknisyen'
+
+const ANALYSIS_PIPELINE = [KitStatus.SAMPLE_SENT, KitStatus.LAB_PENDING, KitStatus.IN_ANALYSIS, KitStatus.REJECTED, KitStatus.ANALYSIS_COMPLETE, KitStatus.SPECIALIST_POOL, KitStatus.COMPLETED] as const
 
 export function AnalysisPage() {
+  const navigate = useNavigate()
   const { kits, labAcceptSample, labCompleteAnalysis } = useWorkflowStore()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const analyses = kits
-    .filter((k) => [SampleStatus.PENDING, SampleStatus.ACCEPTED, SampleStatus.IN_ANALYSIS, SampleStatus.COMPLETED, 'SAMPLE_SENT', 'ANALYSIS_COMPLETE'].includes(k.status))
-    .map((k) => ({
-      barcode: k.barcode,
-      status:
-        k.status === 'SAMPLE_SENT'
-          ? SampleStatus.PENDING
-          : k.status === 'ANALYSIS_COMPLETE'
-            ? SampleStatus.COMPLETED
-            : (k.status as SampleStatus),
-      startedAt: k.createdAt,
-      progress: k.analysisProgress ?? (k.status === 'ANALYSIS_COMPLETE' ? 100 : 60),
-    }))
+  const [detailBarcode, setDetailBarcode] = useState<string | null>(null)
+
+  const analyses = useMemo(
+    () =>
+      kits
+        .filter((k) => (ANALYSIS_PIPELINE as readonly KitStatus[]).includes(k.status))
+        .map((k) => ({
+          ...k,
+          progress: k.analysisProgress ?? (k.status === KitStatus.ANALYSIS_COMPLETE || k.status === KitStatus.COMPLETED ? 100 : k.status === KitStatus.IN_ANALYSIS ? 50 : 0),
+        }))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [kits]
+  )
+
   const paginatedAnalyses = useMemo(
     () => analyses.slice((page - 1) * pageSize, page * pageSize),
     [analyses, page, pageSize]
   )
 
+  const selectedKit = useMemo(() => (detailBarcode ? kits.find((k) => k.barcode === detailBarcode) : null), [kits, detailBarcode])
+
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(analyses.length / pageSize))
-    if (page > totalPages) {
-      setPage(totalPages)
-    }
+    if (page > totalPages) setPage(totalPages)
   }, [analyses.length, page, pageSize])
+
+  const handleAccept = (barcode: string) => {
+    labAcceptSample(barcode, LAB_ACTOR)
+    toast.success('Numune kabul edildi, analiz baslatildi')
+  }
+
+  const handleComplete = (barcode: string) => {
+    labCompleteAnalysis(barcode, LAB_ACTOR)
+    toast.success('Analiz tamamlandi, uzman havuzuna aktarildi')
+  }
+
+  const statusBadgeVariant = (status: KitStatus): 'warning' | 'info' | 'success' | 'danger' | 'default' => {
+    if (status === KitStatus.SAMPLE_SENT || status === KitStatus.LAB_PENDING) return 'warning'
+    if (status === KitStatus.IN_ANALYSIS) return 'info'
+    if (status === KitStatus.REJECTED) return 'danger'
+    return 'success'
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <PageHeader />
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Analiz Tablosu</CardTitle>
-              <CardDescription>Sonuclari Excel ile yukleyebilirsiniz</CardDescription>
-            </div>
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Laboratuvar', href: '/lab' },
+          { label: 'Analizler', href: '/lab/analysis' },
+        ]}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/lab')}>Dashboard</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/lab/pool')}>Numune Havuzu</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/lab/results')}>Sonuclar</Button>
             <Button variant="outline" onClick={() => toast.success('Excel dosya secici aciliyor...')}>
               <Upload className="h-4 w-4" />
               Excel Yukle
             </Button>
           </div>
+        }
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Analiz Tablosu</CardTitle>
+          <CardDescription>Numune kabul, analiz ilerlemesi ve tamamlama. Sonuclari Excel ile yukleyebilirsiniz.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -73,74 +99,75 @@ export function AnalysisPage() {
                 <TableHead>Durum</TableHead>
                 <TableHead>Baslangic</TableHead>
                 <TableHead>Ilerleme</TableHead>
-                <TableHead className="w-32" />
+                <TableHead className="w-40">Islem</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedAnalyses.length === 0 && (
+              {paginatedAnalyses.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-10 text-center text-sm text-surface-500">
-                    Listelenecek analiz kaydi bulunamadi.
+                    Listelenecek analiz kaydi bulunamadi. Numune havuzundan kabul edin.
                   </TableCell>
                 </TableRow>
-              )}
-              {paginatedAnalyses.map((item) => (
-                <TableRow key={item.barcode}>
-                  <TableCell>
-                    <code className="text-sm font-mono font-semibold">{item.barcode}</code>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusBadge[item.status].variant} dot>
-                      {statusBadge[item.status].label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-surface-500">{item.startedAt}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-2 bg-surface-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full transition-all duration-500"
-                          style={{ width: `${item.progress}%` }}
-                        />
+              ) : (
+                paginatedAnalyses.map((item) => (
+                  <TableRow key={item.barcode}>
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => setDetailBarcode(item.barcode)}
+                        className="font-mono font-semibold text-primary-600 hover:underline text-left"
+                      >
+                        {item.barcode}
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusBadgeVariant(item.status)} dot>
+                        {KIT_STATUS_LABELS[item.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-surface-500">{formatDateTime(item.createdAt)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-2 bg-surface-100 rounded-full overflow-hidden min-w-[80px]">
+                          <div
+                            className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full transition-all"
+                            style={{ width: `${item.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-surface-500 w-8">{item.progress}%</span>
                       </div>
-                      <span className="text-xs font-medium text-surface-500 w-8">{item.progress}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {item.status === SampleStatus.PENDING ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          labAcceptSample(item.barcode, 'Lab Tek.')
-                          toast.success('Numune kabul edildi, analiz baslatildi')
-                        }}
-                      >
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        Kabul Et
-                      </Button>
-                    ) : item.status === SampleStatus.IN_ANALYSIS && item.progress >= 90 ? (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => {
-                          labCompleteAnalysis(item.barcode, 'Lab Tek.')
-                          toast.success('Analiz tamamlandi, uzman havuzuna aktarildi')
-                        }}
-                      >
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        Tamamla
-                      </Button>
-                    ) : item.status === SampleStatus.COMPLETED ? (
-                      <Badge variant="success">Bitti</Badge>
-                    ) : (
-                      <span className="text-xs text-surface-400 flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" /> Devam Ediyor
-                      </span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <Button variant="ghost" size="sm" onClick={() => setDetailBarcode(item.barcode)} title="Detay">
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        {(item.status === KitStatus.SAMPLE_SENT || item.status === KitStatus.LAB_PENDING) && (
+                          <Button variant="outline" size="sm" onClick={() => handleAccept(item.barcode)}>
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            Kabul Et
+                          </Button>
+                        )}
+                        {item.status === KitStatus.IN_ANALYSIS && (
+                          <Button variant="default" size="sm" onClick={() => handleComplete(item.barcode)}>
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            Tamamla
+                          </Button>
+                        )}
+                        {(item.status === KitStatus.ANALYSIS_COMPLETE || item.status === KitStatus.COMPLETED) && (
+                          <Badge variant="success">Bitti</Badge>
+                        )}
+                        {item.status === KitStatus.IN_ANALYSIS && item.progress < 100 && (
+                          <span className="text-xs text-surface-400 flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
           <TablePagination
@@ -155,6 +182,43 @@ export function AnalysisPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Detay modal */}
+      <Modal open={!!detailBarcode} onOpenChange={(open) => !open && setDetailBarcode(null)}>
+        <ModalContent className="max-w-lg">
+          <ModalHeader>
+            <ModalTitle>Analiz Detayi</ModalTitle>
+            <ModalDescription>{selectedKit?.barcode}</ModalDescription>
+          </ModalHeader>
+          <ModalBody>
+            {selectedKit && (
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-surface-500 text-xs">Barkod</p>
+                  <p className="font-mono font-semibold">{selectedKit.barcode}</p>
+                </div>
+                <div>
+                  <p className="text-surface-500 text-xs">Durum</p>
+                  <p>{KIT_STATUS_LABELS[selectedKit.status]}</p>
+                </div>
+                <div>
+                  <p className="text-surface-500 text-xs">Konum</p>
+                  <p>{selectedKit.location}</p>
+                </div>
+                <div>
+                  <p className="text-surface-500 text-xs">Ilerleme</p>
+                  <p>%{selectedKit.analysisProgress ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-surface-500 text-xs">Gelis / Baslangic</p>
+                  <p>{formatDateTime(selectedKit.createdAt)}</p>
+                </div>
+                {/* Kör analiz: Lab sadece barkod görür; danışan/diyetisyen adı gösterilmez */}
+              </div>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   )
 }

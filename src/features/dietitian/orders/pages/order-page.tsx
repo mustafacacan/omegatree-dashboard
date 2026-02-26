@@ -1,11 +1,30 @@
 import { useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, Badge } from '@/components/ui'
-import { formatCurrency, formatDate } from '@/lib/utils'
-import { ShoppingCart, Package, Truck, Layers, Check } from 'lucide-react'
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { ShoppingCart, Package, Truck, Layers, Check, Info } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
+import { motion } from 'framer-motion'
+
+const W = {
+  olive: '#8B9A4B',
+  oliveLight: '#EEF2DE',
+  orange: '#E8913A',
+  orangeLight: '#FDF0E2',
+  green: '#6ABF69',
+  greenLight: '#E8F5E8',
+  cream: '#F9F7F3',
+  creamDark: '#F0EDE7',
+  warmBorder: '#E8E4DE',
+  dark: '#2D2A26',
+  text: '#4A4640',
+  textLight: '#9C968D',
+  warmGrayLight: '#B5AFA5',
+}
+
+const fadeUp = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 } }
 
 export function DietitianOrderPage() {
   const user = useCurrentUser()
@@ -48,159 +67,230 @@ export function DietitianOrderPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      {/* Fiyatlar / Paketler — Admin paneldeki gibi */}
-      <Card>
-        <div className="p-5 pb-4 border-b border-surface-100">
-          <h3 className="text-[15px] font-semibold text-surface-900">Fiyatlar ve Paketler</h3>
-          <p className="text-[13px] text-surface-500 mt-0.5">Asagidaki paketlerden birini secin; siparis toplami otomatik hesaplanir</p>
+      {/* Aciklama */}
+      <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+        <div
+          className="rounded-2xl p-4 flex items-start gap-3 border"
+          style={{ background: W.cream, borderColor: W.warmBorder }}
+        >
+          <Info className="h-5 w-5 shrink-0 mt-0.5" style={{ color: W.olive }} />
+          <div>
+            <p className="text-[13px] font-medium" style={{ color: W.dark }}>
+              Fiyatlar ve paketler
+            </p>
+            <p className="text-[12px] mt-1 leading-relaxed" style={{ color: W.text }}>
+              Asagidaki paketlerden birini secin; toplu alimda indirim uygulanir. Siparis toplami otomatik hesaplanir.
+            </p>
+          </div>
         </div>
-        <CardContent className="p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {/* Tekil kit */}
-            <button
-              type="button"
-              onClick={() => handleSelectPackage(1)}
-              className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
-                selectedQty === 1
-                  ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-200'
-                  : 'border-surface-200 bg-surface-50/50 hover:border-primary-200 hover:bg-primary-50/30'
-              }`}
-            >
-              <div className="h-12 w-12 rounded-xl bg-primary-100 flex items-center justify-center shrink-0">
-                <Package className="h-6 w-6 text-primary-600" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-surface-500 uppercase tracking-wider">Tekil kit</p>
-                <p className="text-lg font-semibold text-surface-900">{formatCurrency(priceTiers.singleKitPrice)} <span className="text-sm font-normal text-surface-500">/ adet</span></p>
-                <p className="text-xs text-surface-500 mt-0.5">1 adet</p>
-              </div>
-              {selectedQty === 1 && <Check className="h-5 w-5 text-primary-600 shrink-0" />}
-            </button>
-            {/* Paketler */}
-            {priceTiers.bundles.map((b, i) => {
-              const perUnit = b.quantity > 0 ? b.total / b.quantity : 0
-              const discountPct = priceTiers.singleKitPrice > 0 ? Math.round((1 - perUnit / priceTiers.singleKitPrice) * 100) : 0
-              const isSelected = selectedQty === b.quantity
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => handleSelectPackage(b.quantity)}
-                  className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
-                    isSelected ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-200' : 'border-surface-200 bg-primary-50/50 hover:border-primary-200 hover:bg-primary-100/50'
-                  }`}
-                >
-                  <div className="h-12 w-12 rounded-xl bg-primary-200 flex items-center justify-center shrink-0">
-                    <Layers className="h-6 w-6 text-primary-700" />
+      </motion.div>
+
+      {/* Fiyat / Paket kartlari — admin tasarimi ile uyumlu */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {/* Tekil kit */}
+        <motion.div {...fadeUp} transition={{ duration: 0.3, delay: 0.05 }}>
+          <button
+            type="button"
+            onClick={() => handleSelectPackage(1)}
+            className="w-full h-full text-left rounded-2xl border-2 transition-all overflow-hidden"
+            style={{
+              background: selectedQty === 1 ? W.oliveLight : '#fff',
+              borderColor: selectedQty === 1 ? W.olive : W.warmBorder,
+              boxShadow: selectedQty === 1 ? '0 0 0 2px rgba(139,154,75,0.25)' : undefined,
+            }}
+          >
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-4 min-w-0">
+                  <div
+                    className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: W.oliveLight }}
+                  >
+                    <Package className="h-7 w-7" style={{ color: W.olive }} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-surface-500 uppercase tracking-wider">{b.quantity} adet paket</p>
-                    <p className="text-lg font-semibold text-surface-900">{formatCurrency(b.total)} <span className="text-sm font-normal text-surface-500">toplam</span></p>
-                    <p className="text-xs text-primary-600 mt-0.5">Birim: {formatCurrency(perUnit)} · %{discountPct} indirim</p>
-                  </div>
-                  {isSelected && <Check className="h-5 w-5 text-primary-600 shrink-0" />}
-                </button>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* New Order Card */}
-      <Card className="overflow-hidden border-surface-200">
-        <div className="p-6 border-b border-surface-200 bg-primary-50">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-10 w-10 rounded-xl bg-white border border-primary-200 flex items-center justify-center">
-              <ShoppingCart className="h-5 w-5 text-primary-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-surface-900">Siparis Ver</h3>
-          </div>
-          <p className="text-surface-600 text-sm">Yukaridan bir paket secin, teslimat adresini yazin ve siparisi tamamlayin</p>
-        </div>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <Input
-              label="Teslimat Adresi"
-              placeholder="Klinik adresi"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-            />
-            <div className="flex items-end">
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full"
-                onClick={handleCreateOrder}
-                disabled={qtyNum <= 0 || !address.trim()}
-              >
-                <Package className="h-4 w-4" />
-                Siparis Ver - {formatCurrency(total)}
-              </Button>
-            </div>
-          </div>
-          <div className="p-4 rounded-lg bg-surface-50 border border-surface-200">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-surface-600">Secilen: {qtyNum} adet</span>
-              <span className="font-semibold text-surface-800">
-                {formatCurrency(effectiveUnitPrice)}
-                {hasBundleDiscount && <span className="text-primary-600 text-xs ml-1">(paket indirimi)</span>}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm mt-2">
-              <span className="text-surface-600">Toplam:</span>
-              <span className="font-bold text-lg text-primary-600">{formatCurrency(total)}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Order History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Siparis Gecmisim</CardTitle>
-          <CardDescription>Onceki siparisleriniz ve durumlari</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {myOrders.length === 0 ? (
-            <div className="text-center py-10 text-surface-500">
-              <Package className="h-12 w-12 mx-auto mb-3 text-surface-300" />
-              <p>Henuz siparisiniz yok</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {myOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-center justify-between p-4 rounded-2xl border border-surface-200 hover:border-primary-200 hover:bg-primary-50/40 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="h-11 w-11 rounded-xl bg-surface-100 flex items-center justify-center">
-                      {order.assignedBarcodes.length > 0 ? (
-                        <Truck className="h-5 w-5 text-primary-600" />
-                      ) : (
-                        <Package className="h-5 w-5 text-surface-500" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-surface-800">{order.id}</p>
-                      <p className="text-xs text-surface-400">
-                        {order.qty} Kit · {formatDate(order.createdAt)}
-                        {order.assignedBarcodes.length > 0 && ` · ${order.assignedBarcodes.length} kit kargoya verildi`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-surface-800 mb-1">{formatCurrency(order.total)}</p>
-                    <Badge variant={order.assignedBarcodes.length > 0 ? 'primary' : 'warning'} dot>
-                      {order.assignedBarcodes.length > 0 ? 'Kargoya Verildi' : 'Beklemede'}
-                    </Badge>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>
+                      Tekil satis (1 kit)
+                    </p>
+                    <p className="text-[20px] font-bold mt-1" style={{ color: W.dark }}>
+                      {formatCurrency(priceTiers.singleKitPrice)}
+                    </p>
+                    <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
+                      adet basi
+                    </p>
                   </div>
                 </div>
-              ))}
+                {selectedQty === 1 && <Check className="h-5 w-5 shrink-0" style={{ color: W.olive }} />}
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </button>
+        </motion.div>
+
+        {/* Paketler */}
+        {priceTiers.bundles.map((b, i) => {
+          const perUnit = b.quantity > 0 ? b.total / b.quantity : 0
+          const discountPct = priceTiers.singleKitPrice > 0 ? Math.round((1 - perUnit / priceTiers.singleKitPrice) * 100) : 0
+          const isSelected = selectedQty === b.quantity
+          return (
+            <motion.div key={i} {...fadeUp} transition={{ duration: 0.3, delay: 0.05 + (i + 1) * 0.04 }}>
+              <button
+                type="button"
+                onClick={() => handleSelectPackage(b.quantity)}
+                className="w-full h-full text-left rounded-2xl border-2 transition-all overflow-hidden"
+                style={{
+                  background: isSelected ? W.orangeLight : '#fff',
+                  borderColor: isSelected ? W.orange : W.warmBorder,
+                  boxShadow: isSelected ? '0 0 0 2px rgba(232,145,58,0.25)' : undefined,
+                }}
+              >
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-4 min-w-0">
+                      <div
+                        className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
+                        style={{ background: W.orangeLight }}
+                      >
+                        <Layers className="h-7 w-7" style={{ color: W.orange }} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>
+                          {b.quantity} kit paketi
+                        </p>
+                        <p className="text-[20px] font-bold mt-1" style={{ color: W.dark }}>
+                          {formatCurrency(b.total)}
+                        </p>
+                        <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
+                          toplam · birim {formatCurrency(perUnit)}
+                        </p>
+                        <span
+                          className="inline-block mt-2 text-[11px] font-semibold px-2 py-0.5 rounded-lg"
+                          style={{ background: W.greenLight, color: '#3D8B3D' }}
+                        >
+                          %{discountPct} indirim
+                        </span>
+                      </div>
+                    </div>
+                    {isSelected && <Check className="h-5 w-5 shrink-0" style={{ color: W.orange }} />}
+                  </div>
+                </div>
+              </button>
+            </motion.div>
+          )
+        })}
+      </div>
+
+      {/* Siparis Ver karti */}
+      <motion.div {...fadeUp} transition={{ duration: 0.3, delay: 0.1 }}>
+        <Card className="overflow-hidden border-0 shadow-sm" style={{ border: `1px solid ${W.warmBorder}`, borderRadius: '1rem' }}>
+          <div className="p-5 border-b" style={{ borderColor: W.warmBorder, background: W.oliveLight }}>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="h-12 w-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+                <ShoppingCart className="h-6 w-6" style={{ color: W.olive }} />
+              </div>
+              <div>
+                <h3 className="text-[17px] font-semibold" style={{ color: W.dark }}>Siparis Ver</h3>
+                <p className="text-[12px] mt-0.5" style={{ color: W.text }}>
+                  Paket secin, teslimat adresini girin ve siparisi tamamlayin
+                </p>
+              </div>
+            </div>
+          </div>
+          <CardContent className="p-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <Input
+                label="Teslimat Adresi"
+                placeholder="Klinik adresi"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+              <div className="flex flex-col justify-end gap-2">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleCreateOrder}
+                  disabled={qtyNum <= 0 || !address.trim()}
+                  style={{ background: W.olive }}
+                >
+                  <Package className="h-4 w-4" />
+                  Siparis Ver — {formatCurrency(total)}
+                </Button>
+              </div>
+            </div>
+            <div className="rounded-xl p-4 border" style={{ background: W.cream, borderColor: W.warmBorder }}>
+              <div className="flex items-center justify-between text-[13px]">
+                <span style={{ color: W.text }}>Secilen: {qtyNum} adet</span>
+                <span className="font-semibold" style={{ color: W.dark }}>
+                  {formatCurrency(effectiveUnitPrice)}
+                  {hasBundleDiscount && <span className="text-[11px] font-normal ml-1" style={{ color: W.olive }}>(paket indirimi)</span>}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[13px] mt-2 pt-2" style={{ borderTop: `1px solid ${W.warmBorder}` }}>
+                <span style={{ color: W.text }}>Toplam</span>
+                <span className="font-bold text-lg" style={{ color: W.dark }}>{formatCurrency(total)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Siparis Gecmisi */}
+      <motion.div {...fadeUp} transition={{ duration: 0.3, delay: 0.15 }}>
+        <Card className="overflow-hidden border-0 shadow-sm" style={{ border: `1px solid ${W.warmBorder}`, borderRadius: '1rem' }}>
+          <CardHeader className="pb-3" style={{ borderBottom: `1px solid ${W.creamDark}` }}>
+            <CardTitle className="text-[15px] font-semibold" style={{ color: W.dark }}>Siparis Gecmisim</CardTitle>
+            <CardDescription className="text-[12px]" style={{ color: W.textLight }}>Onceki siparisleriniz ve durumlari</CardDescription>
+          </CardHeader>
+          <CardContent className="p-5">
+            {myOrders.length === 0 ? (
+              <div className="text-center py-10" style={{ color: W.textLight }}>
+                <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-[13px]">Henuz siparisiniz yok</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {myOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between p-4 rounded-xl border transition-colors"
+                    style={{ borderColor: W.warmBorder, background: W.cream }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: order.assignedBarcodes.length > 0 ? W.oliveLight : W.creamDark }}
+                      >
+                        {order.assignedBarcodes.length > 0 ? (
+                          <Truck className="h-5 w-5" style={{ color: W.olive }} />
+                        ) : (
+                          <Package className="h-5 w-5" style={{ color: W.textLight }} />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[13px]" style={{ color: W.dark }}>{order.id}</p>
+                        <p className="text-[11px] mt-0.5" style={{ color: W.textLight }}>
+                          {order.qty} Kit · {formatDate(order.createdAt)}
+                          {order.assignedBarcodes.length > 0 && ` · ${order.assignedBarcodes.length} kit kargoya verildi`}
+                          {order.paid ? ` · Odendi ${order.paidAt ? formatDateTime(order.paidAt) : ''}` : ' · Odeme bekleniyor'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-[13px] mb-1" style={{ color: W.dark }}>{formatCurrency(order.total)}</p>
+                      <div className="flex flex-col gap-1 items-end">
+                        {order.paid ? <Badge variant="success" dot>Odendi</Badge> : <Badge variant="warning" dot>Odeme bekleniyor</Badge>}
+                        <Badge variant={order.assignedBarcodes.length > 0 ? 'primary' : 'default'} dot>
+                          {order.assignedBarcodes.length > 0 ? 'Kargoya Verildi' : 'Beklemede'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   )
 }

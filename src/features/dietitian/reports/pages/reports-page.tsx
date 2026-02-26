@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
+import { ReportViewModal } from '@/components/shared/report-view-modal'
+import { ReportShareModal } from '@/features/dietitian/clients/components/report-share-modal'
 import { Card, CardContent, Button, Badge, Input } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { FileText, Download, Share2, Eye, Search } from 'lucide-react'
@@ -8,10 +10,20 @@ import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { KitStatus } from '@/utils/constants'
 
+type ReportRow = {
+  id: string
+  client: string
+  barcode: string
+  date: string
+  status: 'ready'
+}
+
 export function ReportsPage() {
   const user = useCurrentUser()
   const { kits } = useWorkflowStore()
   const [search, setSearch] = useState('')
+  const [viewReport, setViewReport] = useState<ReportRow | null>(null)
+  const [shareReport, setShareReport] = useState<ReportRow | null>(null)
 
   const completedReports = useMemo(() => {
     return kits
@@ -88,15 +100,15 @@ export function ReportsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 mt-5">
-                  <Button variant="default" size="sm" className="flex-1" onClick={() => toast.success(`${report.client} raporu goruntuleniyor`)}>
+                  <Button variant="default" size="sm" className="flex-1" onClick={() => setViewReport(report)}>
                     <Eye className="h-3.5 w-3.5" />
-                    Gor
+                    Sistem icinde gor
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => toast.success(`${report.id} indiriliyor...`)}>
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => toast.success(`${report.client} icin paylasim linki olusturuldu`)}>
+                  <Button variant="outline" size="sm" onClick={() => setShareReport(report)} title="Guvenli link veya QR ile paylas">
                     <Share2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => toast.success(`${report.id} indiriliyor...`)} title="PDF indir">
+                    <Download className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </CardContent>
@@ -104,6 +116,19 @@ export function ReportsPage() {
           ))}
         </div>
       )}
+
+      <ReportViewModal
+        open={!!viewReport}
+        onOpenChange={(open) => !open && setViewReport(null)}
+        title={viewReport ? `${viewReport.client} — ${viewReport.barcode}` : ''}
+        pdfUrl={undefined}
+      />
+      <ReportShareModal
+        open={!!shareReport}
+        onOpenChange={(open) => !open && setShareReport(null)}
+        reportId={shareReport?.id ?? ''}
+        clientName={shareReport?.client ?? ''}
+      />
     </div>
   )
 }

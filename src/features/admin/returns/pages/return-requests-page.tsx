@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Button, Input, Modal, ModalContent, ModalHeader, ModalTitle, ModalBody,
+  Button, Input, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
 } from '@/components/ui'
 import { useWorkflowStore } from '@/stores/workflow.store'
-import { Search, RotateCcw, CheckCircle, XCircle, History } from 'lucide-react'
+import { Search, RotateCcw, CheckCircle, XCircle, History, Package } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { KitStatus } from '@/utils/constants'
@@ -20,10 +20,12 @@ const W = {
 }
 
 export function ReturnRequestsPage() {
-  const { kits, auditLogs, adminApproveReturn, adminRejectReturn } = useWorkflowStore()
+  const { kits, auditLogs, adminApproveReturn, adminRejectReturn, assignKitsToDietitian, markDamagedCompensationAssigned } = useWorkflowStore()
   const [query, setQuery] = useState('')
   const [photoModalUrl, setPhotoModalUrl] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
+  const [compensationForBarcode, setCompensationForBarcode] = useState<string | null>(null)
+  const [compensationSelectedBarcode, setCompensationSelectedBarcode] = useState('')
 
   const returnRequests = useMemo(
     () =>
@@ -38,6 +40,32 @@ export function ReturnRequestsPage() {
       }),
     [kits, query]
   )
+
+  const damagedAwaitingCompensation = useMemo(
+    () =>
+      kits.filter(
+        (k) => k.status === KitStatus.DAMAGED && k.assignedDietitianId && k.assignedDietitianName
+      ),
+    [kits]
+  )
+  const inStockBarcodes = useMemo(
+    () => kits.filter((k) => k.status === KitStatus.IN_STOCK).map((k) => k.barcode),
+    [kits]
+  )
+
+  const handleAssignCompensation = (damagedBarcode: string) => {
+    const damaged = kits.find((k) => k.barcode === damagedBarcode && k.status === KitStatus.DAMAGED)
+    if (!damaged?.assignedDietitianId || !damaged?.assignedDietitianName) return
+    if (!compensationSelectedBarcode || !inStockBarcodes.includes(compensationSelectedBarcode)) {
+      toast.error('Stoktan bir barkod secin')
+      return
+    }
+    assignKitsToDietitian(damaged.assignedDietitianId, damaged.assignedDietitianName, [compensationSelectedBarcode], '', 'Admin')
+    markDamagedCompensationAssigned(damagedBarcode, 'Admin')
+    toast.success('Telafi kiti atandi')
+    setCompensationForBarcode(null)
+    setCompensationSelectedBarcode('')
+  }
 
   const returnHistory = useMemo(
     () =>
@@ -91,6 +119,12 @@ export function ReturnRequestsPage() {
                   <History className="h-4 w-4" />
                   Iade Gecmisi ({returnHistory.length})
                 </button>
+                {damagedAwaitingCompensation.length > 0 && (
+                  <span className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                    <Package className="h-3.5 w-3.5" />
+                    Telafi atanacak: {damagedAwaitingCompensation.length}
+                  </span>
+                )}
               </div>
               <Input
                 placeholder={
@@ -109,6 +143,24 @@ export function ReturnRequestsPage() {
         <CardContent className="p-0">
           {activeTab === 'pending' && (
             <div className="p-5 space-y-3">
+              {damagedAwaitingCompensation.length > 0 && (
+                <div className="mb-4 rounded-xl p-4 border border-amber-200 bg-amber-50/50">
+                  <p className="text-sm font-semibold text-amber-800 mb-2">Telafi kiti atanacak (hasar onaylandi)</p>
+                  <div className="space-y-2">
+                    {damagedAwaitingCompensation.map((kit) => (
+                      <div key={kit.barcode} className="flex items-center justify-between gap-3 py-2 border-b border-amber-100 last:border-0">
+                        <span className="font-mono text-sm">{kit.barcode}</span>
+                        <span className="text-sm text-surface-600">{kit.assignedDietitianName}</span>
+                        <Button variant="outline" size="sm" onClick={() => { setCompensationForBarcode(kit.barcode); setCompensationSelectedBarcode('') }}>
+                          <Package className="h-3.5 w-3.5" />
+                          Telafi kiti ata
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {returnRequests.length === 0 && (
                 <div
                   className="rounded-xl p-4"
@@ -235,6 +287,44 @@ export function ReturnRequestsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Telafi kiti ata modal */}
+      <Modal open={!!compensationForBarcode} onOpenChange={(open) => !open && (setCompensationForBarcode(null), setCompensationSelectedBarcode(''))}>
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle>Telafi kiti ata</ModalTitle>
+            <ModalDescription>
+              Hasarlı kit: <code className="font-mono">{compensationForBarcode}</code>. Stoktan bir barkod secip bu diyetisyene atayin.
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody>
+            <label className="block text-sm font-medium text-surface-700 mb-2">Stoktaki barkod</label>
+            <select
+              value={compensationSelectedBarcode}
+              onChange={(e) => setCompensationSelectedBarcode(e.target.value)}
+              className="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm"
+            >
+              <option value="">Secin...</option>
+              {inStockBarcodes.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+            {inStockBarcodes.length === 0 && (
+              <p className="text-xs text-amber-600 mt-2">Stokta barkod yok. Once uretimden barkod uretin.</p>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => { setCompensationForBarcode(null); setCompensationSelectedBarcode('') }}>Iptal</Button>
+            <Button
+              variant="primary"
+              onClick={() => compensationForBarcode && handleAssignCompensation(compensationForBarcode)}
+              disabled={!compensationSelectedBarcode}
+            >
+              Telafi kiti ata
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* Fotoğraf büyütme modalı */}
       <Modal open={!!photoModalUrl} onOpenChange={(open) => !open && setPhotoModalUrl(null)}>

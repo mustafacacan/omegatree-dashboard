@@ -7,10 +7,11 @@ import { KitStatus } from '@/utils/constants'
 import { formatDate } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import {
-  AlertTriangle, Clock, Send, RotateCcw, Image as ImageIcon, Eye,
+  AlertTriangle, Clock, Send, RotateCcw, Image as ImageIcon, Eye, MapPin,
 } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
+import { useLaboratoriesStore } from '@/stores/laboratories.store'
 import toast from 'react-hot-toast'
 
 const W = {
@@ -27,6 +28,10 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function KitsPage() {
   const user = useCurrentUser()
+  const laboratories = useLaboratoriesStore((s) => s.laboratories)
+  const assignedLab = user?.id
+    ? laboratories.find((l) => l.assignedDietitians.includes(user.id))
+    : null
   const { kits, markSampleSent, requestKitReturn } = useWorkflowStore()
   const [returnFormBarcode, setReturnFormBarcode] = useState<string | null>(null)
   const [returnReason, setReturnReason] = useState('')
@@ -95,6 +100,10 @@ export function KitsPage() {
       setReturnError('Kullanici bilgisi bulunamadi.')
       return
     }
+    if (!returnPhotoUrl) {
+      setReturnError('Hasar bildirimi icin fotoğraf yuklemeniz zorunludur.')
+      return
+    }
     const actorName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Diyetisyen'
     const result = requestKitReturn(barcode, user.id, returnReason, actorName, { photoUrl: returnPhotoUrl })
     if (!result.ok) {
@@ -120,6 +129,24 @@ export function KitsPage() {
           </Button>
         }
       />
+
+      {/* Numuneleri göndereceğiniz laboratuvar adresi */}
+      {assignedLab && (
+        <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
+          <div className="rounded-xl p-4 border flex items-start gap-3" style={{ background: W.oliveLight, borderColor: W.warmBorder }}>
+            <MapPin className="h-5 w-5 shrink-0 mt-0.5" style={{ color: W.olive }} />
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>Numuneleri gondereceginiz adres</p>
+              <p className="text-[14px] font-semibold mt-1" style={{ color: W.dark }}>{assignedLab.name}</p>
+              <p className="text-[13px] mt-1 leading-snug" style={{ color: W.text }}>
+                {assignedLab.address}
+                {assignedLab.district ? `, ${assignedLab.district}` : ''} / {assignedLab.city}
+                {assignedLab.postalCode ? ` ${assignedLab.postalCode}` : ''}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* ═══ ACTIVE KITS — Tablo ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
@@ -256,7 +283,7 @@ export function KitsPage() {
                       />
                       <label className="flex items-center gap-2 text-xs font-medium text-surface-600 cursor-pointer">
                         <ImageIcon className="h-3.5 w-3.5" />
-                        Foto ekle (opsiyonel)
+                        Foto ekle (zorunlu — hasar kaniti)
                         <input type="file" accept="image/*" className="hidden" onChange={handleReturnPhotoChange} />
                       </label>
                       {returnPhotoName && <p className="text-[10px] text-surface-500">Secilen: {returnPhotoName}</p>}
@@ -266,7 +293,7 @@ export function KitsPage() {
                       {returnError && <p className="text-xs font-medium text-red-600">{returnError}</p>}
                       <div className="flex justify-end gap-2 pt-1">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => {
                             setReturnFormBarcode(null)
@@ -281,6 +308,7 @@ export function KitsPage() {
                         <Button
                           variant="primary"
                           size="sm"
+                          disabled={!returnPhotoUrl}
                           onClick={() => {
                             submitReturnRequest(kit.barcode)
                             setDetailModalBarcode(null)

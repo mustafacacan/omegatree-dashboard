@@ -31,6 +31,7 @@ const AuditLogsPage = lazy(() => import('@/features/admin/audit/pages/audit-logs
 const TemplatesPage = lazy(() => import('@/features/admin/templates/pages/templates-page').then(m => ({ default: m.TemplatesPage })))
 const ReturnRequestsPage = lazy(() => import('@/features/admin/returns/pages/return-requests-page').then(m => ({ default: m.ReturnRequestsPage })))
 const LaboratoriesPage = lazy(() => import('@/features/admin/laboratories/pages/laboratories-page').then(m => ({ default: m.LaboratoriesPage })))
+const ReportApprovalsPage = lazy(() => import('@/features/admin/reports/pages/report-approvals-page').then(m => ({ default: m.ReportApprovalsPage })))
 
 // Dietitian
 const DietitianDashboardPage = lazy(() => import('@/features/dietitian/dashboard/dietitian-dashboard-page').then(m => ({ default: m.DietitianDashboardPage })))
@@ -57,6 +58,9 @@ const ReportEditorPage = lazy(() => import('@/features/specialist/reports/pages/
 const DanisanPortalPage = lazy(() => import('@/features/danisan/pages/danisan-portal-page').then(m => ({ default: m.DanisanPortalPage })))
 const DanisanKitPage = lazy(() => import('@/features/danisan/pages/danisan-kit-page').then(m => ({ default: m.DanisanKitPage })))
 const DanisanRaporlarPage = lazy(() => import('@/features/danisan/pages/danisan-raporlar-page').then(m => ({ default: m.DanisanRaporlarPage })))
+
+// Public: güvenli paylaşım linki — sadece PDF görüntüleme (auth yok)
+const ShareReportPage = lazy(() => import('@/features/share/pages/share-report-page').then(m => ({ default: m.ShareReportPage })))
 
 function SuspensePage({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>
@@ -102,6 +106,7 @@ export const router = createBrowserRouter([
       { path: '/admin/orders', element: <SuspensePage><OrdersPage /></SuspensePage> },
       { path: '/admin/cari', element: <SuspensePage><CariPage /></SuspensePage> },
       { path: '/admin/laboratories', element: <SuspensePage><LaboratoriesPage /></SuspensePage> },
+      { path: '/admin/reports', element: <SuspensePage><ReportApprovalsPage /></SuspensePage> },
       { path: '/admin/audit', element: <SuspensePage><AuditLogsPage /></SuspensePage> },
       { path: '/admin/templates', element: <SuspensePage><TemplatesPage /></SuspensePage> },
     ],
@@ -184,6 +189,12 @@ export const router = createBrowserRouter([
       { path: '/danisan/kit', element: <SuspensePage><DanisanKitPage /></SuspensePage> },
       { path: '/danisan/raporlar', element: <SuspensePage><DanisanRaporlarPage /></SuspensePage> },
     ],
+  },
+
+  // Public: güvenli rapor paylaşım linki (token query ile; sadece PDF görüntüleme)
+  {
+    path: '/share/:reportId',
+    element: <SuspensePage><ShareReportPage /></SuspensePage>,
   },
 
   // Root redirect
