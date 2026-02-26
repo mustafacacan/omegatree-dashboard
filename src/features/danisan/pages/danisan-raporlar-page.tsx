@@ -85,7 +85,7 @@ export function DanisanRaporlarPage() {
         open={!!viewReport}
         onOpenChange={(open) => !open && setViewReport(null)}
         title={viewReport ? `${viewReport.title} — ${viewReport.barcode}` : ''}
-        pdfUrl={undefined}
+        barcode={viewReport?.barcode}
       />
     </div>
   )

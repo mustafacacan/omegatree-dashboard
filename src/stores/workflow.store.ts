@@ -47,6 +47,16 @@ export interface WorkflowKit {
   }
   /** Lab numune reddi – döküman şart: fotoğraf zorunlu */
   rejectPhotoUrl?: string
+  /** Uzmanin yazdigi rapor icerigi (onaya gonderildiginde saklanir) */
+  reportContent?: ReportContent
+}
+
+export interface ReportContent {
+  generalEvaluation?: string
+  nutritionAdvice?: string
+  supplementAdvice?: string
+  pdfUrl?: string
+  submittedAt?: string
 }
 
 export interface DietitianOrder {
@@ -129,7 +139,7 @@ interface WorkflowState {
   labAcceptSample: (barcode: string, actor: string, ip?: string) => void
   labRejectSample: (barcode: string, reason: string, actor: string, ip?: string, rejectPhotoUrl?: string) => { ok: boolean; message: string }
   labCompleteAnalysis: (barcode: string, actor: string, ip?: string) => void
-  specialistSubmitReport: (barcode: string, actor: string, ip?: string) => void
+  specialistSubmitReport: (barcode: string, actor: string, ip?: string, reportContent?: ReportContent) => void
   adminApproveReport: (barcode: string, actor: string, ip?: string) => void
   requestKitReturn: (
     barcode: string,
@@ -715,11 +725,22 @@ export const useWorkflowStore = create<WorkflowState>()(
           }),
         })),
 
-      specialistSubmitReport: (barcode, actor, ip) =>
+      specialistSubmitReport: (barcode, actor, ip, reportContent) =>
         set((state) => ({
           kits: state.kits.map((k) =>
             k.barcode === barcode
-              ? { ...k, status: KitStatus.ADMIN_APPROVAL, location: 'Admin Onayi', reportStatus: 'ADMIN_APPROVAL' }
+              ? {
+                  ...k,
+                  status: KitStatus.ADMIN_APPROVAL,
+                  location: 'Admin Onayi',
+                  reportStatus: 'ADMIN_APPROVAL',
+                  ...(reportContent && {
+                    reportContent: {
+                      ...reportContent,
+                      submittedAt: new Date().toISOString(),
+                    },
+                  }),
+                }
               : k
           ),
           auditLogs: appendLog(state.auditLogs, {

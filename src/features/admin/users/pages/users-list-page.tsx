@@ -17,6 +17,7 @@ import {
 import type { User } from '@/types/user.types'
 import toast from 'react-hot-toast'
 import { useUsersStore } from '@/stores/users.store'
+import { useClientsStore } from '@/stores/clients.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { TablePagination } from '@/components/shared/table-pagination'
 
@@ -49,17 +50,16 @@ export function UsersListPage() {
     phone: '',
     password: '',
     role: UserRole.DIETITIAN as UserRole,
+    linkedClientId: '' as string,
   })
   const [roleToEdit, setRoleToEdit] = useState<UserRole>(UserRole.DIETITIAN)
-  const {
-    users,
-    approveUser,
-    rejectUser,
-    suspendUser,
-    activateUser,
-    createUserByAdmin,
-    updateUserRole,
-  } = useUsersStore()
+  const { users, approveUser, rejectUser, suspendUser, activateUser, createUserByAdmin, updateUserRole } = useUsersStore()
+  const { clients } = useClientsStore()
+
+  const linkableClients = useMemo(
+    () => clients.filter((c) => !users.some((u) => u.id === c.id)),
+    [clients, users]
+  )
 
   const pendingUsers = useMemo(
     () => users.filter((u) => u.status === UserStatus.PENDING),
@@ -113,13 +113,20 @@ export function UsersListPage() {
       phone: '',
       password: '',
       role: UserRole.DIETITIAN,
+      linkedClientId: '',
     })
   }
 
   const submitNewUser = () => {
     const result = createUserByAdmin({
-      ...newUserForm,
+      firstName: newUserForm.firstName,
+      lastName: newUserForm.lastName,
+      email: newUserForm.email,
+      phone: newUserForm.phone,
+      password: newUserForm.password,
+      role: newUserForm.role,
       status: UserStatus.ACTIVE,
+      linkedClientId: newUserForm.role === UserRole.DANISAN && newUserForm.linkedClientId ? newUserForm.linkedClientId : undefined,
     })
     if (!result.ok) {
       toast.error(result.message)
@@ -354,7 +361,7 @@ export function UsersListPage() {
             />
             <Select
               value={newUserForm.role}
-              onValueChange={(value) => setNewUserForm((s) => ({ ...s, role: value as UserRole }))}
+              onValueChange={(value) => setNewUserForm((s) => ({ ...s, role: value as UserRole, linkedClientId: '' }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Rol secin" />
@@ -367,6 +374,32 @@ export function UsersListPage() {
                 <SelectItem value={UserRole.DANISAN}>Danisan</SelectItem>
               </SelectContent>
             </Select>
+            {newUserForm.role === UserRole.DANISAN && (
+              <div className="space-y-1.5">
+                <label className="block text-[13px] font-medium text-surface-700">
+                  Mevcut danisan (client) ile eslestir
+                </label>
+                <Select
+                  value={newUserForm.linkedClientId || 'none'}
+                  onValueChange={(v) => setNewUserForm((s) => ({ ...s, linkedClientId: v === 'none' ? '' : v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seciniz — portalda bu danisanin kit/raporu gorunur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Eslestirme (yeni danisan)</SelectItem>
+                    {linkableClients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} ({c.email || c.phone})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-surface-500">
+                  Secerseniz bu kullanici, secilen danisan kaydi ile ayni kimlikte olur; o danisana atanan kit/raporlar portalda gorunur.
+                </p>
+              </div>
+            )}
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" onClick={() => { setNewUserOpen(false); resetNewUserForm() }}>

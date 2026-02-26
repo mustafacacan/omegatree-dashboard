@@ -13,6 +13,7 @@ import { RoleGuard, AuthRedirect, PendingApprovalPage } from '@/features/auth/co
 import { LoginPage } from '@/features/auth/pages/login-page'
 import { RegisterPage } from '@/features/auth/pages/register-page'
 import { KvkkConsentPage } from '@/features/auth/pages/kvkk-consent-page'
+import { NotFoundPage } from '@/features/auth/pages/not-found-page'
 
 // Lazy-loaded pages
 const ProfilePage = lazy(() => import('@/features/auth/pages/profile-page').then(m => ({ default: m.ProfilePage })))
@@ -203,16 +204,6 @@ export const router = createBrowserRouter([
   // 404
   {
     path: '*',
-    element: (
-      <div className="min-h-screen flex items-center justify-center bg-surface-50">
-        <div className="text-center">
-          <h1 className="text-6xl font-bold text-surface-200 mb-4">404</h1>
-          <p className="text-surface-500 mb-6">Sayfa bulunamadi</p>
-          <a href="/login" className="text-primary-600 hover:text-primary-700 font-medium">
-            Ana Sayfaya Don
-          </a>
-        </div>
-      </div>
-    ),
+    element: <NotFoundPage />,
   },
 ])

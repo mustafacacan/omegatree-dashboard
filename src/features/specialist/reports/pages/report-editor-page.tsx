@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Textarea, Badge } from '@/components/ui'
 import { Upload, Send, FileText, Table as TableIcon, Save, AlertCircle } from 'lucide-react'
@@ -24,6 +25,12 @@ export function ReportEditorPage() {
   const canSubmit = kit?.reportStatus === 'SPECIALIST_POOL'
   const isAdminApproval = kit?.reportStatus === 'ADMIN_APPROVAL'
   const actor = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Uzman' : 'Uzman'
+
+  const [generalEvaluation, setGeneralEvaluation] = useState(kit?.reportContent?.generalEvaluation ?? '')
+  const [nutritionAdvice, setNutritionAdvice] = useState(kit?.reportContent?.nutritionAdvice ?? '')
+  const [supplementAdvice, setSupplementAdvice] = useState(kit?.reportContent?.supplementAdvice ?? '')
+  const [pdfUrl, setPdfUrl] = useState<string | undefined>(kit?.reportContent?.pdfUrl)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
 
   if (!barcode || !kit) {
     return (
@@ -62,7 +69,12 @@ export function ReportEditorPage() {
               <Button
                 variant="gradient"
                 onClick={() => {
-                  specialistSubmitReport(barcode, actor)
+                  specialistSubmitReport(barcode, actor, undefined, {
+                    generalEvaluation: generalEvaluation.trim() || undefined,
+                    nutritionAdvice: nutritionAdvice.trim() || undefined,
+                    supplementAdvice: supplementAdvice.trim() || undefined,
+                    pdfUrl: pdfUrl || undefined,
+                  })
                   toast.success('Rapor admin onayina gonderildi')
                   navigate('/specialist/assignments')
                 }}
@@ -139,25 +151,50 @@ export function ReportEditorPage() {
               label="Genel Degerlendirme"
               placeholder="Omega-3 indeksi ve yag asidi profili hakkinda genel degerlendirmenizi yazin..."
               className="min-h-[120px]"
+              value={generalEvaluation}
+              onChange={(e) => setGeneralEvaluation(e.target.value)}
             />
             <Textarea
               label="Beslenme Onerileri"
               placeholder="Danisan icin beslenme onerileriniz..."
               className="min-h-[120px]"
+              value={nutritionAdvice}
+              onChange={(e) => setNutritionAdvice(e.target.value)}
             />
             <Textarea
               label="Takviye Onerileri"
               placeholder="Supplement/takviye onerileri varsa belirtin..."
               className="min-h-[100px]"
+              value={supplementAdvice}
+              onChange={(e) => setSupplementAdvice(e.target.value)}
             />
 
             <div>
               <label className="text-sm font-medium text-surface-700 block mb-1.5">
-                PDF Rapor Yukle
+                PDF Rapor Yukle (istege bagli)
               </label>
-              <div className="border-2 border-dashed border-surface-300 rounded-xl p-6 text-center hover:border-primary-300 transition-colors cursor-pointer" onClick={() => toast.success('PDF dosya secici aciliyor...')}>
+              <input
+                ref={pdfInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    if (typeof reader.result === 'string') setPdfUrl(reader.result)
+                  }
+                  reader.readAsDataURL(file)
+                  toast.success('PDF eklendi')
+                }}
+              />
+              <div
+                className="border-2 border-dashed border-surface-300 rounded-xl p-6 text-center hover:border-primary-300 transition-colors cursor-pointer"
+                onClick={() => pdfInputRef.current?.click()}
+              >
                 <Upload className="h-6 w-6 text-surface-400 mx-auto mb-2" />
-                <p className="text-sm text-surface-500">PDF dosyasini yukleyin</p>
+                <p className="text-sm text-surface-500">{pdfUrl ? 'PDF yuklendi (degistirmek icin tiklayin)' : 'PDF dosyasini yukleyin'}</p>
               </div>
             </div>
           </CardContent>

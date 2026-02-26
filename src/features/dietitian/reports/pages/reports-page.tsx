@@ -121,7 +121,7 @@ export function ReportsPage() {
         open={!!viewReport}
         onOpenChange={(open) => !open && setViewReport(null)}
         title={viewReport ? `${viewReport.client} — ${viewReport.barcode}` : ''}
-        pdfUrl={undefined}
+        barcode={viewReport?.barcode}
       />
       <ReportShareModal
         open={!!shareReport}

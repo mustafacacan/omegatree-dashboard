@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Button } from '@/components/ui'
 import { motion } from 'framer-motion'
@@ -5,6 +6,8 @@ import {
   BookOpen, FileCheck, Clock, PenTool, ArrowUpRight, ShieldCheck,
   TrendingUp, TrendingDown, CheckCircle,
 } from 'lucide-react'
+import { useWorkflowStore } from '@/stores/workflow.store'
+import { formatDate } from '@/lib/utils'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar,
@@ -25,20 +28,13 @@ const monthlyReports = [
   { month: 'Nis', rapor: 3 }, { month: 'May', rapor: 7 }, { month: 'Haz', rapor: 5 },
 ]
 
-const statusPie = [
-  { name: 'Bekleyen', value: 3, color: W.amber },
-  { name: 'Hazirlaniyor', value: 1, color: W.orange },
-  { name: 'Onay Bekliyor', value: 2, color: W.olive },
-  { name: 'Tamamlanan', value: 28, color: W.green },
-]
+const statusPieFrom = (pending: number, inProgress: number, completed: number) => [
+  { name: 'Bekleyen', value: Math.max(0, pending), color: W.amber },
+  { name: 'Onay Bekliyor', value: Math.max(0, inProgress), color: W.orange },
+  { name: 'Tamamlanan', value: Math.max(0, completed), color: W.green },
+].filter((i) => i.value > 0)
 
 const performanceData = [{ name: 'Performans', value: 94, fill: W.olive }]
-
-const pendingAssignments = [
-  { barcode: 'OT-2025-00130', assignedAt: '15 Haz 10:00', priority: 'normal', type: 'Mikrobiyom' },
-  { barcode: 'OT-2025-00128', assignedAt: '14 Haz 14:00', priority: 'urgent', type: 'Omega-3 Index' },
-  { barcode: 'OT-2025-00125', assignedAt: '13 Haz 09:00', priority: 'normal', type: 'Vitamin Panel' },
-]
 
 const recentCompleted = [
   { barcode: 'OT-2025-00120', date: 'Bugun', duration: '1.5 gun', score: 4.9 },
@@ -57,6 +53,26 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function SpecialistDashboardPage() {
   const navigate = useNavigate()
+  const { kits } = useWorkflowStore()
+
+  const byStatus = useMemo(() => {
+    const pending = kits.filter((k) => k.reportStatus === 'SPECIALIST_POOL')
+    const inProgress = kits.filter((k) => k.reportStatus === 'ADMIN_APPROVAL')
+    const completed = kits.filter((k) => k.reportStatus === 'APPROVED')
+    return { pending, inProgress, completed, total: pending.length + inProgress.length + completed.length }
+  }, [kits])
+
+  const statusPie = useMemo(
+    () => statusPieFrom(byStatus.pending.length, byStatus.inProgress.length, byStatus.completed.length),
+    [byStatus.pending.length, byStatus.inProgress.length, byStatus.completed.length]
+  )
+  const pendingList = useMemo(
+    () =>
+      byStatus.pending
+        .slice(0, 5)
+        .map((k) => ({ barcode: k.barcode, assignedAt: formatDate(k.createdAt), clientName: k.assignedClientName })),
+    [byStatus.pending]
+  )
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -70,16 +86,12 @@ export function SpecialistDashboardPage() {
       {/* ═══ STAT CARDS ═══ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: 'Bekleyen', value: '3', change: -1, icon: BookOpen, iconColor: W.amber, iconBg: W.amberLight },
-          { title: 'Hazirlaniyor', value: '1', change: 0, icon: PenTool, iconColor: W.orange, iconBg: W.orangeLight },
-          { title: 'Tamamlanan', value: '28', change: 5, icon: FileCheck, iconColor: W.green, iconBg: W.greenLight },
-          { title: 'Ort. Sure', value: '1.8 gun', change: -0.2, icon: Clock, iconColor: W.olive, iconBg: W.oliveLight },
+          { title: 'Bekleyen', value: String(byStatus.pending.length), icon: BookOpen, iconColor: W.amber, iconBg: W.amberLight },
+          { title: 'Onay Bekliyor', value: String(byStatus.inProgress.length), icon: PenTool, iconColor: W.orange, iconBg: W.orangeLight },
+          { title: 'Tamamlanan', value: String(byStatus.completed.length), icon: FileCheck, iconColor: W.green, iconBg: W.greenLight },
+          { title: 'Toplam', value: String(byStatus.total), icon: Clock, iconColor: W.olive, iconBg: W.oliveLight },
         ].map((s, i) => {
           const Icon = s.icon
-          const up = s.change > 0
-          const down = s.change < 0
-          const isGoodDown = s.title === 'Bekleyen' || s.title === 'Ort. Sure'
-          const positive = isGoodDown ? down : up
           return (
             <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.06 }}>
               <div className="rounded-2xl p-5 transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
@@ -89,15 +101,7 @@ export function SpecialistDashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: W.textLight }}>{s.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xl font-bold" style={{ color: W.dark }}>{s.value}</span>
-                      {s.change !== 0 && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: positive ? W.greenLight : '#FDE8E8', color: positive ? '#3D8B3D' : '#C53030' }}>
-                          {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
-                          {s.change > 0 ? '+' : ''}{s.change}
-                        </span>
-                      )}
-                    </div>
+                    <span className="text-xl font-bold" style={{ color: W.dark }}>{s.value}</span>
                   </div>
                 </div>
               </div>
@@ -144,19 +148,21 @@ export function SpecialistDashboardPage() {
           <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Rapor Dagilimi</h3>
-              <span className="text-xl font-black" style={{ color: W.dark }}>34</span>
+              <span className="text-xl font-black" style={{ color: W.dark }}>{byStatus.total}</span>
             </div>
             <div className="relative h-[150px] flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={statusPie} cx="50%" cy="50%" innerRadius={45} outerRadius={68} paddingAngle={3} dataKey="value" strokeWidth={0}>
-                    {statusPie.map((e, i) => <Cell key={i} fill={e.color} />)}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
+              {statusPie.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={statusPie} cx="50%" cy="50%" innerRadius={45} outerRadius={68} paddingAngle={3} dataKey="value" strokeWidth={0}>
+                      {statusPie.map((e, i) => <Cell key={i} fill={e.color} />)}
+                    </PieChart>
+                  </ResponsiveContainer>
+                </ResponsiveContainer>
+              ) : null}
               <div className="absolute inset-0 flex items-center justify-center text-center">
                 <div>
-                  <p className="text-lg font-black" style={{ color: W.dark }}>34</p>
+                  <p className="text-lg font-black" style={{ color: W.dark }}>{byStatus.total}</p>
                   <p className="text-[9px]" style={{ color: W.textLight }}>Toplam</p>
                 </div>
               </div>
@@ -187,29 +193,30 @@ export function SpecialistDashboardPage() {
               </button>
             </div>
             <div className="space-y-2">
-              {pendingAssignments.map((item) => (
-                <div key={item.barcode} className="flex items-center justify-between p-3.5 rounded-xl transition-colors" style={{ background: W.cream }} onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }} onMouseLeave={(e) => { e.currentTarget.style.background = W.cream }}>
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: W.orangeLight }}>
-                      <BookOpen className="h-4.5 w-4.5" style={{ color: W.orange }} />
-                    </div>
-                    <div>
-                      <code className="text-[12px] font-mono font-bold" style={{ color: W.dark }}>{item.barcode}</code>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px]" style={{ color: W.textLight }}>{item.type}</span>
-                        <span className="text-[10px]" style={{ color: W.warmGrayLight }}>·</span>
-                        <span className="text-[10px]" style={{ color: W.textLight }}>{item.assignedAt}</span>
+              {pendingList.length === 0 ? (
+                <p className="text-[12px] py-4 text-center" style={{ color: W.textLight }}>Bekleyen rapor yok. Atanan islerden yeni atama gorunecek.</p>
+              ) : (
+                pendingList.map((item) => (
+                  <div key={item.barcode} className="flex items-center justify-between p-3.5 rounded-xl transition-colors" style={{ background: W.cream }} onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }} onMouseLeave={(e) => { e.currentTarget.style.background = W.cream }}>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: W.orangeLight }}>
+                        <BookOpen className="h-4.5 w-4.5" style={{ color: W.orange }} />
+                      </div>
+                      <div>
+                        <code className="text-[12px] font-mono font-bold" style={{ color: W.dark }}>{item.barcode}</code>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {item.clientName && <span className="text-[10px]" style={{ color: W.textLight }}>{item.clientName}</span>}
+                          <span className="text-[10px]" style={{ color: W.warmGrayLight }}>·</span>
+                          <span className="text-[10px]" style={{ color: W.textLight }}>{item.assignedAt}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {item.priority === 'urgent' && <Badge variant="danger" dot pulse>Acil</Badge>}
-                    <Button variant="default" size="xs" onClick={() => navigate('/specialist/reports')}>
+                    <Button variant="default" size="xs" onClick={() => navigate(`/specialist/reports/editor?barcode=${item.barcode}`)}>
                       <PenTool className="h-3 w-3" /> Baslat
                     </Button>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </motion.div>

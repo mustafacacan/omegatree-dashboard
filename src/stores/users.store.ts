@@ -31,6 +31,8 @@ interface AdminCreateUserPayload {
   phone?: string
   role: UserRole
   status?: UserStatus
+  /** Danışan için: mevcut bir client ile eşleştir (user.id = client.id olur, böylece danışan portalda kendi kitini/raporunu görür) */
+  linkedClientId?: string
 }
 
 interface UsersState {
@@ -182,9 +184,15 @@ export const useUsersStore = create<UsersState>()(
           return { ok: false, message: 'Bu e-posta ile kayitli bir hesap zaten var.' }
         }
 
+        const linkedClientId = payload.role === UserRole.DANISAN ? payload.linkedClientId?.trim() : undefined
+        const newUserId = linkedClientId || generateId('u-')
+        if (linkedClientId && get().users.some((u) => u.id === linkedClientId)) {
+          return { ok: false, message: 'Bu danisan (client) zaten bir portal kullanicisi ile eslestirilmis.' }
+        }
+
         const now = new Date().toISOString()
         const newUser: User = {
-          id: generateId('u-'),
+          id: newUserId,
           email,
           firstName,
           lastName,
@@ -200,7 +208,7 @@ export const useUsersStore = create<UsersState>()(
           credentials: { ...state.credentials, [email]: password },
         }))
 
-        return { ok: true, message: 'Kullanici basariyla olusturuldu.' }
+        return { ok: true, message: linkedClientId ? 'Danisan kullanici olusturuldu ve danisan kaydi ile eslestirildi.' : 'Kullanici basariyla olusturuldu.' }
       },
 
       updateUserRole: (userId, role) => {
