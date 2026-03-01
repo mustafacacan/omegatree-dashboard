@@ -11,6 +11,7 @@ import {
   Hash, BadgeCheck, Sparkles,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { ROUTES, danisanDetayPath } from '@/utils/routes'
 import { useClientsStore } from '@/stores/clients.store'
 
 /* ──────────── Schema ──────────── */
@@ -85,7 +86,7 @@ export function ClientFormPage() {
     await new Promise((resolve) => setTimeout(resolve, 600))
     if (isEdit) {
       toast.success('Danisan bilgileri guncellendi')
-      navigate('/dietitian/clients')
+      navigate(ROUTES.DIYETISYEN_DANISANLAR)
     } else {
       const { id } = addClient({
         firstName: data.firstName,
@@ -98,7 +99,7 @@ export function ClientFormPage() {
       toast.success(`Danisan eklendi — ID: ${id}`)
       // Wait a bit for store to persist before navigating
       await new Promise((resolve) => setTimeout(resolve, 200))
-      navigate(`/dietitian/clients/${id}`)
+      navigate(danisanDetayPath(id))
     }
   }
 

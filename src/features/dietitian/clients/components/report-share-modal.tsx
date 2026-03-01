@@ -23,7 +23,7 @@ export function ReportShareModal({ open, onOpenChange, reportId, clientName }: R
   const handleGenerate = async () => {
     setGenerating(true)
     await new Promise((r) => setTimeout(r, 800))
-    setShareLink(`${typeof window !== 'undefined' ? window.location.origin : ''}/share/${reportId}?token=sec_${Date.now().toString(36)}`)
+    setShareLink(`${typeof window !== 'undefined' ? window.location.origin : ''}/paylas/${reportId}?token=sec_${Date.now().toString(36)}`)
     setGenerating(false)
   }
 

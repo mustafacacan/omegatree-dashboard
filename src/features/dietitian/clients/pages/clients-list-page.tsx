@@ -19,6 +19,7 @@ import { TablePagination } from '@/components/shared/table-pagination'
 import { useClientsStore } from '@/stores/clients.store'
 import type { ClientRecord } from '@/stores/clients.store'
 import { KitStatus } from '@/utils/constants'
+import { ROUTES, danisanDetayPath, danisanDuzenlePath } from '@/utils/routes'
 import toast from 'react-hot-toast'
 
 // Demo data for modal
@@ -104,7 +105,7 @@ export function ClientsListPage() {
           />
           <div className="flex items-center gap-2">
             <p className="text-sm text-surface-500">{filtered.length} danisan</p>
-            <Link to="/dietitian/clients/new">
+            <Link to={ROUTES.DIYETISYEN_DANISANLAR_YENI}>
               <Button variant="primary" size="sm">
                 <Plus className="h-4 w-4" />
                 Danisan Ekle
@@ -176,8 +177,8 @@ export function ClientsListPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => openClientModal(client)}><Eye className="h-4 w-4 mr-2" /> Profil</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/dietitian/clients/${client.id}`)}><FlaskConical className="h-4 w-4 mr-2" /> Kit Ata</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/dietitian/reports`)}><FileText className="h-4 w-4 mr-2" /> Raporlar</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate(danisanDetayPath(client.id))}><FlaskConical className="h-4 w-4 mr-2" /> Kit Ata</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate(ROUTES.DIYETISYEN_RAPORLAR)}><FileText className="h-4 w-4 mr-2" /> Raporlar</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -224,7 +225,7 @@ export function ClientsListPage() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => navigate(`/dietitian/clients/${selectedClient.id}/edit`)}
+                    onClick={() => navigate(danisanDuzenlePath(selectedClient.id))}
                   >
                     <Edit3 className="h-4 w-4" /> Duzenle
                   </Button>
@@ -427,7 +428,7 @@ export function ClientsListPage() {
                 <Button variant="outline" onClick={() => toast.success('Kit atama acildi')}>
                   <Boxes className="h-4 w-4" /> Kit Ata
                 </Button>
-                <Button variant="primary" onClick={() => navigate(`/dietitian/clients/${selectedClient.id}/edit`)}>
+                <Button variant="primary" onClick={() => navigate(danisanDuzenlePath(selectedClient.id))}>
                   <Edit3 className="h-4 w-4" /> Duzenle
                 </Button>
               </ModalFooter>

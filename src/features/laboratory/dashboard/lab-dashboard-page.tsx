@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { KitStatus, KIT_STATUS_LABELS } from '@/utils/constants'
+import { ROUTES } from '@/utils/routes'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { Eye } from 'lucide-react'
 
@@ -114,15 +115,15 @@ export function LabDashboardPage() {
           <p className="text-[13px] mt-0.5" style={{ color: W.textLight }}>Numune havuzu, analiz surecleri ve performans ozeti</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate('/lab/pool')} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR_HAVUZ)} className="gap-1.5">
             <TestTubes className="h-4 w-4" />
             Numune Havuzu
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/lab/analysis')} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR_ANALIZ)} className="gap-1.5">
             <FlaskConical className="h-4 w-4" />
             Analizler
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/lab/results')} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR_SONUCLAR)} className="gap-1.5">
             <CheckCircle className="h-4 w-4" />
             Sonuclar
           </Button>
@@ -230,7 +231,7 @@ export function LabDashboardPage() {
                 <Zap className="h-4 w-4" style={{ color: W.orange }} />
                 <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Numune Sirasi</h3>
               </div>
-              <button type="button" onClick={() => navigate('/lab/pool')} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
+              <button type="button" onClick={() => navigate(ROUTES.LABORATUVAR_HAVUZ)} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
                 Havuza Git <ArrowUpRight className="h-3 w-3" />
               </button>
             </div>
@@ -253,7 +254,7 @@ export function LabDashboardPage() {
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <Button variant="ghost" size="xs" onClick={() => setDetailBarcode(item.barcode)} title="Detay"><Eye className="h-3.5 w-3.5" /></Button>
-                      <Button variant="default" size="xs" onClick={() => navigate('/lab/pool')}>Sec</Button>
+                      <Button variant="default" size="xs" onClick={() => navigate(ROUTES.LABORATUVAR_HAVUZ)}>Sec</Button>
                     </div>
                   </div>
                 ))

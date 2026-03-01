@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { UserRole } from '@/utils/constants'
+import { ROUTES } from '@/utils/routes'
 
 // Layouts
 import { DashboardLayout } from '@/components/layouts/dashboard-layout'
@@ -77,16 +78,16 @@ export const router = createBrowserRouter([
       </AuthRedirect>
     ),
     children: [
-      { path: '/login', element: <LoginPage /> },
-      { path: '/register', element: <RegisterPage /> },
+      { path: ROUTES.GIRIS, element: <LoginPage /> },
+      { path: ROUTES.KAYIT, element: <RegisterPage /> },
     ],
   },
 
   // Special auth pages
-  { path: '/kvkk-consent', element: <KvkkConsentPage /> },
-  { path: '/pending-approval', element: <PendingApprovalPage /> },
+  { path: ROUTES.KVKK_ONAY, element: <KvkkConsentPage /> },
+  { path: ROUTES.ONAY_BEKLIYOR, element: <PendingApprovalPage /> },
 
-  // Admin routes
+  // Admin (Yonetici) routes
   {
     errorElement: <RouteErrorFallback />,
     element: (
@@ -95,25 +96,25 @@ export const router = createBrowserRouter([
       </RoleGuard>
     ),
     children: [
-      { path: '/admin', element: <SuspensePage><AdminDashboardPage /></SuspensePage> },
-      { path: '/admin/profile', element: <SuspensePage><ProfilePage /></SuspensePage> },
-      { path: '/admin/settings', element: <SuspensePage><SettingsPage /></SuspensePage> },
-      { path: '/admin/notifications', element: <SuspensePage><NotificationsPage /></SuspensePage> },
-      { path: '/admin/users', element: <SuspensePage><UsersListPage /></SuspensePage> },
-      { path: '/admin/production', element: <SuspensePage><ProductionCenterPage /></SuspensePage> },
-      { path: '/admin/pricing', element: <SuspensePage><PricingPage /></SuspensePage> },
-      { path: '/admin/stock', element: <SuspensePage><StockPage /></SuspensePage> },
-      { path: '/admin/returns', element: <SuspensePage><ReturnRequestsPage /></SuspensePage> },
-      { path: '/admin/orders', element: <SuspensePage><OrdersPage /></SuspensePage> },
-      { path: '/admin/cari', element: <SuspensePage><CariPage /></SuspensePage> },
-      { path: '/admin/laboratories', element: <SuspensePage><LaboratoriesPage /></SuspensePage> },
-      { path: '/admin/reports', element: <SuspensePage><ReportApprovalsPage /></SuspensePage> },
-      { path: '/admin/audit', element: <SuspensePage><AuditLogsPage /></SuspensePage> },
-      { path: '/admin/templates', element: <SuspensePage><TemplatesPage /></SuspensePage> },
+      { path: ROUTES.YONETICI, element: <SuspensePage><AdminDashboardPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_PROFIL, element: <SuspensePage><ProfilePage /></SuspensePage> },
+      { path: ROUTES.YONETICI_AYARLAR, element: <SuspensePage><SettingsPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_BILDIRIMLER, element: <SuspensePage><NotificationsPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_KULLANICILAR, element: <SuspensePage><UsersListPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_URETIM, element: <SuspensePage><ProductionCenterPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_FIYATLANDIRMA, element: <SuspensePage><PricingPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_STOK, element: <SuspensePage><StockPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_IADELER, element: <SuspensePage><ReturnRequestsPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_SIPARISLER, element: <SuspensePage><OrdersPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_CARI, element: <SuspensePage><CariPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_LABORATUVARLAR, element: <SuspensePage><LaboratoriesPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_RAPORLAR, element: <SuspensePage><ReportApprovalsPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_DENETIM, element: <SuspensePage><AuditLogsPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_SABLONLAR, element: <SuspensePage><TemplatesPage /></SuspensePage> },
     ],
   },
 
-  // Dietitian routes
+  // Dietitian (Diyetisyen) routes
   {
     errorElement: <RouteErrorFallback />,
     element: (
@@ -122,22 +123,22 @@ export const router = createBrowserRouter([
       </RoleGuard>
     ),
     children: [
-      { path: '/dietitian', element: <SuspensePage><DietitianDashboardPage /></SuspensePage> },
-      { path: '/dietitian/profile', element: <SuspensePage><ProfilePage /></SuspensePage> },
-      { path: '/dietitian/settings', element: <SuspensePage><SettingsPage /></SuspensePage> },
-      { path: '/dietitian/notifications', element: <SuspensePage><NotificationsPage /></SuspensePage> },
-      { path: '/dietitian/clients', element: <SuspensePage><ClientsListPage /></SuspensePage> },
-      { path: '/dietitian/clients/new', element: <SuspensePage><ClientFormPage /></SuspensePage> },
-      { path: '/dietitian/clients/:clientId', element: <SuspensePage><ClientDetailPage /></SuspensePage> },
-      { path: '/dietitian/clients/:clientId/edit', element: <SuspensePage><ClientFormPage /></SuspensePage> },
-      { path: '/dietitian/kits', element: <SuspensePage><KitsPage /></SuspensePage> },
-      { path: '/dietitian/stock', element: <SuspensePage><MyStockPage /></SuspensePage> },
-      { path: '/dietitian/orders', element: <SuspensePage><DietitianOrderPage /></SuspensePage> },
-      { path: '/dietitian/reports', element: <SuspensePage><ReportsPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN, element: <SuspensePage><DietitianDashboardPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_PROFIL, element: <SuspensePage><ProfilePage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_AYARLAR, element: <SuspensePage><SettingsPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_BILDIRIMLER, element: <SuspensePage><NotificationsPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_DANISANLAR, element: <SuspensePage><ClientsListPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_DANISANLAR_YENI, element: <SuspensePage><ClientFormPage /></SuspensePage> },
+      { path: `${ROUTES.DIYETISYEN_DANISANLAR}/:clientId`, element: <SuspensePage><ClientDetailPage /></SuspensePage> },
+      { path: `${ROUTES.DIYETISYEN_DANISANLAR}/:clientId/duzenle`, element: <SuspensePage><ClientFormPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_KITLER, element: <SuspensePage><KitsPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_STOK, element: <SuspensePage><MyStockPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_SIPARISLER, element: <SuspensePage><DietitianOrderPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_RAPORLAR, element: <SuspensePage><ReportsPage /></SuspensePage> },
     ],
   },
 
-  // Lab routes
+  // Lab (Laboratuvar) routes
   {
     errorElement: <RouteErrorFallback />,
     element: (
@@ -146,17 +147,17 @@ export const router = createBrowserRouter([
       </RoleGuard>
     ),
     children: [
-      { path: '/lab', element: <SuspensePage><LabDashboardPage /></SuspensePage> },
-      { path: '/lab/profile', element: <SuspensePage><ProfilePage /></SuspensePage> },
-      { path: '/lab/settings', element: <SuspensePage><SettingsPage /></SuspensePage> },
-      { path: '/lab/notifications', element: <SuspensePage><NotificationsPage /></SuspensePage> },
-      { path: '/lab/pool', element: <SuspensePage><SamplePoolPage /></SuspensePage> },
-      { path: '/lab/analysis', element: <SuspensePage><AnalysisPage /></SuspensePage> },
-      { path: '/lab/results', element: <SuspensePage><ResultsPage /></SuspensePage> },
+      { path: ROUTES.LABORATUVAR, element: <SuspensePage><LabDashboardPage /></SuspensePage> },
+      { path: ROUTES.LABORATUVAR_PROFIL, element: <SuspensePage><ProfilePage /></SuspensePage> },
+      { path: ROUTES.LABORATUVAR_AYARLAR, element: <SuspensePage><SettingsPage /></SuspensePage> },
+      { path: ROUTES.LABORATUVAR_BILDIRIMLER, element: <SuspensePage><NotificationsPage /></SuspensePage> },
+      { path: ROUTES.LABORATUVAR_HAVUZ, element: <SuspensePage><SamplePoolPage /></SuspensePage> },
+      { path: ROUTES.LABORATUVAR_ANALIZ, element: <SuspensePage><AnalysisPage /></SuspensePage> },
+      { path: ROUTES.LABORATUVAR_SONUCLAR, element: <SuspensePage><ResultsPage /></SuspensePage> },
     ],
   },
 
-  // Specialist routes
+  // Specialist (Uzman) routes
   {
     errorElement: <RouteErrorFallback />,
     element: (
@@ -165,16 +166,17 @@ export const router = createBrowserRouter([
       </RoleGuard>
     ),
     children: [
-      { path: '/specialist', element: <SuspensePage><SpecialistDashboardPage /></SuspensePage> },
-      { path: '/specialist/profile', element: <SuspensePage><ProfilePage /></SuspensePage> },
-      { path: '/specialist/settings', element: <SuspensePage><SettingsPage /></SuspensePage> },
-      { path: '/specialist/notifications', element: <SuspensePage><NotificationsPage /></SuspensePage> },
-      { path: '/specialist/assignments', element: <SuspensePage><AssignmentsPage /></SuspensePage> },
-      { path: '/specialist/reports', element: <SuspensePage><ReportEditorPage /></SuspensePage> },
+      { path: ROUTES.UZMAN, element: <SuspensePage><SpecialistDashboardPage /></SuspensePage> },
+      { path: ROUTES.UZMAN_PROFIL, element: <SuspensePage><ProfilePage /></SuspensePage> },
+      { path: ROUTES.UZMAN_AYARLAR, element: <SuspensePage><SettingsPage /></SuspensePage> },
+      { path: ROUTES.UZMAN_BILDIRIMLER, element: <SuspensePage><NotificationsPage /></SuspensePage> },
+      { path: ROUTES.UZMAN_ATAMALAR, element: <SuspensePage><AssignmentsPage /></SuspensePage> },
+      { path: ROUTES.UZMAN_RAPORLAR, element: <SuspensePage><ReportEditorPage /></SuspensePage> },
+      { path: ROUTES.UZMAN_RAPORLAR_DUZENLEYICI, element: <SuspensePage><ReportEditorPage /></SuspensePage> },
     ],
   },
 
-  // Danisan (client) routes
+  // Danisan routes
   {
     errorElement: <RouteErrorFallback />,
     element: (
@@ -183,23 +185,23 @@ export const router = createBrowserRouter([
       </RoleGuard>
     ),
     children: [
-      { path: '/danisan', element: <SuspensePage><DanisanPortalPage /></SuspensePage> },
-      { path: '/danisan/profile', element: <SuspensePage><ProfilePage /></SuspensePage> },
-      { path: '/danisan/settings', element: <SuspensePage><SettingsPage /></SuspensePage> },
-      { path: '/danisan/notifications', element: <SuspensePage><NotificationsPage /></SuspensePage> },
-      { path: '/danisan/kit', element: <SuspensePage><DanisanKitPage /></SuspensePage> },
-      { path: '/danisan/raporlar', element: <SuspensePage><DanisanRaporlarPage /></SuspensePage> },
+      { path: ROUTES.DANISAN, element: <SuspensePage><DanisanPortalPage /></SuspensePage> },
+      { path: ROUTES.DANISAN_PROFIL, element: <SuspensePage><ProfilePage /></SuspensePage> },
+      { path: ROUTES.DANISAN_AYARLAR, element: <SuspensePage><SettingsPage /></SuspensePage> },
+      { path: ROUTES.DANISAN_BILDIRIMLER, element: <SuspensePage><NotificationsPage /></SuspensePage> },
+      { path: ROUTES.DANISAN_KIT, element: <SuspensePage><DanisanKitPage /></SuspensePage> },
+      { path: ROUTES.DANISAN_RAPORLAR, element: <SuspensePage><DanisanRaporlarPage /></SuspensePage> },
     ],
   },
 
-  // Public: güvenli rapor paylaşım linki (token query ile; sadece PDF görüntüleme)
+  // Public: guvenli rapor paylasim linki (token query ile; sadece PDF goruntuleme)
   {
-    path: '/share/:reportId',
+    path: `${ROUTES.PAYLAS}/:reportId`,
     element: <SuspensePage><ShareReportPage /></SuspensePage>,
   },
 
   // Root redirect
-  { path: '/', element: <Navigate to="/login" replace /> },
+  { path: '/', element: <Navigate to={ROUTES.GIRIS} replace /> },
 
   // 404
   {

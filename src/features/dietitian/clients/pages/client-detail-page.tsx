@@ -12,6 +12,7 @@ import {
 } from '@/components/ui'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { KitStatus } from '@/utils/constants'
+import { ROUTES, danisanDuzenlePath } from '@/utils/routes'
 import {
   ArrowLeft, Phone, Mail, MapPin, Calendar, FlaskConical, FileText,
   Edit3, Droplets, Ruler, Weight, Heart, Pill, AlertTriangle, StickyNote,
@@ -147,7 +148,7 @@ export function ClientDetailPage() {
               <User className="h-6 w-6 text-surface-400" />
             </div>
             <p className="text-surface-600 mb-5">Bu ID ile eslesen bir danisan kaydi bulunamadi.</p>
-            <Button variant="primary" onClick={() => navigate('/dietitian/clients')}>
+            <Button variant="primary" onClick={() => navigate(ROUTES.DIYETISYEN_DANISANLAR)}>
               Danisanlar listesine don
             </Button>
           </CardContent>
@@ -164,7 +165,7 @@ export function ClientDetailPage() {
             <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
               <ArrowLeft className="h-3.5 w-3.5" /> Geri
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate(`/dietitian/clients/${clientId}/edit`)}>
+            <Button variant="outline" size="sm" onClick={() => clientId && navigate(danisanDuzenlePath(clientId))}>
               <Edit3 className="h-3.5 w-3.5" /> Duzenle
             </Button>
             <Button variant="outline" size="sm" onClick={() => setAssignKitOpen(true)}>

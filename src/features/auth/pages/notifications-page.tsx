@@ -11,17 +11,9 @@ import {
   BellRing, Inbox, Filter, Trash2, MailOpen, Clock, ShieldCheck,
   Truck, FlaskConical, FileText, UserCheck,
 } from 'lucide-react'
+import { getBasePath } from '@/utils/routes'
 import { formatDateTime } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
-
-function getBasePath(pathname: string): string {
-  if (pathname.startsWith('/admin')) return '/admin'
-  if (pathname.startsWith('/dietitian')) return '/dietitian'
-  if (pathname.startsWith('/lab')) return '/lab'
-  if (pathname.startsWith('/specialist')) return '/specialist'
-  if (pathname.startsWith('/danisan')) return '/danisan'
-  return '/'
-}
 
 function getRelativeTime(dateStr: string): string {
   const now = Date.now()

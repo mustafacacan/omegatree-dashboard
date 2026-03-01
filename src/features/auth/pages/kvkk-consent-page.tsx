@@ -2,17 +2,9 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Checkbox } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth.store'
-import { UserRole } from '@/utils/constants'
+import { ROLE_HOME } from '@/utils/routes'
 import { Shield, TreePine } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-const ROLE_HOME_ROUTES: Record<UserRole, string> = {
-  [UserRole.ADMIN]: '/admin',
-  [UserRole.DIETITIAN]: '/dietitian',
-  [UserRole.LAB]: '/lab',
-  [UserRole.SPECIALIST]: '/specialist',
-  [UserRole.DANISAN]: '/danisan',
-}
 
 export function KvkkConsentPage() {
   const navigate = useNavigate()
@@ -27,7 +19,7 @@ export function KvkkConsentPage() {
       await new Promise((resolve) => setTimeout(resolve, 800))
       updateUser({ kvkkConsentDate: new Date().toISOString() })
       toast.success('KVKK onayi kaydedildi')
-      navigate(ROLE_HOME_ROUTES[user.role])
+      navigate(ROLE_HOME[user.role])
     } catch {
       toast.error('Bir hata olustu')
     } finally {

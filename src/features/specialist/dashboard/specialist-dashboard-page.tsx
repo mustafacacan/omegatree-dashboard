@@ -6,6 +6,7 @@ import {
   BookOpen, FileCheck, Clock, PenTool, ArrowUpRight, ShieldCheck,
   TrendingUp, TrendingDown, CheckCircle,
 } from 'lucide-react'
+import { ROUTES, raporDuzenleyiciPath } from '@/utils/routes'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { formatDate } from '@/lib/utils'
 import {
@@ -156,8 +157,8 @@ export function SpecialistDashboardPage() {
                   <PieChart>
                     <Pie data={statusPie} cx="50%" cy="50%" innerRadius={45} outerRadius={68} paddingAngle={3} dataKey="value" strokeWidth={0}>
                       {statusPie.map((e, i) => <Cell key={i} fill={e.color} />)}
-                    </PieChart>
-                  </ResponsiveContainer>
+                    </Pie>
+                  </PieChart>
                 </ResponsiveContainer>
               ) : null}
               <div className="absolute inset-0 flex items-center justify-center text-center">
@@ -188,7 +189,7 @@ export function SpecialistDashboardPage() {
           <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Bekleyen Analizler</h3>
-              <button type="button" onClick={() => navigate('/specialist/assignments')} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
+              <button type="button" onClick={() => navigate(ROUTES.UZMAN_ATAMALAR)} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
                 Tumu <ArrowUpRight className="h-3 w-3" />
               </button>
             </div>
@@ -211,7 +212,7 @@ export function SpecialistDashboardPage() {
                         </div>
                       </div>
                     </div>
-                    <Button variant="default" size="xs" onClick={() => navigate(`/specialist/reports/editor?barcode=${item.barcode}`)}>
+                    <Button variant="default" size="xs" onClick={() => navigate(raporDuzenleyiciPath(item.barcode))}>
                       <PenTool className="h-3 w-3" /> Baslat
                     </Button>
                   </div>

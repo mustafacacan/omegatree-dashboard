@@ -7,6 +7,7 @@ import {
   Package, Boxes, ShoppingCart, AlertTriangle, ScanLine, RotateCcw,
   TrendingUp, TrendingDown, Search, CheckCircle, ArrowRight, Loader2,
 } from 'lucide-react'
+import { ROUTES } from '@/utils/routes'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { useDietitianSettingsStore } from '@/stores/dietitian-settings.store'
@@ -165,7 +166,7 @@ export function MyStockPage() {
               <p className="text-[12px] font-semibold" style={{ color: '#78600A' }}>Stok uyarisi</p>
               <p className="text-[11px]" style={{ color: '#9C7D0A' }}>Kullanilabilir kit sayiniz ({availableKits.length}) minimum limitinizin ({minStockAlert}) altinda. Yeni siparis vermenizi oneririz.</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/dietitian/orders')} style={{ borderColor: '#D4B830', color: '#78600A' }}>
+            <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)} style={{ borderColor: '#D4B830', color: '#78600A' }}>
               Siparis Ver
             </Button>
           </div>
@@ -202,10 +203,10 @@ export function MyStockPage() {
               >
                 <ScanLine className="h-3.5 w-3.5" /> Kit Teslim Al
               </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/dietitian/kits')}>
+              <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_KITLER)}>
                 <RotateCcw className="h-3.5 w-3.5" /> Iade Talebi
               </Button>
-              <Button variant="primary" size="sm" onClick={() => navigate('/dietitian/orders')}>
+              <Button variant="primary" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)}>
                 <ShoppingCart className="h-3.5 w-3.5" /> Yeni Siparis
               </Button>
             </div>
@@ -277,7 +278,7 @@ export function MyStockPage() {
               <p className="text-[11px]" style={{ color: '#5A6B2A' }}>
                 Bu stok, barkod numarasi ile teslim aldiginiz kitleri gosterir. Yeni kit eklemek icin yukaridaki
                 <button type="button" onClick={() => setReceiveKitModalOpen(true)} className="font-semibold underline ml-1" style={{ color: '#5A6B2A' }}>Kit Teslim Al</button> butonunu kullanin.
-                Iade talebi icin <button type="button" onClick={() => navigate('/dietitian/kits')} className="font-semibold underline" style={{ color: '#5A6B2A' }}>Kitlerim</button> sayfasindaki surec takibinden olusturabilirsiniz.
+                Iade talebi icin <button type="button" onClick={() => navigate(ROUTES.DIYETISYEN_KITLER)} className="font-semibold underline" style={{ color: '#5A6B2A' }}>Kitlerim</button> sayfasindaki surec takibinden olusturabilirsiniz.
               </p>
             </div>
           </div>

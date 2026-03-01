@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { ROUTES } from '@/utils/routes'
 import { useCurrentUser } from '@/stores/auth.store'
 import { Timeline } from '@/components/shared/timeline'
 import '@/components/ui'
@@ -112,7 +113,7 @@ export function DanisanPortalPage() {
           <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Detayli Surec</h3>
-              <button type="button" onClick={() => navigate('/danisan/kit')} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
+              <button type="button" onClick={() => navigate(ROUTES.DANISAN_KIT)} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
                 Detay <ArrowRight className="h-3 w-3" />
               </button>
             </div>
@@ -125,7 +126,7 @@ export function DanisanPortalPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
 
             {/* Kit Status */}
-            <div className="rounded-2xl p-5 cursor-pointer transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }} onClick={() => navigate('/danisan/kit')}>
+            <div className="rounded-2xl p-5 cursor-pointer transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }} onClick={() => navigate(ROUTES.DANISAN_KIT)}>
               <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3" style={{ background: W.orangeLight }}>
                 <FlaskConical className="h-5 w-5" style={{ color: W.orange }} />
               </div>
@@ -139,7 +140,7 @@ export function DanisanPortalPage() {
             </div>
 
             {/* Reports */}
-            <div className="rounded-2xl p-5 cursor-pointer transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }} onClick={() => navigate('/danisan/raporlar')}>
+            <div className="rounded-2xl p-5 cursor-pointer transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }} onClick={() => navigate(ROUTES.DANISAN_RAPORLAR)}>
               <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3" style={{ background: W.oliveLight }}>
                 <FileCheck className="h-5 w-5" style={{ color: W.olive }} />
               </div>

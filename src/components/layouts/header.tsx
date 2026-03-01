@@ -12,6 +12,7 @@ import {
 } from '@/components/ui'
 import { NotificationDropdown } from '@/features/auth/components/notification-dropdown'
 import { USER_ROLE_LABELS } from '@/utils/constants'
+import { ROUTES, getBasePath } from '@/utils/routes'
 import {
   LogOut,
   Settings,
@@ -35,56 +36,47 @@ const W = {
   warmGrayLight: '#B5AFA5',
 }
 
-function getBasePath(pathname: string): string {
-  if (pathname.startsWith('/admin')) return '/admin'
-  if (pathname.startsWith('/dietitian')) return '/dietitian'
-  if (pathname.startsWith('/lab')) return '/lab'
-  if (pathname.startsWith('/specialist')) return '/specialist'
-  if (pathname.startsWith('/danisan')) return '/danisan'
-  return '/'
-}
-
 function getPageTitle(pathname: string): string {
-  if (pathname === '/admin') return 'Admin Dashboard'
-  if (pathname.startsWith('/admin/users')) return 'Kullanici Yonetimi'
-  if (pathname.startsWith('/admin/production')) return 'Uretim Merkezi'
-  if (pathname.startsWith('/admin/pricing')) return 'Fiyatlandirma'
-  if (pathname.startsWith('/admin/stock')) return 'Stok Takibi'
-  if (pathname.startsWith('/admin/returns')) return 'Iade Talepleri'
-  if (pathname.startsWith('/admin/orders')) return 'Siparisler'
-  if (pathname.startsWith('/admin/cari')) return 'Cari Hesaplar'
-  if (pathname.startsWith('/admin/templates')) return 'Sablonlar'
-  if (pathname.startsWith('/admin/audit')) return 'Denetim Izi'
-  if (pathname.startsWith('/admin/reports')) return 'Rapor Onaylari'
-  if (pathname.startsWith('/admin/notifications')) return 'Bildirimler'
+  if (pathname === ROUTES.YONETICI) return 'Yonetici Paneli'
+  if (pathname.startsWith(ROUTES.YONETICI_KULLANICILAR)) return 'Kullanici Yonetimi'
+  if (pathname.startsWith(ROUTES.YONETICI_URETIM)) return 'Uretim Merkezi'
+  if (pathname.startsWith(ROUTES.YONETICI_FIYATLANDIRMA)) return 'Fiyatlandirma'
+  if (pathname.startsWith(ROUTES.YONETICI_STOK)) return 'Stok Takibi'
+  if (pathname.startsWith(ROUTES.YONETICI_IADELER)) return 'Iade Talepleri'
+  if (pathname.startsWith(ROUTES.YONETICI_SIPARISLER)) return 'Siparisler'
+  if (pathname.startsWith(ROUTES.YONETICI_CARI)) return 'Cari Hesaplar'
+  if (pathname.startsWith(ROUTES.YONETICI_SABLONLAR)) return 'Sablonlar'
+  if (pathname.startsWith(ROUTES.YONETICI_DENETIM)) return 'Denetim Izi'
+  if (pathname.startsWith(ROUTES.YONETICI_RAPORLAR)) return 'Rapor Onaylari'
+  if (pathname.startsWith(ROUTES.YONETICI_BILDIRIMLER)) return 'Bildirimler'
 
-  if (pathname === '/dietitian') return 'Diyetisyen Dashboard'
-  if (pathname.startsWith('/dietitian/clients/new')) return 'Yeni Danisan Ekle'
-  if (pathname.includes('/dietitian/clients/') && pathname.endsWith('/edit')) return 'Danisan Duzenle'
-  if (pathname.includes('/dietitian/clients/')) return 'Danisan Detayi'
-  if (pathname.startsWith('/dietitian/clients')) return 'Danisanlarim'
-  if (pathname.startsWith('/dietitian/kits')) return 'Kit Islemleri'
-  if (pathname.startsWith('/dietitian/stock')) return 'Stogum'
-  if (pathname.startsWith('/dietitian/orders')) return 'Siparislerim'
-  if (pathname.startsWith('/dietitian/reports')) return 'Raporlar'
-  if (pathname.startsWith('/dietitian/notifications')) return 'Bildirimler'
+  if (pathname === ROUTES.DIYETISYEN) return 'Diyetisyen Paneli'
+  if (pathname.startsWith(ROUTES.DIYETISYEN_DANISANLAR_YENI)) return 'Yeni Danisan Ekle'
+  if (pathname.includes(ROUTES.DIYETISYEN_DANISANLAR + '/') && pathname.endsWith('/duzenle')) return 'Danisan Duzenle'
+  if (pathname.includes(ROUTES.DIYETISYEN_DANISANLAR + '/')) return 'Danisan Detayi'
+  if (pathname.startsWith(ROUTES.DIYETISYEN_DANISANLAR)) return 'Danisanlarim'
+  if (pathname.startsWith(ROUTES.DIYETISYEN_KITLER)) return 'Kit Islemleri'
+  if (pathname.startsWith(ROUTES.DIYETISYEN_STOK)) return 'Stogum'
+  if (pathname.startsWith(ROUTES.DIYETISYEN_SIPARISLER)) return 'Siparislerim'
+  if (pathname.startsWith(ROUTES.DIYETISYEN_RAPORLAR)) return 'Raporlar'
+  if (pathname.startsWith(ROUTES.DIYETISYEN_BILDIRIMLER)) return 'Bildirimler'
 
-  if (pathname === '/lab') return 'Laboratuvar Dashboard'
-  if (pathname.startsWith('/lab/pool')) return 'Numune Havuzu'
-  if (pathname.startsWith('/lab/analysis')) return 'Analizler'
-  if (pathname.startsWith('/lab/results')) return 'Sonuclar'
-  if (pathname.startsWith('/lab/notifications')) return 'Bildirimler'
+  if (pathname === ROUTES.LABORATUVAR) return 'Laboratuvar Paneli'
+  if (pathname.startsWith(ROUTES.LABORATUVAR_HAVUZ)) return 'Numune Havuzu'
+  if (pathname.startsWith(ROUTES.LABORATUVAR_ANALIZ)) return 'Analizler'
+  if (pathname.startsWith(ROUTES.LABORATUVAR_SONUCLAR)) return 'Sonuclar'
+  if (pathname.startsWith(ROUTES.LABORATUVAR_BILDIRIMLER)) return 'Bildirimler'
 
-  if (pathname === '/specialist') return 'Uzman Dashboard'
-  if (pathname.startsWith('/specialist/assignments')) return 'Atanan Analizler'
-  if (pathname.startsWith('/specialist/reports/editor')) return 'Rapor Editoru'
-  if (pathname.startsWith('/specialist/reports')) return 'Raporlarim'
-  if (pathname.startsWith('/specialist/notifications')) return 'Bildirimler'
+  if (pathname === ROUTES.UZMAN) return 'Uzman Paneli'
+  if (pathname.startsWith(ROUTES.UZMAN_ATAMALAR)) return 'Atanan Analizler'
+  if (pathname.startsWith(ROUTES.UZMAN_RAPORLAR_DUZENLEYICI)) return 'Rapor Editoru'
+  if (pathname.startsWith(ROUTES.UZMAN_RAPORLAR)) return 'Raporlarim'
+  if (pathname.startsWith(ROUTES.UZMAN_BILDIRIMLER)) return 'Bildirimler'
 
-  if (pathname === '/danisan') return 'Danisan Paneli'
-  if (pathname.startsWith('/danisan/kit')) return 'Kit Durumum'
-  if (pathname.startsWith('/danisan/raporlar')) return 'Raporlarim'
-  if (pathname.startsWith('/danisan/notifications')) return 'Bildirimler'
+  if (pathname === ROUTES.DANISAN) return 'Danisan Paneli'
+  if (pathname.startsWith(ROUTES.DANISAN_KIT)) return 'Kit Durumum'
+  if (pathname.startsWith(ROUTES.DANISAN_RAPORLAR)) return 'Raporlarim'
+  if (pathname.startsWith(ROUTES.DANISAN_BILDIRIMLER)) return 'Bildirimler'
 
   return 'Panel'
 }
@@ -171,15 +163,15 @@ export function Header() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate(`${basePath}/profile`)}>
+              <DropdownMenuItem onClick={() => navigate(`${basePath}/profil`)}>
                 <User className="mr-2 h-4 w-4" /> Kullanici Profili
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(`${basePath}/settings`)}>
+              <DropdownMenuItem onClick={() => navigate(`${basePath}/ayarlar`)}>
                 <Settings className="mr-2 h-4 w-4" /> Ayarlar
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => { logout(); navigate('/login') }}
+                onClick={() => { logout(); navigate(ROUTES.GIRIS) }}
                 className="text-danger focus:text-danger"
               >
                 <LogOut className="mr-2 h-4 w-4" /> Cikis Yap

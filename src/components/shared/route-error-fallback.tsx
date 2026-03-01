@@ -1,5 +1,6 @@
 import { useRouteError, isRouteErrorResponse, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui'
+import { ROUTES } from '@/utils/routes'
 
 export function RouteErrorFallback() {
   const error = useRouteError()
@@ -20,7 +21,7 @@ export function RouteErrorFallback() {
           <Button variant="outline" onClick={() => navigate(-1)}>
             Geri Don
           </Button>
-          <Button variant="primary" onClick={() => navigate('/login')}>
+          <Button variant="primary" onClick={() => navigate(ROUTES.GIRIS)}>
             Giris Sayfasina Git
           </Button>
         </div>

@@ -10,6 +10,7 @@ import { Upload, FileSpreadsheet, Check, Eye } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { KitStatus, KIT_STATUS_LABELS } from '@/utils/constants'
+import { ROUTES } from '@/utils/routes'
 import { formatDate, formatDateTime } from '@/lib/utils'
 
 export function ResultsPage() {
@@ -31,14 +32,14 @@ export function ResultsPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         breadcrumbs={[
-          { label: 'Laboratuvar', href: '/lab' },
-          { label: 'Sonuclar', href: '/lab/results' },
+          { label: 'Laboratuvar', href: ROUTES.LABORATUVAR },
+          { label: 'Sonuclar', href: ROUTES.LABORATUVAR_SONUCLAR },
         ]}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate('/lab')}>Dashboard</Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/lab/pool')}>Numune Havuzu</Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/lab/analysis')}>Analizler</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR)}>Dashboard</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR_HAVUZ)}>Numune Havuzu</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR_ANALIZ)}>Analizler</Button>
           </div>
         }
       />

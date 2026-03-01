@@ -20,7 +20,7 @@ export function TemplatesPage() {
           <h3 className="text-[15px] font-semibold text-surface-900">Sablon Listesi</h3>
           <p className="text-[13px] text-surface-500 mt-0.5">Aktif ve pasif rapor sablonlari</p>
         </div>
-        <Button variant="gradient" size="sm" onClick={() => toast.info('Sablon yukleme ozelligi yakinda eklenecek')}>
+        <Button variant="gradient" size="sm" onClick={() => toast('Sablon yukleme ozelligi yakinda eklenecek', { icon: '📄' })}>
           <Upload className="h-4 w-4" />
           Sablon Yukle
         </Button>
@@ -45,10 +45,10 @@ export function TemplatesPage() {
                 <span>{formatDate(tmpl.updatedAt)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => toast.info('Onizleme ozelligi yakinda eklenecek')}>
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => toast('Onizleme ozelligi yakinda eklenecek', { icon: '👁' })}>
                   <Eye className="h-3.5 w-3.5" /> Onizle
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1" onClick={() => toast.info('Duzenleme ozelligi yakinda eklenecek')}>
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => toast('Duzenleme ozelligi yakinda eklenecek', { icon: '✏️' })}>
                   <Pencil className="h-3.5 w-3.5" /> Duzenle
                 </Button>
               </div>

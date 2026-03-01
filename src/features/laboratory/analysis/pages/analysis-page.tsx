@@ -8,6 +8,7 @@ import {
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody,
 } from '@/components/ui'
 import { KitStatus, KIT_STATUS_LABELS } from '@/utils/constants'
+import { ROUTES } from '@/utils/routes'
 import { Upload, Clock, CheckCircle, Eye } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { TablePagination } from '@/components/shared/table-pagination'
@@ -70,14 +71,14 @@ export function AnalysisPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         breadcrumbs={[
-          { label: 'Laboratuvar', href: '/lab' },
-          { label: 'Analizler', href: '/lab/analysis' },
+          { label: 'Laboratuvar', href: ROUTES.LABORATUVAR },
+          { label: 'Analizler', href: ROUTES.LABORATUVAR_ANALIZ },
         ]}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate('/lab')}>Dashboard</Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/lab/pool')}>Numune Havuzu</Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/lab/results')}>Sonuclar</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR)}>Dashboard</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR_HAVUZ)}>Numune Havuzu</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR_SONUCLAR)}>Sonuclar</Button>
             <Button variant="outline" onClick={() => toast.success('Excel dosya secici aciliyor...')}>
               <Upload className="h-4 w-4" />
               Excel Yukle

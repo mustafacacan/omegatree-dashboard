@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Button, Input } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth.store'
 import { UserRole, UserStatus } from '@/utils/constants'
+import { ROLE_HOME, ROUTES } from '@/utils/routes'
 import { TreePine, Mail, Lock, Eye, EyeOff, Shield, FlaskConical, TestTubes, Stethoscope, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useUsersStore } from '@/stores/users.store'
@@ -56,14 +57,7 @@ export function LoginPage() {
     )
     const displayName = `${user.firstName} ${user.lastName}`.trim()
     toast.success(`Hos geldiniz, ${displayName}!`)
-    const routes: Record<UserRole, string> = {
-      [UserRole.ADMIN]: '/admin',
-      [UserRole.DIETITIAN]: '/dietitian',
-      [UserRole.LAB]: '/lab',
-      [UserRole.SPECIALIST]: '/specialist',
-      [UserRole.DANISAN]: '/danisan',
-    }
-    navigate(routes[user.role])
+    navigate(ROLE_HOME[user.role])
   }
 
   const handleDemoLogin = async (account: typeof demoAccounts[0]) => {
@@ -222,7 +216,7 @@ export function LoginPage() {
             <span className="text-sm text-surface-600">Beni hatirla</span>
           </label>
           <Link
-            to="/forgot-password"
+            to={ROUTES.GIRIS}
             className="text-sm text-primary-600 hover:text-primary-700 font-medium"
           >
             Sifremi Unuttum
@@ -236,7 +230,7 @@ export function LoginPage() {
 
       <p className="mt-8 text-center text-sm text-surface-500">
         Hesabiniz yok mu?{' '}
-        <Link to="/register" className="font-semibold text-primary-600 hover:text-primary-700">
+        <Link to={ROUTES.KAYIT} className="font-semibold text-primary-600 hover:text-primary-700">
           Kayit Olun
         </Link>
       </p>

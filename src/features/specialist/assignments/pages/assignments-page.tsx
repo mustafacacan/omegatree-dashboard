@@ -8,6 +8,7 @@ import {
 import { PenTool, Eye } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { raporDuzenleyiciPath } from '@/utils/routes'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { TablePagination } from '@/components/shared/table-pagination'
 
@@ -65,7 +66,7 @@ export function AssignmentsPage() {
             renderAction={(a) => (
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={() => toast.success(`${a.barcode} verileri goruntuleniyor`)}><Eye className="h-4 w-4" /> Verileri Gor</Button>
-                <Button variant="default" size="sm" onClick={() => navigate(`/specialist/reports/editor?barcode=${a.barcode}`)}><PenTool className="h-4 w-4" /> Basla</Button>
+                <Button variant="default" size="sm" onClick={() => navigate(raporDuzenleyiciPath(a.barcode))}><PenTool className="h-4 w-4" /> Basla</Button>
               </div>
             )}
           />
@@ -76,7 +77,7 @@ export function AssignmentsPage() {
             rows={progressAssignments}
             renderStatus={() => <Badge variant="info" dot pulse>Hazirlaniyor</Badge>}
             renderAction={(a) => (
-              <Button variant="default" size="sm" onClick={() => navigate(`/specialist/reports/editor?barcode=${a.barcode}`)}><PenTool className="h-4 w-4" /> Devam Et</Button>
+              <Button variant="default" size="sm" onClick={() => navigate(raporDuzenleyiciPath(a.barcode))}><PenTool className="h-4 w-4" /> Devam Et</Button>
             )}
           />
         </TabsContent>

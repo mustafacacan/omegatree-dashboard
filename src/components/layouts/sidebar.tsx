@@ -5,6 +5,7 @@ import { useCurrentRole, useCurrentUser } from '@/stores/auth.store'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useLaboratoriesStore } from '@/stores/laboratories.store'
 import { UserRole, KitStatus } from '@/utils/constants'
+import { ROUTES, ROLE_HOME } from '@/utils/routes'
 import { Tooltip, TooltipProvider } from '@/components/ui'
 import {
   LayoutDashboard,
@@ -48,62 +49,62 @@ function getNavGroups(role: UserRole): NavGroup[] {
   switch (role) {
     case UserRole.ADMIN:
       return [
-        { title: '', items: [{ label: 'Dashboard', href: '/admin', icon: LayoutDashboard }] },
+        { title: '', items: [{ label: 'Dashboard', href: ROUTES.YONETICI, icon: LayoutDashboard }] },
         { title: 'Yonetim', items: [
-          { label: 'Kullanicilar', href: '/admin/users', icon: Users },
-          { label: 'Uretim Merkezi', href: '/admin/production', icon: Factory },
-          { label: 'Fiyatlandirma', href: '/admin/pricing', icon: DollarSign },
+          { label: 'Kullanicilar', href: ROUTES.YONETICI_KULLANICILAR, icon: Users },
+          { label: 'Uretim Merkezi', href: ROUTES.YONETICI_URETIM, icon: Factory },
+          { label: 'Fiyatlandirma', href: ROUTES.YONETICI_FIYATLANDIRMA, icon: DollarSign },
         ]},
         { title: 'Operasyon', items: [
-          { label: 'Stok Takibi', href: '/admin/stock', icon: Package },
-          { label: 'Iade Talepleri', href: '/admin/returns', icon: RotateCcw },
-          { label: 'Siparisler', href: '/admin/orders', icon: ShoppingCart },
-          { label: 'Cari Hesaplar', href: '/admin/cari', icon: CreditCard },
-          { label: 'Laboratuvarlar', href: '/admin/laboratories', icon: TestTubes },
-          { label: 'Rapor Onaylari', href: '/admin/reports', icon: FileCheck },
+          { label: 'Stok Takibi', href: ROUTES.YONETICI_STOK, icon: Package },
+          { label: 'Iade Talepleri', href: ROUTES.YONETICI_IADELER, icon: RotateCcw },
+          { label: 'Siparisler', href: ROUTES.YONETICI_SIPARISLER, icon: ShoppingCart },
+          { label: 'Cari Hesaplar', href: ROUTES.YONETICI_CARI, icon: CreditCard },
+          { label: 'Laboratuvarlar', href: ROUTES.YONETICI_LABORATUVARLAR, icon: TestTubes },
+          { label: 'Rapor Onaylari', href: ROUTES.YONETICI_RAPORLAR, icon: FileCheck },
         ]},
         { title: 'Sistem', items: [
-          { label: 'Sablonlar', href: '/admin/templates', icon: FileText },
-          { label: 'Denetim Izi', href: '/admin/audit', icon: Shield },
+          { label: 'Sablonlar', href: ROUTES.YONETICI_SABLONLAR, icon: FileText },
+          { label: 'Denetim Izi', href: ROUTES.YONETICI_DENETIM, icon: Shield },
         ]},
       ]
     case UserRole.DIETITIAN:
       return [
-        { title: '', items: [{ label: 'Dashboard', href: '/dietitian', icon: LayoutDashboard }] },
+        { title: '', items: [{ label: 'Dashboard', href: ROUTES.DIYETISYEN, icon: LayoutDashboard }] },
         { title: 'Danisanlar', items: [
-          { label: 'Danisanlarim', href: '/dietitian/clients', icon: Users },
-          { label: 'Yeni Danisan Ekle', href: '/dietitian/clients/new', icon: UserPlus },
+          { label: 'Danisanlarim', href: ROUTES.DIYETISYEN_DANISANLAR, icon: Users },
+          { label: 'Yeni Danisan Ekle', href: ROUTES.DIYETISYEN_DANISANLAR_YENI, icon: UserPlus },
         ]},
         { title: 'Kit & Stok', items: [
-          { label: 'Kitlerim', href: '/dietitian/kits', icon: FlaskConical },
-          { label: 'Stogum', href: '/dietitian/stock', icon: Boxes },
-          { label: 'Siparis Ver', href: '/dietitian/orders', icon: Truck },
+          { label: 'Kitlerim', href: ROUTES.DIYETISYEN_KITLER, icon: FlaskConical },
+          { label: 'Stogum', href: ROUTES.DIYETISYEN_STOK, icon: Boxes },
+          { label: 'Siparis Ver', href: ROUTES.DIYETISYEN_SIPARISLER, icon: Truck },
         ]},
-        { title: 'Sonuclar', items: [{ label: 'Raporlar', href: '/dietitian/reports', icon: BarChart3 }] },
+        { title: 'Sonuclar', items: [{ label: 'Raporlar', href: ROUTES.DIYETISYEN_RAPORLAR, icon: BarChart3 }] },
       ]
     case UserRole.LAB:
       return [
-        { title: '', items: [{ label: 'Dashboard', href: '/lab', icon: LayoutDashboard }] },
+        { title: '', items: [{ label: 'Dashboard', href: ROUTES.LABORATUVAR, icon: LayoutDashboard }] },
         { title: 'Laboratuvar', items: [
-          { label: 'Numune Havuzu', href: '/lab/pool', icon: TestTubes },
-          { label: 'Analizler', href: '/lab/analysis', icon: FlaskConical },
-          { label: 'Sonuclar', href: '/lab/results', icon: ClipboardList },
+          { label: 'Numune Havuzu', href: ROUTES.LABORATUVAR_HAVUZ, icon: TestTubes },
+          { label: 'Analizler', href: ROUTES.LABORATUVAR_ANALIZ, icon: FlaskConical },
+          { label: 'Sonuclar', href: ROUTES.LABORATUVAR_SONUCLAR, icon: ClipboardList },
         ]},
       ]
     case UserRole.SPECIALIST:
       return [
-        { title: '', items: [{ label: 'Dashboard', href: '/specialist', icon: LayoutDashboard }] },
+        { title: '', items: [{ label: 'Dashboard', href: ROUTES.UZMAN, icon: LayoutDashboard }] },
         { title: 'Raporlama', items: [
-          { label: 'Atanan Analizler', href: '/specialist/assignments', icon: BookOpen },
-          { label: 'Raporlarim', href: '/specialist/reports', icon: FileCheck },
+          { label: 'Atanan Analizler', href: ROUTES.UZMAN_ATAMALAR, icon: BookOpen },
+          { label: 'Raporlarim', href: ROUTES.UZMAN_RAPORLAR, icon: FileCheck },
         ]},
       ]
     case UserRole.DANISAN:
       return [
-        { title: '', items: [{ label: 'Panelim', href: '/danisan', icon: LayoutDashboard }] },
+        { title: '', items: [{ label: 'Panelim', href: ROUTES.DANISAN, icon: LayoutDashboard }] },
         { title: 'Takip', items: [
-          { label: 'Kit Durumum', href: '/danisan/kit', icon: Package },
-          { label: 'Raporlarim', href: '/danisan/raporlar', icon: FileCheck },
+          { label: 'Kit Durumum', href: ROUTES.DANISAN_KIT, icon: Package },
+          { label: 'Raporlarim', href: ROUTES.DANISAN_RAPORLAR, icon: FileCheck },
         ]},
       ]
     default:
@@ -142,7 +143,7 @@ export function Sidebar() {
   const navGroups = getNavGroups(role)
 
   const getBadge = (item: NavItem): number | undefined => {
-    if (item.href === '/admin/returns') return returnRequestCount
+    if (item.href === ROUTES.YONETICI_IADELER) return returnRequestCount
     return item.badge
   }
 
@@ -211,10 +212,10 @@ export function Sidebar() {
               )}
               <div className="space-y-0.5">
                 {group.items.map((item) => {
+                  const roleRoot = ROLE_HOME[role]
                   const isActive =
                     location.pathname === item.href ||
-                    (item.href !== '/' + role.toLowerCase() &&
-                      location.pathname.startsWith(item.href))
+                    (item.href !== roleRoot && location.pathname.startsWith(item.href))
                   const badge = getBadge(item)
 
                   const linkContent = (

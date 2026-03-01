@@ -3,18 +3,10 @@ import { useCurrentUser } from '@/stores/auth.store'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, Button, Avatar, Badge } from '@/components/ui'
 import { USER_ROLE_LABELS } from '@/utils/constants'
+import { getBasePath } from '@/utils/routes'
 import { formatDate } from '@/lib/utils'
 import { ArrowLeft, Mail, Shield, Calendar, Edit2, User } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-function getBasePath(pathname: string): string {
-  if (pathname.startsWith('/admin')) return '/admin'
-  if (pathname.startsWith('/dietitian')) return '/dietitian'
-  if (pathname.startsWith('/lab')) return '/lab'
-  if (pathname.startsWith('/specialist')) return '/specialist'
-  if (pathname.startsWith('/danisan')) return '/danisan'
-  return '/'
-}
 
 export function ProfilePage() {
   const user = useCurrentUser()

@@ -1,17 +1,11 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { UserRole, UserStatus } from '@/utils/constants'
+import { ROUTES, ROLE_HOME } from '@/utils/routes'
+
 interface RoleGuardProps {
   children: React.ReactNode
   allowedRoles?: UserRole[]
-}
-
-const ROLE_HOME_ROUTES: Record<UserRole, string> = {
-  [UserRole.ADMIN]: '/admin',
-  [UserRole.DIETITIAN]: '/dietitian',
-  [UserRole.LAB]: '/lab',
-  [UserRole.SPECIALIST]: '/specialist',
-  [UserRole.DANISAN]: '/danisan',
 }
 
 export function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
@@ -19,15 +13,15 @@ export function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
   const location = useLocation()
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to={ROUTES.GIRIS} state={{ from: location }} replace />
   }
 
   if (user.status === UserStatus.PENDING) {
-    return <Navigate to="/pending-approval" replace />
+    return <Navigate to={ROUTES.ONAY_BEKLIYOR} replace />
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to={ROLE_HOME_ROUTES[user.role]} replace />
+    return <Navigate to={ROLE_HOME[user.role]} replace />
   }
 
   return <>{children}</>
@@ -37,7 +31,7 @@ export function AuthRedirect({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore()
 
   if (isAuthenticated && user) {
-    return <Navigate to={ROLE_HOME_ROUTES[user.role]} replace />
+    return <Navigate to={ROLE_HOME[user.role]} replace />
   }
 
   return <>{children}</>

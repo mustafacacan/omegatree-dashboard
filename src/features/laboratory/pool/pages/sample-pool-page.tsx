@@ -10,6 +10,7 @@ import { TestTubes, Check, X, Search, Eye, Calendar, ImageIcon } from 'lucide-re
 import toast from 'react-hot-toast'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { KitStatus, KIT_STATUS_LABELS } from '@/utils/constants'
+import { ROUTES } from '@/utils/routes'
 import { formatDate, formatDateTime } from '@/lib/utils'
 
 const LAB_ACTOR = 'Lab Teknisyen'
@@ -40,7 +41,7 @@ export function SamplePoolPage() {
   const handleAccept = (barcode: string) => {
     labAcceptSample(barcode, LAB_ACTOR)
     toast.success(`${barcode} kabul edildi, analiz baslatildi`)
-    navigate('/lab/analysis')
+    navigate(ROUTES.LABORATUVAR_ANALIZ)
   }
 
   const handleRejectClick = (barcode: string) => {
@@ -90,8 +91,8 @@ export function SamplePoolPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader
         breadcrumbs={[
-          { label: 'Laboratuvar', href: '/lab' },
-          { label: 'Numune Havuzu', href: '/lab/pool' },
+          { label: 'Laboratuvar', href: ROUTES.LABORATUVAR },
+          { label: 'Numune Havuzu', href: ROUTES.LABORATUVAR_HAVUZ },
         ]}
       />
 
@@ -104,10 +105,10 @@ export function SamplePoolPage() {
           className="w-72"
         />
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate('/lab')}>
+          <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR)}>
             Dashboard
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/lab/analysis')}>
+          <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR_ANALIZ)}>
             Analizler
           </Button>
           <Badge variant="info" dot pulse>

@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
+import { ROUTES } from '@/utils/routes'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Textarea, Badge } from '@/components/ui'
-import { Upload, Send, FileText, Table as TableIcon, Save, AlertCircle } from 'lucide-react'
+import { Upload, Send, FileText, Table as TableIcon, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useWorkflowStore } from '@/stores/workflow.store'
@@ -33,21 +34,31 @@ export function ReportEditorPage() {
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
   if (!barcode || !kit) {
+    const isNoParam = !barcode
     return (
       <div className="space-y-6 animate-fade-in">
-        <PageHeader />
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="p-6 flex items-start gap-3">
-            <AlertCircle className="h-10 w-10 text-amber-600 shrink-0" />
-            <div>
-              <p className="font-semibold text-amber-900">Barkod bulunamadi</p>
-              <p className="text-sm text-amber-800 mt-1">
-                {!barcode
-                  ? 'URLde barcode parametresi yok. Atanan islerden &quot;Basla&quot; ile girin.'
-                  : `"${barcode}" sistemde bulunamadi veya rapor havuzunda degil.`}
+        <PageHeader title="Rapor Editoru" />
+        <Card className="border-primary-200 bg-primary-50/50">
+          <CardContent className="p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
+            <div className="h-16 w-16 rounded-2xl bg-primary-100 flex items-center justify-center shrink-0">
+              <FileText className="h-8 w-8 text-primary-600" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-surface-900">
+                {isNoParam ? 'Rapor yazmak icin bir analiz secin' : 'Bu barkod rapor havuzunda degil'}
               </p>
-              <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate('/specialist/assignments')}>
-                Atanan Islere Don
+              <p className="text-sm text-surface-600 mt-1.5">
+                {isNoParam
+                  ? 'Atanan Isler sayfasindan bir analize "Basla" veya "Devam Et" ile girerek rapor editorune ulasabilirsiniz.'
+                  : `"${barcode}" icin atama bulunamadi veya rapor bu uzmana atanmamis.`}
+              </p>
+              <Button
+                variant="default"
+                size="sm"
+                className="mt-4"
+                onClick={() => navigate(ROUTES.UZMAN_ATAMALAR)}
+              >
+                Atanan Islere Git
               </Button>
             </div>
           </CardContent>
@@ -76,7 +87,7 @@ export function ReportEditorPage() {
                     pdfUrl: pdfUrl || undefined,
                   })
                   toast.success('Rapor admin onayina gonderildi')
-                  navigate('/specialist/assignments')
+                  navigate(ROUTES.UZMAN_ATAMALAR)
                 }}
               >
                 <Send className="h-4 w-4" />

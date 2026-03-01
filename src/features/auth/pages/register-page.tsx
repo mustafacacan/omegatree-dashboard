@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Button, Input } from '@/components/ui'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui'
 import { UserRole } from '@/utils/constants'
+import { ROUTES } from '@/utils/routes'
 import { TreePine, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useUsersStore } from '@/stores/users.store'
@@ -62,7 +63,7 @@ export function RegisterPage() {
       }
 
       toast.success(result.message)
-      navigate('/login')
+      navigate(ROUTES.GIRIS)
     } catch {
       toast.error('Kayit yapilamadi. Lutfen tekrar deneyin.')
     } finally {
@@ -176,7 +177,7 @@ export function RegisterPage() {
 
       <p className="mt-6 text-center text-sm text-surface-500">
         Zaten hesabiniz var mi?{' '}
-        <Link to="/login" className="font-semibold text-primary-600 hover:text-primary-700">
+        <Link to={ROUTES.GIRIS} className="font-semibold text-primary-600 hover:text-primary-700">
           Giris Yapin
         </Link>
       </p>

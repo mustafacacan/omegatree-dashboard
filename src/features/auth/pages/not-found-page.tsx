@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { ROUTES } from '@/utils/routes'
 import { Button } from '@/components/ui'
 import { TreePine, Home } from 'lucide-react'
 
@@ -43,7 +44,7 @@ export function NotFoundPage() {
           asChild
           style={{ background: W.olive }}
         >
-          <Link to="/login" className="inline-flex items-center gap-2">
+          <Link to={ROUTES.GIRIS} className="inline-flex items-center gap-2">
             <Home className="h-4 w-4" />
             Giris sayfasina don
           </Link>

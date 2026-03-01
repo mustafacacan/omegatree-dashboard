@@ -1,17 +1,9 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Switch } from '@/components/ui'
+import { getBasePath } from '@/utils/routes'
 import { ArrowLeft, Bell, Moon, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-function getBasePath(pathname: string): string {
-  if (pathname.startsWith('/admin')) return '/admin'
-  if (pathname.startsWith('/dietitian')) return '/dietitian'
-  if (pathname.startsWith('/lab')) return '/lab'
-  if (pathname.startsWith('/specialist')) return '/specialist'
-  if (pathname.startsWith('/danisan')) return '/danisan'
-  return '/'
-}
 
 export function SettingsPage() {
   const navigate = useNavigate()

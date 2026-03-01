@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/ui'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { KitStatus } from '@/utils/constants'
+import { ROUTES } from '@/utils/routes'
 import { formatCurrency } from '@/lib/utils'
 import { useCurrentUser } from '@/stores/auth.store'
 import { motion } from 'framer-motion'
@@ -386,7 +387,7 @@ export function AdminDashboardPage() {
                   <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Son Kit Hareketleri</h3>
                   <button
                     type="button"
-                    onClick={() => navigate('/admin/stock')}
+                    onClick={() => navigate(ROUTES.YONETICI_STOK)}
                     className="flex items-center gap-1 text-[11px] font-semibold hover:opacity-80 transition-opacity"
                     style={{ color: W.olive }}
                   >
@@ -475,7 +476,7 @@ export function AdminDashboardPage() {
 
                 <button
                   type="button"
-                  onClick={() => navigate('/admin/users')}
+                  onClick={() => navigate(ROUTES.YONETICI_KULLANICILAR)}
                   className="w-full mt-5 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[12px] font-medium transition-colors"
                   style={{ background: W.oliveLight, color: W.olive }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }}

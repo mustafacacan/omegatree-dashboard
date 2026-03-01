@@ -3,6 +3,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { Timeline } from '@/components/shared/timeline'
 import { Avatar, Button } from '@/components/ui'
 import { KitStatus } from '@/utils/constants'
+import { ROUTES, danisanDetayPath } from '@/utils/routes'
 import { useCurrentUser } from '@/stores/auth.store'
 import { useLaboratoriesStore } from '@/stores/laboratories.store'
 import { motion } from 'framer-motion'
@@ -229,13 +230,13 @@ export function DietitianDashboardPage() {
           <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Son Danisanlar</h3>
-              <button type="button" onClick={() => navigate('/dietitian/clients')} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
+              <button type="button" onClick={() => navigate(ROUTES.DIYETISYEN_DANISANLAR)} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
                 Tumu <ArrowUpRight className="h-3 w-3" />
               </button>
             </div>
             <div className="space-y-2">
               {recentClients.map((c) => (
-                <button key={c.id} type="button" onClick={() => navigate(`/dietitian/clients/${c.id}`)} className="flex items-center justify-between w-full p-3 rounded-xl text-left transition-colors" style={{ background: W.cream }} onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }} onMouseLeave={(e) => { e.currentTarget.style.background = W.cream }}>
+                <button key={c.id} type="button" onClick={() => navigate(danisanDetayPath(c.id))} className="flex items-center justify-between w-full p-3 rounded-xl text-left transition-colors" style={{ background: W.cream }} onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }} onMouseLeave={(e) => { e.currentTarget.style.background = W.cream }}>
                   <div className="flex items-center gap-3">
                     <Avatar name={c.name} size="sm" />
                     <div>
@@ -255,7 +256,7 @@ export function DietitianDashboardPage() {
           <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Aktif Kit Takibi</h3>
-              <button type="button" onClick={() => navigate('/dietitian/kits')} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
+              <button type="button" onClick={() => navigate(ROUTES.DIYETISYEN_KITLER)} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
                 Kitlerim <ArrowUpRight className="h-3 w-3" />
               </button>
             </div>
@@ -309,7 +310,7 @@ export function DietitianDashboardPage() {
                 <p className="text-[13px]" style={{ color: '#9C7D0A' }}>Stogunuzda 5 kit kaldi. Yeni siparis vermenizi oneririz.</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate('/dietitian/orders')} style={{ borderColor: '#D4B830', color: '#78600A' }}>
+            <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)} style={{ borderColor: '#D4B830', color: '#78600A' }}>
               Siparis Ver
             </Button>
           </div>
