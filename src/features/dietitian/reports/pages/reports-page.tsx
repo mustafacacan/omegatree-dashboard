@@ -55,7 +55,7 @@ export function ReportsPage() {
   }, [completedReports, search])
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader />
 
       <Card className="border-surface-200">
@@ -90,7 +90,7 @@ export function ReportsPage() {
               </p>
             </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredReports.map((report) => (
             <div key={report.barcode} className="group rounded-xl border border-surface-200 bg-white p-5 transition-all duration-200 hover:border-primary-200 hover:shadow-md">
               <div className="flex items-start justify-between mb-4">

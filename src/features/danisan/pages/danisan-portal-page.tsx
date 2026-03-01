@@ -41,7 +41,7 @@ export function DanisanPortalPage() {
   const progressPct = Math.round((completedSteps / totalSteps) * 100)
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
 
       {/* ═══ GREETING ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
@@ -123,7 +123,7 @@ export function DanisanPortalPage() {
 
         {/* Quick Info Cards */}
         <motion.div className="col-span-12 lg:col-span-7" {...fadeUp} transition={{ duration: 0.35, delay: 0.15 }}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 h-full">
 
             {/* Kit Status */}
             <div className="rounded-2xl p-5 cursor-pointer transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }} onClick={() => navigate(ROUTES.DANISAN_KIT)}>

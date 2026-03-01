@@ -64,7 +64,7 @@ export function DietitianOrderPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader />
 
       {/* Aciklama */}

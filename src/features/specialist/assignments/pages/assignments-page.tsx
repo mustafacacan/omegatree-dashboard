@@ -143,7 +143,7 @@ function AssignmentList({
   const [pageSize, setPageSize] = useState(10)
   const paginated = useMemo(
     () => rows.slice((page - 1) * pageSize, page * pageSize),
-    [rows, page]
+    [rows, page, pageSize]
   )
 
   useEffect(() => {

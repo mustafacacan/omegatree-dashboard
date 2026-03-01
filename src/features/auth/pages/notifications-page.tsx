@@ -238,7 +238,7 @@ export function NotificationsPage() {
   const unreadCount = notifications.filter(n => !n.read).length
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader
         actions={
           <div className="flex items-center gap-2">

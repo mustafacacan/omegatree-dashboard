@@ -91,7 +91,7 @@ export function ClientsListPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader />
 
       <Card className="border-surface-200">

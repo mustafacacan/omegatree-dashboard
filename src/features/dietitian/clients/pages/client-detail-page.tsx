@@ -140,7 +140,7 @@ export function ClientDetailPage() {
 
   if (clientId && !storeClient) {
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-8 animate-fade-in">
         <PageHeader />
         <Card>
           <CardContent className="p-12 text-center">
@@ -158,7 +158,7 @@ export function ClientDetailPage() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader
         actions={
           <div className="flex items-center gap-2">

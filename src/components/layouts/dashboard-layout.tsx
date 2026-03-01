@@ -19,7 +19,7 @@ export function DashboardLayout() {
       >
         <Header />
 
-        <main className="p-4 lg:p-6">
+        <main className="p-6">
           <div className="mx-auto max-w-[1360px]">
             <Outlet />
           </div>

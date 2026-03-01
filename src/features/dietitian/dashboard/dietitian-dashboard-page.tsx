@@ -76,7 +76,7 @@ export function DietitianDashboardPage() {
   const greeting = hour < 12 ? 'Gunaydin' : hour < 18 ? 'Iyi gunler' : 'Iyi aksamlar'
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
 
       {/* ═══ GREETING + ATANAN LABORATUVAR ADRESI ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
@@ -115,7 +115,7 @@ export function DietitianDashboardPage() {
       </motion.div>
 
       {/* ═══ STAT CARDS ═══ */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { title: 'Danisanlarim', value: '24', change: 4, icon: Users, iconColor: W.olive, iconBg: W.oliveLight },
           { title: 'Aktif Kit', value: '8', change: 2, icon: FlaskConical, iconColor: W.orange, iconBg: W.orangeLight },
@@ -149,7 +149,7 @@ export function DietitianDashboardPage() {
       </div>
 
       {/* ═══ ROW 1: Bar Chart + Donut ═══ */}
-      <div className="grid grid-cols-12 gap-4">
+      <div className="grid grid-cols-12 gap-6">
 
         {/* Monthly new clients bar chart */}
         <motion.div className="col-span-12 lg:col-span-8" {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
@@ -223,7 +223,7 @@ export function DietitianDashboardPage() {
       </div>
 
       {/* ═══ ROW 2: Clients + Kit Timeline + Activity ═══ */}
-      <div className="grid grid-cols-12 gap-4">
+      <div className="grid grid-cols-12 gap-6">
 
         {/* Recent Clients */}
         <motion.div className="col-span-12 lg:col-span-5" {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
@@ -300,8 +300,8 @@ export function DietitianDashboardPage() {
       {/* ═══ STOCK WARNING ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.35 }}>
         <div className="rounded-2xl p-5" style={{ background: W.amberLight, border: '1px solid #F0DFA0' }}>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-6">
               <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ background: '#F5E6A0' }}>
                 <Package className="h-6 w-6" style={{ color: '#B8960A' }} />
               </div>

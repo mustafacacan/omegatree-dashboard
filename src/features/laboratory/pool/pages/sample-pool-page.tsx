@@ -88,7 +88,7 @@ export function SamplePoolPage() {
   )
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader
         breadcrumbs={[
           { label: 'Laboratuvar', href: ROUTES.LABORATUVAR },
@@ -117,7 +117,7 @@ export function SamplePoolPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {poolKits.length === 0 ? (
           <Card className="col-span-full">
             <CardContent className="py-12 text-center text-surface-500">

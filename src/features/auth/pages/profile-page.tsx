@@ -17,7 +17,7 @@ export function ProfilePage() {
   if (!user) return null
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader
         actions={
           <Button variant="outline" size="sm" onClick={() => navigate(-1)}>

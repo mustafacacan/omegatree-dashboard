@@ -120,7 +120,7 @@ export function KitsPage() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader
         actions={
           <Button

@@ -106,7 +106,7 @@ export function LabDashboardPage() {
   const selectedKit = useMemo(() => (detailBarcode ? kits.find((k) => k.barcode === detailBarcode) : null), [kits, detailBarcode])
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
 
       {/* ═══ GREETING + Hizli baglantilar ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35 }} className="flex flex-wrap items-center justify-between gap-4">
@@ -131,7 +131,7 @@ export function LabDashboardPage() {
       </motion.div>
 
       {/* ═══ STAT CARDS — Statusa gore istatistikler ═══ */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { title: KIT_STATUS_LABELS[KitStatus.SAMPLE_SENT], value: String(havuzdaCount), icon: TestTubes, iconColor: W.amber, iconBg: W.amberLight },
           { title: KIT_STATUS_LABELS[KitStatus.IN_ANALYSIS], value: String(analizdeCount), icon: FlaskConical, iconColor: W.orange, iconBg: W.orangeLight },

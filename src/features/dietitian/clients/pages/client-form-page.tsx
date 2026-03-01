@@ -104,7 +104,7 @@ export function ClientFormPage() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader
         actions={
           <Button variant="outline" size="sm" onClick={() => navigate(-1)}>

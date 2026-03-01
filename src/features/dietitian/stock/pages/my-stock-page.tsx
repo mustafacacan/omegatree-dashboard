@@ -101,11 +101,11 @@ export function MyStockPage() {
   }, [myKits, searchQuery])
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader />
 
       {/* ═══ STAT CARDS ═══ */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
         {[
           { title: 'Kullanilabilir', value: availableKits.length, icon: Package, iconColor: W.olive, iconBg: W.oliveLight, change: 2 },
           { title: 'Danisana Atanmis', value: assignedKits.length, icon: Boxes, iconColor: W.orange, iconBg: W.orangeLight, change: 1 },

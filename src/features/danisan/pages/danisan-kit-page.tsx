@@ -87,7 +87,7 @@ export function DanisanKitPage() {
   const canMarkSampleSent = activeKit?.status === KitStatus.CLIENT_RECEIVED
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
       <PageHeader />
 
       {/* Barkod Girişi - Eğer henüz kit atanmamışsa veya teslim alınmamışsa */}

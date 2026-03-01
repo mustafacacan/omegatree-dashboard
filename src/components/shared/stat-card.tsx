@@ -28,7 +28,7 @@ export function StatCard({ title, value, change, icon: Icon, color, className }:
   return (
     <div
       className={cn(
-        'rounded-2xl p-5 transition-shadow hover:shadow-md cursor-default',
+        'rounded-2xl p-6 transition-shadow hover:shadow-md cursor-default',
         className
       )}
       style={{ background: '#fff', border: '1px solid #E8E4DE' }}
