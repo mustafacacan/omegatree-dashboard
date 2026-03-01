@@ -120,7 +120,7 @@ interface WorkflowState {
   markKitPrinted: (barcode: string, actor: string, ip?: string) => { ok: boolean; message: string }
   markKitsPrinted: (barcodes: string[], actor: string, ip?: string) => { ok: boolean; message: string; printedCount: number }
   createDietitianOrder: (dietitianId: string, dietitianName: string, qty: number, actor: string, ip?: string) => void
-  assignKitsToDietitian: (dietitianId: string, dietitianName: string, barcodes: string[], trackingNo: string, actor: string, ip?: string, orderId?: string) => void
+  assignKitsToDietitian: (dietitianId: string, dietitianName: string, barcodes: string[], actor: string, ip?: string, orderId?: string) => void
   receiveKitByBarcode: (
     barcode: string,
     dietitianId: string,
@@ -166,8 +166,9 @@ const seedKits: WorkflowKit[] = [
   { barcode: 'OT-2025-00153', status: KitStatus.SAMPLE_SENT, location: 'Laboratuvar Havuzu', createdAt: '2025-06-15T14:10:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1500, assignedDietitianId: 'u-dietitian-1', assignedDietitianName: 'Ayse Yilmaz', assignedClientId: '20250601002', assignedClientName: 'Selin Kara', reportStatus: 'NONE' },
   { barcode: 'OT-2025-00152', status: KitStatus.IN_ANALYSIS, location: 'Laboratuvar Analiz', createdAt: '2025-06-14T09:50:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1500, analysisProgress: 55, reportStatus: 'NONE' },
   { barcode: 'OT-2025-00151', status: KitStatus.ANALYSIS_COMPLETE, location: 'Uzman Havuzu', createdAt: '2025-06-13T10:20:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1500, analysisProgress: 100, reportStatus: 'SPECIALIST_POOL' },
-  { barcode: 'OT-2025-00150', status: KitStatus.ADMIN_APPROVAL, location: 'Admin Onayi', createdAt: '2025-06-12T16:00:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1500, reportStatus: 'ADMIN_APPROVAL', assignedDietitianId: 'u-dietitian-1', assignedDietitianName: 'Ayse Yilmaz', assignedClientId: 'u-danisan-1', assignedClientName: 'Ahmet Yildiz' },
-  { barcode: 'OT-2025-00149', status: KitStatus.COMPLETED, location: 'Arsiv', createdAt: '2025-06-11T12:30:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1550, reportStatus: 'APPROVED', assignedDietitianId: 'u-dietitian-1', assignedDietitianName: 'Ayse Yilmaz', assignedClientId: 'u-danisan-1', assignedClientName: 'Ahmet Yildiz' },
+  { barcode: 'OT-2025-00150', status: KitStatus.ADMIN_APPROVAL, location: 'Admin Onayi', createdAt: '2025-06-12T16:00:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1500, reportStatus: 'ADMIN_APPROVAL', assignedDietitianId: 'u-dietitian-1', assignedDietitianName: 'Ayse Yilmaz', assignedClientId: 'u-danisan-1', assignedClientName: 'Ahmet Yildiz', reportContent: { generalEvaluation: 'Omega-3 indeksi referans araligin altinda (4.2%). EPA ve DHA duzeyleri dengelenmeli. Yag asidi profili genel saglik acisindan iyilestirilebilir.', nutritionAdvice: 'Haftada en az 2 porsiyon yagli balik (somon, uskumru, sardalya) onerilir. Ceviz, keten tohumu ve chia tohumu gunluk beslenmeye eklenebilir. Zeytinyagi ana yag kaynagi olarak kullanilabilir.', supplementAdvice: 'Gunluk 1000–2000 mg balik yagi (EPA+DHA birlikte) takviyesi 3 ay sureyle onerilir. Sonrasinda kan tahlili ile tekrar degerlendirme yapilacaktir.', submittedAt: '2025-06-12T14:00:00.000Z' } },
+  { barcode: 'OT-2025-00149', status: KitStatus.COMPLETED, location: 'Arsiv', createdAt: '2025-06-11T12:30:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1550, reportStatus: 'APPROVED', assignedDietitianId: 'u-dietitian-1', assignedDietitianName: 'Ayse Yilmaz', assignedClientId: 'u-danisan-1', assignedClientName: 'Ahmet Yildiz', reportContent: { generalEvaluation: 'Omega-3 Index sonucu 5.8% olup hedef aralik (8% uzeri) altindadir. EPA (1.9%) ve DHA (3.9%) birlikte degerlendirildiginde yagli balik tuketimi ve gerekirse takviye ile artirilabilir. AA/EPA orani yuksek; omega-6/omega-3 dengeye getirilmelidir.', nutritionAdvice: 'Haftada 2–3 porsiyon yagli balik (ozellikle vahsi somon, uskumru). Gunluk 1–2 yemek kasigi ground keten veya chia. Ceviz, badem gibi yagli tohumlar atistirmalik olarak. Islenmis ve omega-6 zengin yaglar sinirlandirilmalidir.', supplementAdvice: 'Kaliteli balik yagi takviyesi: gunluk 1500–2000 mg EPA+DHA, yemekle birlikte. 12 hafta sonra kontrol tahlili onerilir.', submittedAt: '2025-06-11T18:00:00.000Z' } },
+  { barcode: 'OT-2025-00148', status: KitStatus.COMPLETED, location: 'Arsiv', createdAt: '2025-06-08T10:00:00.000Z', printed: true, batch: 'BATCH-2025-06', price: 1550, reportStatus: 'APPROVED', assignedDietitianId: 'u-dietitian-1', assignedDietitianName: 'Ayse Yilmaz', assignedClientId: '20250601002', assignedClientName: 'Selin Kara', reportContent: { generalEvaluation: 'Omega-3 Index 7.1% ile hedefe yakin; iyilestirme ile optimal araliga (8%+) cikarilabilir. DHA duzeyi iyi, EPA hafif dusuk. Genel yag asidi profili saglikli beslenme ile desteklenebilir.', nutritionAdvice: 'Mevcut balik tuketimi surdurun; haftada bir porsiyon daha eklenebilir. Yemeklerde zeytinyagi kullanimi uygun. Kuruyemis (ceviz, badem) gunluk 1 avuc. Trans yag iceren urunlerden kacinin.', supplementAdvice: 'Istege bagli dusuk doz balik yagi (500–1000 mg EPA+DHA) ozellikle balik yemediginiz gunler. 6 ay sonra tekrar tahlil onerilir.', submittedAt: '2025-06-09T11:30:00.000Z' } },
 ]
 
 const seedOrders: DietitianOrder[] = [
@@ -474,18 +475,18 @@ export const useWorkflowStore = create<WorkflowState>()(
           }
         }),
 
-      assignKitsToDietitian: (dietitianId, dietitianName, barcodes, trackingNo, actor, ip, orderId) =>
+      assignKitsToDietitian: (dietitianId, dietitianName, barcodes, actor, ip, orderId) =>
         set((state) => {
-          // Kitleri güncelle
+          // Kitleri güncelle (kargo entegrasyonu yok, trackingNo kullanilmiyor)
           const updatedKits = state.kits.map((k) =>
             barcodes.includes(k.barcode)
               ? {
                   ...k,
                   status: KitStatus.ASSIGNED,
-                  location: 'Kargoda',
+                  location: 'Zimmetlendi',
                   assignedDietitianId: dietitianId,
                   assignedDietitianName: dietitianName,
-                  trackingNo,
+                  trackingNo: undefined,
                 }
               : k
           )
@@ -905,9 +906,9 @@ export const useWorkflowStore = create<WorkflowState>()(
     }),
     {
       name: 'omegatree-workflow',
-      version: 5,
-      migrate: (persisted: unknown) => {
-        const p = persisted as { kitPrice?: number; priceTiers?: PriceTiers & { bundle5Total?: number; bundleTotal?: number; bundleQuantity?: number; bundles?: PriceBundle[] }; kits?: WorkflowKit[]; orders?: DietitianOrder[]; auditLogs?: AuditLogEntry[] }
+      version: 7,
+      migrate: (persisted: unknown, storedVersion: number) => {
+        const p = persisted as { kitPrice?: number; priceTiers?: PriceTiers; kits?: WorkflowKit[]; orders?: DietitianOrder[]; payments?: unknown[]; auditLogs?: AuditLogEntry[] }
         const tiers = p?.priceTiers
         let priceTiers: PriceTiers = defaultPriceTiers
         if (tiers) {
@@ -920,11 +921,14 @@ export const useWorkflowStore = create<WorkflowState>()(
             priceTiers = { singleKitPrice: tiers.singleKitPrice ?? 1500, bundles: [{ quantity: qty, total }] }
           }
         }
+        // v7: tum panellerde mock rapor/kit verisi icin guncel seed zorla yuklensin (diyetisyen, uzman, admin, danisan)
+        const useSeedKits = storedVersion < 7
         return {
           kitPrice: p?.kitPrice ?? 1500,
           priceTiers,
-          kits: p?.kits ?? seedKits,
+          kits: useSeedKits ? seedKits : (p?.kits ?? seedKits),
           orders: p?.orders ?? seedOrders,
+          payments: p?.payments ?? [],
           auditLogs: p?.auditLogs ?? [],
         }
       },

@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/page-header'
 import { ROUTES } from '@/utils/routes'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Textarea, Badge } from '@/components/ui'
-import { Upload, Send, FileText, Table as TableIcon, Save } from 'lucide-react'
+import { Upload, Send, FileText, Table as TableIcon, Save, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 
@@ -69,46 +69,53 @@ export function ReportEditorPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        actions={
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => toast.success('Taslak kaydedildi')}>
-              <Save className="h-4 w-4" />
-              Taslak Kaydet
-            </Button>
-            {canSubmit && (
-              <Button
-                variant="gradient"
-                onClick={() => {
-                  specialistSubmitReport(barcode, actor, undefined, {
-                    generalEvaluation: generalEvaluation.trim() || undefined,
-                    nutritionAdvice: nutritionAdvice.trim() || undefined,
-                    supplementAdvice: supplementAdvice.trim() || undefined,
-                    pdfUrl: pdfUrl || undefined,
-                  })
-                  toast.success('Rapor admin onayina gonderildi')
-                  navigate(ROUTES.UZMAN_ATAMALAR)
-                }}
-              >
-                <Send className="h-4 w-4" />
-                Onaya Gonder
-              </Button>
-            )}
-            {isAdminApproval && (
-              <Badge variant="info">Admin onayinda — rapor gonderildi</Badge>
-            )}
-          </div>
-        }
-      />
-      <div className="text-xs text-surface-500 -mt-4">
-        Calisilan barkod: <code className="font-mono font-semibold">{barcode}</code>
-        {kit.assignedClientName && (
-          <span className="ml-2">· Danisan: {kit.assignedClientName}</span>
-        )}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <Link
+            to={ROUTES.UZMAN_RAPORLAR}
+            className="inline-flex items-center gap-1.5 text-sm text-surface-600 hover:text-surface-900 mb-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Raporlarima don
+          </Link>
+          <PageHeader
+            title="Rapor duzenle"
+            description={`Barkod: ${barcode}${kit.assignedClientName ? ` · ${kit.assignedClientName}` : ''}`}
+            actions={
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={() => toast.success('Taslak kaydedildi')}>
+                  <Save className="h-4 w-4" />
+                  Taslak Kaydet
+                </Button>
+                {canSubmit && (
+                  <Button
+                    variant="gradient"
+                    size="sm"
+                    onClick={() => {
+                      specialistSubmitReport(barcode, actor, undefined, {
+                        generalEvaluation: generalEvaluation.trim() || undefined,
+                        nutritionAdvice: nutritionAdvice.trim() || undefined,
+                        supplementAdvice: supplementAdvice.trim() || undefined,
+                        pdfUrl: pdfUrl || undefined,
+                      })
+                      toast.success('Rapor admin onayina gonderildi')
+                      navigate(ROUTES.UZMAN_ATAMALAR)
+                    }}
+                  >
+                    <Send className="h-4 w-4" />
+                    Onaya Gonder
+                  </Button>
+                )}
+                {isAdminApproval && (
+                  <Badge variant="info">Admin onayinda</Badge>
+                )}
+              </div>
+            }
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Lab Data */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -148,7 +155,6 @@ export function ReportEditorPage() {
           </CardContent>
         </Card>
 
-        {/* Report Editor */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

@@ -61,7 +61,7 @@ export function ReturnRequestsPage() {
       toast.error('Stoktan bir barkod secin')
       return
     }
-    assignKitsToDietitian(damaged.assignedDietitianId, damaged.assignedDietitianName, [compensationSelectedBarcode], '', 'Admin')
+    assignKitsToDietitian(damaged.assignedDietitianId, damaged.assignedDietitianName, [compensationSelectedBarcode], 'Admin')
     markDamagedCompensationAssigned(damagedBarcode, 'Admin')
     toast.success('Telafi kiti atandi')
     setCompensationForBarcode(null)

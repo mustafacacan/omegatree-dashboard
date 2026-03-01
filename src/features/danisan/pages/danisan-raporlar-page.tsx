@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
 import { ReportViewModal } from '@/components/shared/report-view-modal'
-import { Card, CardContent, Button } from '@/components/ui'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { FileText, Eye, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -35,51 +35,58 @@ export function DanisanRaporlarPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      {myReports.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <FileText className="h-12 w-12 text-surface-300 mx-auto mb-3" />
-            <p className="text-sm font-medium text-surface-600">Henuz rapor yok</p>
-            <p className="text-xs text-surface-400 mt-1">Analiz tamamlandiginda raporunuz burada gorunecek</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {myReports.map((r) => (
-            <Card key={r.id}>
-              <CardContent className="p-5 flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-xl bg-primary-50 flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-primary-600" />
+      <Card className="border-surface-200">
+        <CardHeader className="border-b border-surface-100">
+          <CardTitle>Raporlarim</CardTitle>
+          <CardDescription>
+            Analiz tamamlandiktan sonra onaylanan raporlariniz burada listelenir.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          {myReports.length === 0 ? (
+            <div className="py-14 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100">
+                <FileText className="h-7 w-7 text-surface-400" />
+              </div>
+              <p className="text-sm font-medium text-surface-600">Henuz rapor yok</p>
+              <p className="text-xs text-surface-500 mt-1">Analiz tamamlandiginda raporunuz burada gorunecek</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myReports.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-surface-200 bg-white p-4 transition-colors hover:border-primary-200 hover:bg-surface-50/50"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-50">
+                      <FileText className="h-6 w-6 text-primary-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-surface-800">{r.title}</p>
+                      <p className="text-sm text-surface-500">{formatDate(r.date)} · <code className="font-mono text-xs">{r.barcode}</code></p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-surface-800">{r.title}</p>
-                    <p className="text-sm text-surface-500">{formatDate(r.date)} — {r.barcode}</p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="primary" size="sm" onClick={() => setViewReport(r)}>
+                      <Eye className="h-4 w-4" />
+                      Görüntüle
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toast.success('Rapor indiriliyor...')}
+                      title="PDF indir"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setViewReport(r)}
-                  >
-                    <Eye className="h-4 w-4" />
-                    Sistem icinde goruntule
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toast.success('Rapor indiriliyor...')}
-                    title="PDF indir (istege bagli)"
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <ReportViewModal
         open={!!viewReport}

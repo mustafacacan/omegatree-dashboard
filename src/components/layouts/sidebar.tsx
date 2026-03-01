@@ -30,6 +30,7 @@ import {
   ClipboardList,
   RotateCcw,
   MapPin,
+  Settings,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -66,6 +67,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
         { title: 'Sistem', items: [
           { label: 'Sablonlar', href: ROUTES.YONETICI_SABLONLAR, icon: FileText },
           { label: 'Denetim Izi', href: ROUTES.YONETICI_DENETIM, icon: Shield },
+          { label: 'Ayarlar', href: ROUTES.YONETICI_AYARLAR, icon: Settings },
         ]},
       ]
     case UserRole.DIETITIAN:
@@ -81,6 +83,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Siparis Ver', href: ROUTES.DIYETISYEN_SIPARISLER, icon: Truck },
         ]},
         { title: 'Sonuclar', items: [{ label: 'Raporlar', href: ROUTES.DIYETISYEN_RAPORLAR, icon: BarChart3 }] },
+        { title: 'Hesap', items: [{ label: 'Ayarlar', href: ROUTES.DIYETISYEN_AYARLAR, icon: Settings }] },
       ]
     case UserRole.LAB:
       return [
@@ -89,6 +92,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Numune Havuzu', href: ROUTES.LABORATUVAR_HAVUZ, icon: TestTubes },
           { label: 'Analizler', href: ROUTES.LABORATUVAR_ANALIZ, icon: FlaskConical },
           { label: 'Sonuclar', href: ROUTES.LABORATUVAR_SONUCLAR, icon: ClipboardList },
+          { label: 'Ayarlar', href: ROUTES.LABORATUVAR_AYARLAR, icon: Settings },
         ]},
       ]
     case UserRole.SPECIALIST:
@@ -98,6 +102,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Atanan Analizler', href: ROUTES.UZMAN_ATAMALAR, icon: BookOpen },
           { label: 'Raporlarim', href: ROUTES.UZMAN_RAPORLAR, icon: FileCheck },
         ]},
+        { title: 'Hesap', items: [{ label: 'Ayarlar', href: ROUTES.UZMAN_AYARLAR, icon: Settings }] },
       ]
     case UserRole.DANISAN:
       return [
@@ -106,6 +111,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Kit Durumum', href: ROUTES.DANISAN_KIT, icon: Package },
           { label: 'Raporlarim', href: ROUTES.DANISAN_RAPORLAR, icon: FileCheck },
         ]},
+        { title: 'Hesap', items: [{ label: 'Ayarlar', href: ROUTES.DANISAN_AYARLAR, icon: Settings }] },
       ]
     default:
       return []
@@ -132,8 +138,13 @@ export function Sidebar() {
   const user = useCurrentUser()
   const location = useLocation()
   const kits = useWorkflowStore((s) => s.kits)
+  const orders = useWorkflowStore((s) => s.orders)
   const laboratories = useLaboratoriesStore((s) => s.laboratories)
   const returnRequestCount = kits.filter((k) => k.status === KitStatus.RETURN_REQUESTED).length
+  const pendingOrderCount = orders.filter((o) => o.assignedBarcodes.length < o.qty).length
+  const pendingReportApprovalCount = kits.filter(
+    (k) => k.status === KitStatus.ADMIN_APPROVAL && (k.reportStatus === 'ADMIN_APPROVAL' || !k.reportStatus)
+  ).length
   const assignedLab = role === UserRole.DIETITIAN && user?.id
     ? laboratories.find((l) => l.assignedDietitians.includes(user.id))
     : null
@@ -144,6 +155,8 @@ export function Sidebar() {
 
   const getBadge = (item: NavItem): number | undefined => {
     if (item.href === ROUTES.YONETICI_IADELER) return returnRequestCount
+    if (item.href === ROUTES.YONETICI_SIPARISLER) return pendingOrderCount
+    if (item.href === ROUTES.YONETICI_RAPORLAR) return pendingReportApprovalCount
     return item.badge
   }
 

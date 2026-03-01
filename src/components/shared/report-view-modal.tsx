@@ -24,6 +24,9 @@ export function ReportViewModal({ open, onOpenChange, title, barcode, pdfUrl: pd
   const kit = barcode ? kits.find((k) => k.barcode === barcode) : null
   const content = kit?.reportContent
   const pdfUrl = content?.pdfUrl ?? pdfUrlProp
+  const hasTextContent = content && (content.generalEvaluation || content.nutritionAdvice || content.supplementAdvice)
+  const hasPdf = !!pdfUrl
+  const isEmpty = !hasTextContent && !hasPdf
 
   return (
     <Modal open={open} onOpenChange={onOpenChange}>
@@ -32,36 +35,45 @@ export function ReportViewModal({ open, onOpenChange, title, barcode, pdfUrl: pd
           <ModalTitle>Rapor: {title}</ModalTitle>
         </ModalHeader>
         <ModalBody className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4">
-          {content && (content.generalEvaluation || content.nutritionAdvice || content.supplementAdvice) && (
+          {hasTextContent && (
             <div className="space-y-4 rounded-xl border border-surface-200 bg-surface-50 p-4">
-              {content.generalEvaluation && (
+              {content!.generalEvaluation && (
                 <div>
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-1">Genel Degerlendirme</h4>
-                  <p className="text-sm text-surface-800 whitespace-pre-wrap">{content.generalEvaluation}</p>
+                  <p className="text-sm text-surface-800 whitespace-pre-wrap">{content!.generalEvaluation}</p>
                 </div>
               )}
-              {content.nutritionAdvice && (
+              {content!.nutritionAdvice && (
                 <div>
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-1">Beslenme Onerileri</h4>
-                  <p className="text-sm text-surface-800 whitespace-pre-wrap">{content.nutritionAdvice}</p>
+                  <p className="text-sm text-surface-800 whitespace-pre-wrap">{content!.nutritionAdvice}</p>
                 </div>
               )}
-              {content.supplementAdvice && (
+              {content!.supplementAdvice && (
                 <div>
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-1">Takviye Onerileri</h4>
-                  <p className="text-sm text-surface-800 whitespace-pre-wrap">{content.supplementAdvice}</p>
+                  <p className="text-sm text-surface-800 whitespace-pre-wrap">{content!.supplementAdvice}</p>
                 </div>
               )}
             </div>
           )}
-          <div className="flex-1 min-h-[300px]">
-            <PdfViewer
-              file={pdfUrl}
-              title={undefined}
-              maxHeight="65vh"
-              className="flex-1"
-            />
-          </div>
+          {isEmpty ? (
+            <div className="flex flex-1 min-h-[280px] flex-col items-center justify-center rounded-xl border border-surface-200 bg-surface-50 p-8 text-center">
+              <p className="text-sm font-medium text-surface-600">Rapor icerigi henuz yok</p>
+              <p className="text-xs text-surface-500 mt-1">Uzman raporu hazirladiktan ve admin onayladiktan sonra burada gorunecek.</p>
+            </div>
+          ) : (
+            <>
+              {hasPdf && (
+                <div className="flex-1 min-h-[300px]">
+                  <PdfViewer file={pdfUrl} title={undefined} maxHeight="65vh" className="flex-1" />
+                </div>
+              )}
+              {!hasPdf && hasTextContent && (
+                <p className="text-xs text-surface-500">PDF eklenmemis; sadece metin yorumu gosteriliyor.</p>
+              )}
+            </>
+          )}
         </ModalBody>
       </ModalContent>
     </Modal>

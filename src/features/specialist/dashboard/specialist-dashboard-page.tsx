@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Button } from '@/components/ui'
+import { Button } from '@/components/ui'
 import { motion } from 'framer-motion'
 import {
   BookOpen, FileCheck, Clock, PenTool, ArrowUpRight, ShieldCheck,
-  TrendingUp, TrendingDown, CheckCircle,
+  TrendingUp, CheckCircle,
 } from 'lucide-react'
 import { ROUTES, raporDuzenleyiciPath } from '@/utils/routes'
 import { useWorkflowStore } from '@/stores/workflow.store'
@@ -183,8 +183,6 @@ export function SpecialistDashboardPage() {
 
       {/* ═══ ROW 2: Assignments + Completed + Performance ═══ */}
       <div className="grid grid-cols-12 gap-4">
-
-        {/* Pending Assignments */}
         <motion.div className="col-span-12 lg:col-span-5" {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
           <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
             <div className="flex items-center justify-between mb-4">
@@ -222,7 +220,6 @@ export function SpecialistDashboardPage() {
           </div>
         </motion.div>
 
-        {/* Recent completed + activity */}
         <motion.div className="col-span-12 lg:col-span-4" {...fadeUp} transition={{ duration: 0.35, delay: 0.25 }}>
           <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
             <h3 className="text-[15px] font-semibold mb-4" style={{ color: W.dark }}>Son Raporlarim</h3>
@@ -239,8 +236,6 @@ export function SpecialistDashboardPage() {
                 </div>
               ))}
             </div>
-
-            {/* Activity feed */}
             <h4 className="text-[13px] font-semibold mt-5 mb-3" style={{ color: W.dark }}>Aktivite</h4>
             <div className="relative">
               <div className="absolute left-[13px] top-2 bottom-2 w-px" style={{ background: `linear-gradient(to bottom, ${W.warmBorder}, transparent)` }} />
@@ -259,7 +254,6 @@ export function SpecialistDashboardPage() {
           </div>
         </motion.div>
 
-        {/* Performance + Protocol */}
         <motion.div className="col-span-12 lg:col-span-3" {...fadeUp} transition={{ duration: 0.35, delay: 0.3 }}>
           <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
             <h3 className="text-[15px] font-semibold mb-2" style={{ color: W.dark }}>Performans</h3>
@@ -275,7 +269,6 @@ export function SpecialistDashboardPage() {
                 </div>
               </div>
               <p className="text-[10px] text-center mt-1" style={{ color: W.textLight }}>Zamaninda teslim</p>
-
               <div className="w-full space-y-2.5 mt-4 pt-3" style={{ borderTop: `1px solid ${W.warmBorder}` }}>
                 <div>
                   <div className="flex justify-between mb-1">
@@ -297,8 +290,6 @@ export function SpecialistDashboardPage() {
                 </div>
               </div>
             </div>
-
-            {/* Kor Protocol mini */}
             <div className="rounded-xl p-3 mt-4 text-center" style={{ background: W.dark }}>
               <ShieldCheck className="h-5 w-5 mx-auto mb-1" style={{ color: W.olive }} />
               <p className="text-[10px] font-semibold text-white">Kor Protokol Aktif</p>

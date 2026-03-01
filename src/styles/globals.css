@@ -91,7 +91,6 @@
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
-
 /* Page loader animations */
 @keyframes page-loader-sway {
   0%, 100% { transform: rotate(-6deg) scale(1); }

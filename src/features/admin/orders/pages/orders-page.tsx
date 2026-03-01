@@ -6,29 +6,20 @@ import {
   Button, Input, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Checkbox,
 } from '@/components/ui'
-import { OrderStatus, ORDER_STATUS_LABELS, KitStatus } from '@/utils/constants'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { Search, Eye, Truck, Package } from 'lucide-react'
+import { Search, Eye, Truck, Package, ShoppingBag, Clock, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { useWorkflowStore } from '@/stores/workflow.store'
-
-const statusVariant: Record<OrderStatus, 'warning' | 'info' | 'primary' | 'success' | 'danger'> = {
-  [OrderStatus.PENDING]: 'warning',
-  [OrderStatus.PAID]: 'info',
-  [OrderStatus.SHIPPED]: 'primary',
-  [OrderStatus.DELIVERED]: 'success',
-  [OrderStatus.CANCELLED]: 'danger',
-}
+import { KitStatus } from '@/utils/constants'
 
 export function OrdersPage() {
-  const { orders, kits, assignKitsToDietitian, markOrderPaid } = useWorkflowStore()
+  const { orders, kits, assignKitsToDietitian } = useWorkflowStore()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null)
   const [selectedBarcodes, setSelectedBarcodes] = useState<string[]>([])
-  const [trackingNo, setTrackingNo] = useState('')
 
   const filteredOrders = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -43,8 +34,14 @@ export function OrdersPage() {
     [filteredOrders, page, pageSize]
   )
 
+  const stats = useMemo(() => {
+    const total = orders.length
+    const awaitingShip = orders.filter((o) => o.assignedBarcodes.length < o.qty).length
+    const fullyShipped = orders.filter((o) => o.assignedBarcodes.length >= o.qty && o.qty > 0).length
+    return { total, awaitingShip, fullyShipped }
+  }, [orders])
+
   const availableKits = useMemo(() => {
-    // Sadece stokta olan ve henüz kimseye atanmamış kitler
     return kits.filter(
       (k) => k.status === KitStatus.IN_STOCK && !k.assignedDietitianId && !k.assignedClientId
     )
@@ -72,7 +69,6 @@ export function OrdersPage() {
     const order = orders.find((o) => o.id === orderId)
     if (order) {
       setSelectedBarcodes([])
-      setTrackingNo('')
     }
   }
 
@@ -83,7 +79,7 @@ export function OrdersPage() {
       if (selectedBarcodes.length < remainingQty) {
         setSelectedBarcodes([...selectedBarcodes, barcode])
       } else {
-        toast.error(`Maksimum ${remainingQty} adet secebilirsiniz`)
+        toast.error(`En fazla ${remainingQty} adet secebilirsiniz`)
       }
     }
   }
@@ -95,21 +91,15 @@ export function OrdersPage() {
       return
     }
     if (selectedBarcodes.length > remainingQty) {
-      toast.error(`Maksimum ${remainingQty} adet secebilirsiniz`)
+      toast.error(`En fazla ${remainingQty} adet secebilirsiniz`)
       return
     }
-    if (!trackingNo.trim()) {
-      toast.error('Kargo takip numarasi gerekli')
-      return
-    }
-
-    // Seçilen kitlerin gerçekten stokta olduğunu kontrol et
     const selectedKits = kits.filter((k) => selectedBarcodes.includes(k.barcode))
     const invalidKits = selectedKits.filter(
       (k) => k.status !== KitStatus.IN_STOCK || k.assignedDietitianId
     )
     if (invalidKits.length > 0) {
-      toast.error(`${invalidKits.length} adet kit stokta degil veya zaten atanmis`)
+      toast.error(`${invalidKits.length} kit stokta degil veya atanmis`)
       return
     }
 
@@ -117,38 +107,79 @@ export function OrdersPage() {
       currentOrder.dietitianId,
       currentOrder.dietitianName,
       selectedBarcodes,
-      trackingNo.trim(),
       'Admin',
       undefined,
       currentOrder.id
     )
-    
+
     const newAssignedCount = currentOrder.assignedBarcodes.length + selectedBarcodes.length
     if (newAssignedCount >= currentOrder.qty) {
-      toast.success(`Siparis tamamlandi! ${selectedBarcodes.length} adet kit kargoya verildi`)
+      toast.success(`Siparis tamamlandi. ${selectedBarcodes.length} kit kargoya verildi.`)
     } else {
-      toast.success(`${selectedBarcodes.length} adet kit kargoya verildi. Kalan: ${currentOrder.qty - newAssignedCount} adet`)
+      toast.success(`${selectedBarcodes.length} kit kargoya verildi. Kalan: ${currentOrder.qty - newAssignedCount} adet`)
     }
-    
+
     setSelectedOrder(null)
     setSelectedBarcodes([])
-    setTrackingNo('')
+  }
+
+  const getOrderStatusLabel = (order: { qty: number; assignedBarcodes: string[] }) => {
+    const sent = order.assignedBarcodes.length
+    if (sent === 0) return 'Kargo bekliyor'
+    if (sent >= order.qty) return 'Kargoya verildi'
+    return `${sent}/${order.qty} kargoda`
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Siparisler</CardTitle>
+      {/* Özet kartları */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-2xl p-4 border border-surface-200 bg-white flex items-center gap-4">
+          <div className="h-11 w-11 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
+            <ShoppingBag className="h-5 w-5 text-primary-600" />
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-surface-500">Toplam Siparis</p>
+            <p className="text-xl font-bold text-surface-900 tabular-nums">{stats.total}</p>
+          </div>
+        </div>
+        <div className="rounded-2xl p-4 border border-surface-200 bg-white flex items-center gap-4">
+          <div className="h-11 w-11 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+            <Clock className="h-5 w-5 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-surface-500">Kargo Bekleyen</p>
+            <p className="text-xl font-bold text-surface-900 tabular-nums">{stats.awaitingShip}</p>
+          </div>
+        </div>
+        <div className="rounded-2xl p-4 border border-surface-200 bg-white flex items-center gap-4">
+          <div className="h-11 w-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+            <CheckCircle className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-surface-500">Kargoya Verilen</p>
+            <p className="text-xl font-bold text-surface-900 tabular-nums">{stats.fullyShipped}</p>
+          </div>
+        </div>
+      </section>
+
+      <Card className="border-surface-200">
+        <CardHeader className="border-b border-surface-100">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle>Siparisler</CardTitle>
+              <p className="text-sm text-surface-500 mt-1">
+                Odemesi diyetisyen panelinde yapilan siparisleri goruntuleyin; kitleri diyetisyene verin.
+              </p>
+            </div>
             <Input
-              placeholder="Siparis ara..."
+              placeholder="Siparis no veya diyetisyen ara..."
               leftIcon={<Search className="h-4 w-4" />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-64"
+              className="w-full sm:w-72"
             />
           </div>
         </CardHeader>
@@ -158,57 +189,66 @@ export function OrdersPage() {
               <TableRow>
                 <TableHead>Siparis No</TableHead>
                 <TableHead>Diyetisyen</TableHead>
-                <TableHead>Adet</TableHead>
-                <TableHead>Tutar</TableHead>
-                <TableHead>Kargoya Verilen</TableHead>
+                <TableHead className="text-right">Adet</TableHead>
+                <TableHead className="text-right">Tutar</TableHead>
+                <TableHead>Kargolama</TableHead>
                 <TableHead>Tarih</TableHead>
                 <TableHead>Odeme</TableHead>
-                <TableHead className="w-20" />
+                <TableHead className="w-16" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedOrders.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-sm text-surface-500">
-                    Filtreye uygun siparis bulunamadi.
+                  <TableCell colSpan={8} className="py-14 text-center">
+                    <div className="flex flex-col items-center gap-2 text-surface-500">
+                      <Package className="h-10 w-10 text-surface-300" />
+                      <p className="text-sm font-medium">Siparis bulunamadi</p>
+                      <p className="text-xs">
+                        {search.trim() ? 'Arama kriterine uygun siparis yok.' : 'Henuz siparis kaydi yok.'}
+                      </p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}
               {paginatedOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-mono font-semibold">{order.id}</TableCell>
+                <TableRow key={order.id} className="group">
+                  <TableCell className="font-mono font-semibold text-surface-900">{order.id}</TableCell>
                   <TableCell>{order.dietitianName}</TableCell>
-                  <TableCell>{order.qty} Kit</TableCell>
-                  <TableCell className="font-semibold">{formatCurrency(order.total)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{order.qty} kit</TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">{formatCurrency(order.total)}</TableCell>
                   <TableCell>
-                    <Badge variant={order.assignedBarcodes.length > 0 ? 'primary' : 'warning'} dot>
-                      {order.assignedBarcodes.length}/{order.qty}
+                    <Badge
+                      variant={
+                        order.assignedBarcodes.length >= order.qty
+                          ? 'success'
+                          : order.assignedBarcodes.length > 0
+                            ? 'info'
+                            : 'warning'
+                      }
+                      dot
+                    >
+                      {getOrderStatusLabel(order)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-surface-500">{formatDate(order.createdAt)}</TableCell>
+                  <TableCell className="text-surface-500 text-sm">{formatDate(order.createdAt)}</TableCell>
                   <TableCell>
                     {order.paid ? (
                       <Badge variant="success" dot>Odendi</Badge>
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const r = markOrderPaid(order.id, 'Admin')
-                          if (r.ok) toast.success(r.message)
-                          else toast.error(r.message)
-                        }}
-                      >
-                        Odendi isaretle
-                      </Button>
+                      <Badge variant="warning" dot>Odeme bekleniyor</Badge>
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon-sm" onClick={() => handleOpenOrder(order.id)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleOpenOrder(order.id)}
+                      aria-label="Siparis detayi"
+                      title="Detay ve kargolama"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -227,98 +267,104 @@ export function OrdersPage() {
         </CardContent>
       </Card>
 
-      {/* Order Detail & Shipment Modal */}
+      {/* Sipariş detay ve kargolama modal */}
       <Modal open={selectedOrder !== null} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <ModalContent className="max-w-3xl">
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
-            <ModalTitle>Siparis Detayi ve Kargolama</ModalTitle>
+            <ModalTitle>
+              {currentOrder ? `Siparis ${currentOrder.id}` : 'Siparis detayi'}
+            </ModalTitle>
             <ModalDescription>
               {currentOrder && (
                 <>
-                  {currentOrder.dietitianName} - {currentOrder.qty} adet kit - {formatCurrency(currentOrder.total)}
+                  {currentOrder.dietitianName} · {currentOrder.qty} kit · {formatCurrency(currentOrder.total)}
                 </>
               )}
             </ModalDescription>
           </ModalHeader>
           {currentOrder && (
-            <ModalBody className="space-y-4">
-              <div className="p-4 rounded-lg bg-surface-50 border border-surface-200">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+            <ModalBody className="space-y-5">
+              {/* Sipariş özeti */}
+              <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-4">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">
+                  Siparis ozeti
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
                   <div>
-                    <span className="text-surface-500">Siparis No:</span>
-                    <p className="font-semibold">{currentOrder.id}</p>
+                    <p className="text-surface-500">Siparis no</p>
+                    <p className="font-semibold font-mono">{currentOrder.id}</p>
                   </div>
                   <div>
-                    <span className="text-surface-500">Diyetisyen:</span>
+                    <p className="text-surface-500">Diyetisyen</p>
                     <p className="font-semibold">{currentOrder.dietitianName}</p>
                   </div>
                   <div>
-                    <span className="text-surface-500">Toplam Adet:</span>
-                    <p className="font-semibold">{currentOrder.qty} Kit</p>
+                    <p className="text-surface-500">Toplam adet</p>
+                    <p className="font-semibold">{currentOrder.qty} kit</p>
                   </div>
                   <div>
-                    <span className="text-surface-500">Kargoya Verilen:</span>
-                    <p className="font-semibold">{currentOrder.assignedBarcodes.length} Kit</p>
+                    <p className="text-surface-500">Kargoya verilen</p>
+                    <p className="font-semibold text-primary-600">{currentOrder.assignedBarcodes.length} kit</p>
                   </div>
                   <div>
-                    <span className="text-surface-500">Kalan:</span>
-                    <p className="font-semibold text-primary-600">{remainingQty} Kit</p>
+                    <p className="text-surface-500">Kalan</p>
+                    <p className="font-semibold">{remainingQty} kit</p>
                   </div>
                   <div>
-                    <span className="text-surface-500">Toplam Tutar:</span>
+                    <p className="text-surface-500">Tutar</p>
                     <p className="font-semibold">{formatCurrency(currentOrder.total)}</p>
                   </div>
                 </div>
               </div>
 
+              {/* Kargoya verilecek kitler */}
               {remainingQty > 0 && (
-                <>
-                  <div>
-                    <h4 className="text-sm font-semibold mb-3">Stoktan Kit Sec ({remainingQty} adet secin)</h4>
-                    <div className="max-h-60 overflow-y-auto border border-surface-200 rounded-lg">
-                      {availableKits.length === 0 ? (
-                        <div className="p-8 text-center text-surface-500">
-                          <Package className="h-8 w-8 mx-auto mb-2 text-surface-300" />
-                          <p>Stokta uygun kit bulunamadi</p>
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-surface-100">
-                          {availableKits.slice(0, 50).map((kit) => (
-                            <label
-                              key={kit.barcode}
-                              className="flex items-center gap-3 p-3 hover:bg-surface-50 cursor-pointer"
-                            >
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-surface-800">
+                    Stoktan kit secin ({remainingQty} adet secin)
+                  </h4>
+                  <p className="text-xs text-surface-500">
+                    Asagidan stoktaki kitleri isaretleyin ve &quot;Diyetisyene ver&quot; butonuna tiklayin.
+                  </p>
+                  <div className="max-h-52 overflow-y-auto rounded-lg border border-surface-200 bg-white">
+                    {availableKits.length === 0 ? (
+                      <div className="p-8 text-center text-surface-500">
+                        <Package className="h-10 w-10 mx-auto mb-2 text-surface-300" />
+                        <p className="text-sm font-medium">Stokta uygun kit yok</p>
+                        <p className="text-xs mt-1">Uretim merkezinden barkod uretin veya diger siparislerden kalan kitleri kontrol edin.</p>
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-surface-100">
+                        {availableKits.slice(0, 50).map((kit) => (
+                          <li key={kit.barcode}>
+                            <label className="flex items-center gap-3 p-3 hover:bg-surface-50 cursor-pointer">
                               <Checkbox
                                 checked={selectedBarcodes.includes(kit.barcode)}
                                 onCheckedChange={() => toggleBarcode(kit.barcode)}
-                                disabled={!selectedBarcodes.includes(kit.barcode) && selectedBarcodes.length >= remainingQty}
+                                disabled={
+                                  !selectedBarcodes.includes(kit.barcode) && selectedBarcodes.length >= remainingQty
+                                }
                               />
-                              <div className="flex-1">
-                                <code className="text-sm font-mono font-semibold">{kit.barcode}</code>
-                                <p className="text-xs text-surface-500">{formatCurrency(kit.price)}</p>
-                              </div>
+                              <span className="font-mono text-sm font-semibold">{kit.barcode}</span>
+                              <span className="text-xs text-surface-500 ml-auto">{formatCurrency(kit.price)}</span>
                             </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
-
-                  <Input
-                    label="Kargo Takip Numarasi"
-                    placeholder="YK-123456"
-                    value={trackingNo}
-                    onChange={(e) => setTrackingNo(e.target.value)}
-                  />
-                </>
+                </div>
               )}
 
+              {/* Zaten kargoya verilen kitler */}
               {currentOrder.assignedBarcodes.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">Kargoya Verilen Kitler</h4>
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-surface-800">
+                    Bu sipariste kargoya verilen kitler
+                  </h4>
                   <div className="flex flex-wrap gap-2">
                     {currentOrder.assignedBarcodes.map((barcode) => (
-                      <Badge key={barcode} variant="primary">
+                      <Badge key={barcode} variant="primary" className="font-mono text-xs">
                         {barcode}
                       </Badge>
                     ))}
@@ -327,7 +373,7 @@ export function OrdersPage() {
               )}
             </ModalBody>
           )}
-          <ModalFooter>
+          <ModalFooter className="gap-2">
             <Button variant="outline" onClick={() => setSelectedOrder(null)}>
               Kapat
             </Button>
@@ -335,10 +381,10 @@ export function OrdersPage() {
               <Button
                 variant="primary"
                 onClick={handleShipOrder}
-                disabled={selectedBarcodes.length === 0 || !trackingNo.trim()}
+                disabled={selectedBarcodes.length === 0}
               >
                 <Truck className="h-4 w-4" />
-                Kargoya Ver ({selectedBarcodes.length} adet)
+                Diyetisyene ver {selectedBarcodes.length > 0 && `(${selectedBarcodes.length} adet)`}
               </Button>
             )}
           </ModalFooter>

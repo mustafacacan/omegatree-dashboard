@@ -9,11 +9,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Package, Boxes, Search, ArrowRightLeft, AlertTriangle,
   TrendingUp, TrendingDown, X, Check,
-  User, Send, CheckCircle, RotateCcw,
+  User, Send, CheckCircle,
 } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useUsersStore } from '@/stores/users.store'
-import toast from 'react-hot-toast'
 
 const W = {
   olive: '#8B9A4B', oliveLight: '#EEF2DE',
@@ -28,7 +27,7 @@ const W = {
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function StockPage() {
-  const { kits, assignKitsToDietitian, adminApproveReturn } = useWorkflowStore()
+  const { kits, assignKitsToDietitian } = useWorkflowStore()
   const { users } = useUsersStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -81,13 +80,7 @@ export function StockPage() {
         k.status === KitStatus.IN_ANALYSIS
     ).length,
     damaged: kits.filter(k => k.status === KitStatus.DAMAGED).length,
-    returnRequested: kits.filter(k => k.status === KitStatus.RETURN_REQUESTED).length,
   }), [kits])
-
-  const returnRequests = useMemo(
-    () => kits.filter((k) => k.status === KitStatus.RETURN_REQUESTED),
-    [kits]
-  )
 
   const toggleKitSelect = (barcode: string) => {
     setSelectedKits(prev => prev.includes(barcode) ? prev.filter(b => b !== barcode) : [...prev, barcode])
@@ -97,13 +90,7 @@ export function StockPage() {
     if (!selectedDietitian || selectedKits.length === 0) return
     const dietitian = dietitians.find((d) => d.id === selectedDietitian)
     if (!dietitian) return
-    assignKitsToDietitian(
-      dietitian.id,
-      dietitian.name,
-      selectedKits,
-      `YK-${Math.floor(100000 + Math.random() * 900000)}`,
-      'Admin'
-    )
+    assignKitsToDietitian(dietitian.id, dietitian.name, selectedKits, 'Admin')
     setAssignSuccess(true)
     setTimeout(() => {
       setAssignSuccess(false)
@@ -121,7 +108,7 @@ export function StockPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { title: 'Ana Stok', value: stats.inStock, icon: Package, iconColor: W.olive, iconBg: W.oliveLight, change: 4 },
-          { title: 'Zimmetli (Kargoda)', value: stats.assigned, icon: Send, iconColor: W.orange, iconBg: W.orangeLight, change: 2 },
+          { title: 'Zimmetli', value: stats.assigned, icon: Send, iconColor: W.orange, iconBg: W.orangeLight, change: 2 },
           { title: 'Surecte', value: stats.inProcess, icon: Boxes, iconColor: W.amber, iconBg: W.amberLight, change: 1 },
           { title: 'Hasarli', value: stats.damaged, icon: AlertTriangle, iconColor: '#D97070', iconBg: '#FDE8E8', change: -1 },
         ].map((s, i) => {
@@ -266,63 +253,6 @@ export function StockPage() {
         </div>
       </motion.div>
 
-      {/* ═══ RETURN REQUESTS ═══ */}
-      <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.25 }}>
-        <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-          <div className="p-5 flex items-center justify-between" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
-            <div>
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Iade Talepleri</h3>
-              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
-                {stats.returnRequested} adet bekleyen iade talebi var
-              </p>
-            </div>
-          </div>
-          <div className="p-5 space-y-3">
-            {returnRequests.length === 0 && (
-              <div className="rounded-xl p-4" style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}>
-                <p className="text-[12px] font-medium" style={{ color: W.text }}>
-                  Bekleyen iade talebi bulunmuyor.
-                </p>
-                <p className="text-[11px] mt-1" style={{ color: W.textLight }}>
-                  Diyetisyen panelinde Kitlerim sayfasindan iade talebi olusturuldugunda burada listelenir.
-                </p>
-              </div>
-            )}
-            {returnRequests.map((kit) => (
-              <div
-                key={kit.barcode}
-                className="rounded-xl p-4 flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between"
-                style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
-              >
-                <div className="space-y-1">
-                  <p className="text-[12px] font-semibold" style={{ color: W.dark }}>
-                    {kit.barcode} - {kit.assignedDietitianName}
-                  </p>
-                  <p className="text-[12px]" style={{ color: W.text }}>
-                    Neden: {kit.returnRequest?.reason || '-'}
-                  </p>
-                  {kit.returnRequest?.photoUrl && (
-                    <img src={kit.returnRequest.photoUrl} alt="Iade gorseli" className="h-20 w-32 object-cover rounded-lg border border-surface-200 mt-1" />
-                  )}
-                </div>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => {
-                    const result = adminApproveReturn(kit.barcode, 'Admin')
-                    if (result.ok) toast.success(result.message)
-                    else toast.error(result.message)
-                  }}
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Iadeyi Kabul Et
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-
       {/* ═══ ASSIGN MODAL ═══ */}
       <AnimatePresence>
         {showAssignModal && (
@@ -368,7 +298,7 @@ export function StockPage() {
                   </div>
                   <h3 className="text-[16px] font-bold" style={{ color: W.dark }}>Zimmetleme Basarili!</h3>
                   <p className="text-[13px] mt-2" style={{ color: W.textLight }}>
-                    {selectedKits.length} kit secilen diyetisyene zimmetlendi. Kit(ler) kargo ile gonderilecek.
+                    {selectedKits.length} kit secilen diyetisyene zimmetlendi.
                     Diyetisyen kiti teslim aldiginda barkod numarasini girerek stoguna ekleyecek.
                   </p>
                 </div>

@@ -54,6 +54,7 @@ const ResultsPage = lazy(() => import('@/features/laboratory/results/pages/resul
 // Specialist
 const SpecialistDashboardPage = lazy(() => import('@/features/specialist/dashboard/specialist-dashboard-page').then(m => ({ default: m.SpecialistDashboardPage })))
 const AssignmentsPage = lazy(() => import('@/features/specialist/assignments/pages/assignments-page').then(m => ({ default: m.AssignmentsPage })))
+const SpecialistReportsListPage = lazy(() => import('@/features/specialist/reports/pages/reports-list-page').then(m => ({ default: m.SpecialistReportsListPage })))
 const ReportEditorPage = lazy(() => import('@/features/specialist/reports/pages/report-editor-page').then(m => ({ default: m.ReportEditorPage })))
 
 // Danisan
@@ -171,7 +172,7 @@ export const router = createBrowserRouter([
       { path: ROUTES.UZMAN_AYARLAR, element: <SuspensePage><SettingsPage /></SuspensePage> },
       { path: ROUTES.UZMAN_BILDIRIMLER, element: <SuspensePage><NotificationsPage /></SuspensePage> },
       { path: ROUTES.UZMAN_ATAMALAR, element: <SuspensePage><AssignmentsPage /></SuspensePage> },
-      { path: ROUTES.UZMAN_RAPORLAR, element: <SuspensePage><ReportEditorPage /></SuspensePage> },
+      { path: ROUTES.UZMAN_RAPORLAR, element: <SuspensePage><SpecialistReportsListPage /></SuspensePage> },
       { path: ROUTES.UZMAN_RAPORLAR_DUZENLEYICI, element: <SuspensePage><ReportEditorPage /></SuspensePage> },
     ],
   },
