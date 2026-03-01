@@ -123,7 +123,17 @@ export function KitsPage() {
     <div className="space-y-5 animate-fade-in">
       <PageHeader
         actions={
-          <Button variant="outline" size="sm" className="text-amber-600 border-amber-300 hover:bg-amber-50">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-amber-600 border-amber-300 hover:bg-amber-50"
+            onClick={() =>
+              toast(
+                'Hasar / iade bildirimi icin ilgili kitin satirindaki "Surec Takibi" butonuna tiklayin, acilan pencerede "Iade Talebi Olustur" secin.',
+                { icon: '📋', duration: 5000 }
+              )
+            }
+          >
             <AlertTriangle className="h-3.5 w-3.5" />
             Hasar Bildir
           </Button>

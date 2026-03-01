@@ -8,6 +8,7 @@ import {
 import { PenTool, Eye } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { formatDate } from '@/lib/utils'
 import { raporDuzenleyiciPath } from '@/utils/routes'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { TablePagination } from '@/components/shared/table-pagination'
@@ -146,7 +147,7 @@ function AssignmentTable({
             {paginatedRows.map((row) => (
               <TableRow key={row.barcode}>
                 <TableCell><code className="font-mono font-semibold">{row.barcode}</code></TableCell>
-                <TableCell className="text-surface-500">{row.assignedAt}</TableCell>
+                <TableCell className="text-surface-500">{formatDate(row.assignedAt)}</TableCell>
                 <TableCell>{renderStatus()}</TableCell>
                 <TableCell>{renderAction(row)}</TableCell>
               </TableRow>

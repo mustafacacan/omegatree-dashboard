@@ -377,18 +377,7 @@ export function LabDashboardPage() {
                     <p>%{selectedKit.analysisProgress}</p>
                   </div>
                 )}
-                {selectedKit.assignedDietitianName && (
-                  <div className="col-span-2">
-                    <p className="text-surface-500 text-xs">Diyetisyen</p>
-                    <p>{selectedKit.assignedDietitianName}</p>
-                  </div>
-                )}
-                {selectedKit.assignedClientName && (
-                  <div className="col-span-2">
-                    <p className="text-surface-500 text-xs">Danisan</p>
-                    <p>{selectedKit.assignedClientName}</p>
-                  </div>
-                )}
+                {/* Kor analiz: Lab sadece barkod gorur; diyetisyen/danisan adi gosterilmez */}
               </div>
             )}
           </ModalBody>

@@ -425,7 +425,13 @@ export function ClientsListPage() {
                 <Button variant="outline" onClick={() => setModalOpen(false)}>
                   <X className="h-4 w-4" /> Kapat
                 </Button>
-                <Button variant="outline" onClick={() => toast.success('Kit atama acildi')}>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setModalOpen(false)
+                    if (selectedClient) navigate(danisanDetayPath(selectedClient.id))
+                  }}
+                >
                   <Boxes className="h-4 w-4" /> Kit Ata
                 </Button>
                 <Button variant="primary" onClick={() => navigate(danisanDuzenlePath(selectedClient.id))}>

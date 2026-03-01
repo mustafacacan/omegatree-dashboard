@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
-import { Button } from '@/components/ui'
+import { Button, Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { KitStatus, UserRole, UserStatus } from '@/utils/constants'
@@ -188,21 +188,21 @@ export function StockPage() {
                   onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
                 />
               </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 text-[12px] rounded-xl outline-none appearance-none cursor-pointer"
-                style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.text }}
-              >
-                <option value="all">Tum Durumlar</option>
-                <option value={KitStatus.IN_STOCK}>Stokta</option>
-                <option value={KitStatus.ASSIGNED}>Zimmetli</option>
-                <option value={KitStatus.DELIVERED}>Teslim Edildi</option>
-                <option value={KitStatus.RETURN_REQUESTED}>Iade Talebi</option>
-                <option value={KitStatus.IN_ANALYSIS}>Analizde</option>
-                <option value={KitStatus.COMPLETED}>Tamamlandi</option>
-                <option value={KitStatus.DAMAGED}>Hasarli</option>
-              </select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="min-w-[10rem]">
+                  <SelectValue placeholder="Tum Durumlar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tum Durumlar</SelectItem>
+                  <SelectItem value={KitStatus.IN_STOCK}>Stokta</SelectItem>
+                  <SelectItem value={KitStatus.ASSIGNED}>Zimmetli</SelectItem>
+                  <SelectItem value={KitStatus.DELIVERED}>Teslim Edildi</SelectItem>
+                  <SelectItem value={KitStatus.RETURN_REQUESTED}>Iade Talebi</SelectItem>
+                  <SelectItem value={KitStatus.IN_ANALYSIS}>Analizde</SelectItem>
+                  <SelectItem value={KitStatus.COMPLETED}>Tamamlandi</SelectItem>
+                  <SelectItem value={KitStatus.DAMAGED}>Hasarli</SelectItem>
+                </SelectContent>
+              </Select>
               <Button variant="primary" size="sm" onClick={() => setShowAssignModal(true)}>
                 <ArrowRightLeft className="h-4 w-4" />
                 Kit Zimmetle

@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import {
   Card, CardHeader, CardTitle, CardContent,
   Button, Input, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
+  Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
 } from '@/components/ui'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { Search, RotateCcw, CheckCircle, XCircle, History, Package } from 'lucide-react'
@@ -298,17 +299,17 @@ export function ReturnRequestsPage() {
             </ModalDescription>
           </ModalHeader>
           <ModalBody>
-            <label className="block text-sm font-medium text-surface-700 mb-2">Stoktaki barkod</label>
-            <select
-              value={compensationSelectedBarcode}
-              onChange={(e) => setCompensationSelectedBarcode(e.target.value)}
-              className="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm"
-            >
-              <option value="">Secin...</option>
-              {inStockBarcodes.map((b) => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-            </select>
+            <Select value={compensationSelectedBarcode || '_empty'} onValueChange={(v) => setCompensationSelectedBarcode(v === '_empty' ? '' : v)}>
+              <SelectTrigger label="Stoktaki barkod" className="w-full">
+                <SelectValue placeholder="Secin..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_empty">Secin...</SelectItem>
+                {inStockBarcodes.map((b) => (
+                  <SelectItem key={b} value={b}>{b}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {inStockBarcodes.length === 0 && (
               <p className="text-xs text-amber-600 mt-2">Stokta barkod yok. Once uretimden barkod uretin.</p>
             )}

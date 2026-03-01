@@ -5,6 +5,7 @@ import {
   Button, Input, Badge,
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
+  Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
 } from '@/components/ui'
 import { StatCard } from '@/components/shared/stat-card'
 import { TablePagination } from '@/components/shared/table-pagination'
@@ -206,15 +207,16 @@ export function ProductionCenterPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-52"
             />
-            <select
-              value={printFilter}
-              onChange={(e) => setPrintFilter(e.target.value as 'all' | 'printed' | 'pending')}
-              className="h-10 rounded-lg border border-surface-200 bg-white px-3 text-sm text-surface-700 outline-none"
-            >
-              <option value="all">Tum Basimlar</option>
-              <option value="pending">Basim Bekleyen</option>
-              <option value="printed">Basilanlar</option>
-            </select>
+            <Select value={printFilter} onValueChange={(v) => setPrintFilter(v as 'all' | 'printed' | 'pending')}>
+              <SelectTrigger className="h-10 min-w-[10rem]">
+                <SelectValue placeholder="Tum Basimlar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tum Basimlar</SelectItem>
+                <SelectItem value="pending">Basim Bekleyen</SelectItem>
+                <SelectItem value="printed">Basilanlar</SelectItem>
+              </SelectContent>
+            </Select>
             <Button variant="outline" size="sm" onClick={handlePrintBulk} disabled={pendingInView.length === 0}>
               <Printer className="h-4 w-4" />
               {selectedIds.length > 0 ? `Seciliyi Yazdir (${selectedIds.length})` : 'Toplu Yazdir'}

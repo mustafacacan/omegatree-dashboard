@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui'
+import { Button, Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface TablePaginationProps {
@@ -30,17 +30,18 @@ export function TablePagination({
     <div className={`flex flex-col gap-3 border-t border-surface-100 p-4 sm:flex-row sm:items-center sm:justify-between ${className ?? ''}`}>
       <div className="flex items-center gap-2 text-sm text-surface-600">
         <span>Sayfa basina</span>
-        <select
-          value={String(safePageSize)}
-          onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          className="h-9 rounded-lg border border-surface-200 bg-white px-2 text-sm text-surface-700 outline-none"
-        >
-          {pageSizeOptions.map((opt) => (
-            <option key={opt} value={String(opt)}>
-              {opt}
-            </option>
-          ))}
-        </select>
+        <Select value={String(safePageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
+          <SelectTrigger className="h-9 w-16 border-surface-200 bg-white px-2 text-surface-700">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {pageSizeOptions.map((opt) => (
+              <SelectItem key={opt} value={String(opt)}>
+                {opt}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <span>
           {start}-{end} / {totalItems}
         </span>
