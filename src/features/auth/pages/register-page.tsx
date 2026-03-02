@@ -7,29 +7,28 @@ import { Button, Input } from '@/components/ui'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui'
 import { UserRole } from '@/utils/constants'
 import { ROUTES } from '@/utils/routes'
-import { TreePine, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react'
+import { TreePine, Mail, User, Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useUsersStore } from '@/stores/users.store'
+import { register as apiRegister } from '@/services/auth.service'
 
 const registerSchema = z.object({
-  firstName: z.string().min(2, 'Ad en az 2 karakter olmali'),
-  lastName: z.string().min(2, 'Soyad en az 2 karakter olmali'),
-  email: z.string().email('Gecerli bir e-posta girin'),
-  phone: z.string().min(10, 'Gecerli bir telefon numarasi girin'),
-  password: z.string().min(6, 'Sifre en az 6 karakter olmali'),
-  confirmPassword: z.string(),
-  role: z.enum([UserRole.DIETITIAN, UserRole.LAB, UserRole.SPECIALIST]),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'Sifreler eslesmiyor',
-  path: ['confirmPassword'],
+  firstName: z.string().min(2, 'Ad en az 2 karakter olmalı'),
+  lastName: z.string().min(2, 'Soyad en az 2 karakter olmalı'),
+  email: z.string().email('Geçerli bir e-posta girin'),
+  phone: z.string().min(10, 'Geçerli bir telefon numarası girin'),
+  role: z.enum([UserRole.DIETITIAN, UserRole.DANISAN]),
+  gender: z.enum(['male', 'female']),
 })
 
 type RegisterForm = z.infer<typeof registerSchema>
 
+/** Uygulama rolünü API register rolüne çevirir (API: dietician | client) */
+function toApiRole(role: RegisterForm['role']): 'dietician' | 'client' {
+  return role === UserRole.DANISAN ? 'client' : 'dietician'
+}
+
 export function RegisterPage() {
   const navigate = useNavigate()
-  const { submitRegistration } = useUsersStore()
-  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const {
@@ -41,31 +40,29 @@ export function RegisterPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       role: UserRole.DIETITIAN,
+      gender: 'male',
     },
   })
 
   const onSubmit = async (data: RegisterForm) => {
     setLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 700))
-      const result = submitRegistration({
+      await apiRegister({
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
         phone: data.phone,
-        password: data.password,
-        role: data.role,
+        role: toApiRole(data.role),
+        gender: data.gender,
       })
-
-      if (!result.ok) {
-        toast.error(result.message)
-        return
-      }
-
-      toast.success(result.message)
+      toast.success('Hesabınız admin onayına gönderildi. Onaylandığında hesabınız aktif olacak ve telefona gelen SMS şifresi ile giriş yapabilirsiniz.')
       navigate(ROUTES.GIRIS)
-    } catch {
-      toast.error('Kayit yapilamadi. Lutfen tekrar deneyin.')
+    } catch (err: unknown) {
+      const res = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response
+        : null
+      const msg = res?.data?.message
+      toast.error(msg ?? 'Kayıt yapılamadı. Lütfen tekrar deneyin.')
     } finally {
       setLoading(false)
     }
@@ -84,9 +81,9 @@ export function RegisterPage() {
       </div>
 
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-surface-900">Kayit Olun</h2>
+        <h2 className="text-2xl font-bold text-surface-900">Kayıt Olun</h2>
         <p className="text-surface-500 mt-2">
-          Sisteme erisim icin hesap olusturun
+          Sisteme erişim için hesap oluşturun
         </p>
       </div>
 
@@ -94,14 +91,14 @@ export function RegisterPage() {
         <div className="grid grid-cols-2 gap-4">
           <Input
             label="Ad"
-            placeholder="Adiniz"
+            placeholder="Adınız"
             leftIcon={<User className="h-4 w-4" />}
             error={errors.firstName?.message}
             {...register('firstName')}
           />
           <Input
             label="Soyad"
-            placeholder="Soyadiniz"
+            placeholder="Soyadınız"
             error={errors.lastName?.message}
             {...register('lastName')}
           />
@@ -126,59 +123,52 @@ export function RegisterPage() {
         />
 
         <div className="space-y-1.5">
+          <label className="text-sm font-medium text-surface-700">Cinsiyet</label>
+          <Select
+            defaultValue="male"
+            onValueChange={(val) => setValue('gender', val as 'male' | 'female')}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Cinsiyet seçin" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="male">Erkek</SelectItem>
+              <SelectItem value="female">Kadin</SelectItem>
+            </SelectContent>
+          </Select>
+          {errors.gender && <p className="text-xs text-danger">{errors.gender.message}</p>}
+        </div>
+
+        <div className="space-y-1.5">
           <label className="text-sm font-medium text-surface-700">Rol</label>
           <Select
             defaultValue={UserRole.DIETITIAN}
             onValueChange={(val) => setValue('role', val as RegisterForm['role'])}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Rol secin" />
+              <SelectValue placeholder="Rol seçin" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={UserRole.DIETITIAN}>Diyetisyen / Doktor</SelectItem>
-              <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
-              <SelectItem value={UserRole.SPECIALIST}>Raporlama Uzmani</SelectItem>
+              <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
+              <SelectItem value={UserRole.DANISAN}>Danışan</SelectItem>
             </SelectContent>
           </Select>
           {errors.role && <p className="text-xs text-danger">{errors.role.message}</p>}
         </div>
 
-        <Input
-          label="Sifre"
-          type={showPassword ? 'text' : 'password'}
-          placeholder="En az 6 karakter"
-          leftIcon={<Lock className="h-4 w-4" />}
-          rightIcon={
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="hover:text-surface-600 transition-colors"
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          }
-          error={errors.password?.message}
-          {...register('password')}
-        />
-
-        <Input
-          label="Sifre Tekrar"
-          type="password"
-          placeholder="Sifrenizi tekrar girin"
-          leftIcon={<Lock className="h-4 w-4" />}
-          error={errors.confirmPassword?.message}
-          {...register('confirmPassword')}
-        />
+        <p className="text-xs text-surface-500">
+          Şifreniz kayıt sonrası telefonunuza SMS ile gönderilecektir.
+        </p>
 
         <Button type="submit" variant="gradient" size="lg" className="w-full" loading={loading}>
-          Kayit Ol
+          Kayıt Ol
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-surface-500">
-        Zaten hesabiniz var mi?{' '}
+        Zaten hesabınız var mı?{' '}
         <Link to={ROUTES.GIRIS} className="font-semibold text-primary-600 hover:text-primary-700">
-          Giris Yapin
+          Giriş Yapın
         </Link>
       </p>
     </div>

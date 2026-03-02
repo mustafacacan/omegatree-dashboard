@@ -13,6 +13,7 @@ import { PageLoader } from '@/components/shared/page-loader'
 import { RoleGuard, AuthRedirect, PendingApprovalPage } from '@/features/auth/components/role-guard'
 import { LoginPage } from '@/features/auth/pages/login-page'
 import { RegisterPage } from '@/features/auth/pages/register-page'
+import { ForgotPasswordPage } from '@/features/auth/pages/forgot-password-page'
 import { KvkkConsentPage } from '@/features/auth/pages/kvkk-consent-page'
 import { NotFoundPage } from '@/features/auth/pages/not-found-page'
 
@@ -81,6 +82,7 @@ export const router = createBrowserRouter([
     children: [
       { path: ROUTES.GIRIS, element: <LoginPage /> },
       { path: ROUTES.KAYIT, element: <RegisterPage /> },
+      { path: ROUTES.SIFREMI_UNUTTUM, element: <ForgotPasswordPage /> },
     ],
   },
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Card, CardHeader, CardTitle, CardContent, Button, Input, Badge, Avatar,
@@ -12,14 +13,19 @@ import { UserRole, UserStatus, USER_ROLE_LABELS } from '@/utils/constants'
 import { formatDate } from '@/lib/utils'
 import {
   Search, Plus, MoreHorizontal, UserCheck, UserX, Mail, Shield, Eye,
-  Filter, Download,
+  Filter, Download, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import type { User } from '@/types/user.types'
 import toast from 'react-hot-toast'
-import { useUsersStore } from '@/stores/users.store'
-import { useClientsStore } from '@/stores/clients.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { TablePagination } from '@/components/shared/table-pagination'
+import {
+  getUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  verifyUser,
+} from '@/services/users.service'
 
 const statusBadgeVariant: Record<UserStatus, 'success' | 'warning' | 'danger'> = {
   [UserStatus.ACTIVE]: 'success',
@@ -33,8 +39,11 @@ const statusLabels: Record<UserStatus, string> = {
   [UserStatus.SUSPENDED]: 'Askiya Alindi',
 }
 
+const USERS_QUERY_KEY = ['users'] as const
+
 export function UsersListPage() {
   const currentUser = useCurrentUser()
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [approvalOpen, setApprovalOpen] = useState(false)
@@ -48,18 +57,83 @@ export function UsersListPage() {
     lastName: '',
     email: '',
     phone: '',
-    password: '',
     role: UserRole.DIETITIAN as UserRole,
-    linkedClientId: '' as string,
+    gender: 'male' as 'male' | 'female',
   })
   const [roleToEdit, setRoleToEdit] = useState<UserRole>(UserRole.DIETITIAN)
-  const { users, approveUser, rejectUser, suspendUser, activateUser, createUserByAdmin, updateUserRole } = useUsersStore()
-  const { clients } = useClientsStore()
 
-  const linkableClients = useMemo(
-    () => clients.filter((c) => !users.some((u) => u.id === c.id)),
-    [clients, users]
-  )
+  const { data, isLoading } = useQuery({
+    queryKey: USERS_QUERY_KEY,
+    queryFn: async () => {
+      const res = await getUsers({ page: 1, limit: 500 })
+      return res.users
+    },
+  })
+  const users = data ?? []
+
+  const verifyMutation = useMutation({
+    mutationFn: verifyUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      setApprovalOpen(false)
+      setSelectedUser(null)
+      toast.success('Kullanıcı onaylandı')
+    },
+    onError: (err: unknown) => {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : null
+      toast.error(msg ?? 'Onay işlemi başarısız')
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      setApprovalOpen(false)
+      setSelectedUser(null)
+      toast.success('Kullanıcı başvurusu reddedildi')
+    },
+    onError: (err: unknown) => {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : null
+      toast.error(msg ?? 'İşlem başarısız')
+    },
+  })
+
+  const createMutation = useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      setNewUserOpen(false)
+      resetNewUserForm()
+      toast.success('Kullanıcı oluşturuldu')
+    },
+    onError: (err: unknown) => {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : null
+      toast.error(msg ?? 'Kullanıcı oluşturulamadı')
+    },
+  })
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ id, role }: { id: string; role: UserRole }) => updateUser(id, { role }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      setEditRoleOpen(false)
+      setSelectedUser(null)
+      toast.success('Rol güncellendi')
+    },
+    onError: (err: unknown) => {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : null
+      toast.error(msg ?? 'Rol güncellenemedi')
+    },
+  })
 
   const pendingUsers = useMemo(
     () => users.filter((u) => u.status === UserStatus.PENDING),
@@ -111,30 +185,24 @@ export function UsersListPage() {
       lastName: '',
       email: '',
       phone: '',
-      password: '',
       role: UserRole.DIETITIAN,
-      linkedClientId: '',
+      gender: 'male',
     })
   }
 
   const submitNewUser = () => {
-    const result = createUserByAdmin({
-      firstName: newUserForm.firstName,
-      lastName: newUserForm.lastName,
-      email: newUserForm.email,
-      phone: newUserForm.phone,
-      password: newUserForm.password,
-      role: newUserForm.role,
-      status: UserStatus.ACTIVE,
-      linkedClientId: newUserForm.role === UserRole.DANISAN && newUserForm.linkedClientId ? newUserForm.linkedClientId : undefined,
-    })
-    if (!result.ok) {
-      toast.error(result.message)
+    if (!newUserForm.firstName.trim() || !newUserForm.lastName.trim() || !newUserForm.phone.trim()) {
+      toast.error('Ad, soyad ve telefon zorunludur')
       return
     }
-    toast.success(result.message)
-    setNewUserOpen(false)
-    resetNewUserForm()
+    createMutation.mutate({
+      firstName: newUserForm.firstName.trim(),
+      lastName: newUserForm.lastName.trim(),
+      email: newUserForm.email.trim() || undefined,
+      phone: newUserForm.phone.trim(),
+      role: newUserForm.role,
+      gender: newUserForm.gender,
+    })
   }
 
   const openRoleEditor = (user: User) => {
@@ -150,14 +218,25 @@ export function UsersListPage() {
 
   const submitRoleUpdate = () => {
     if (!selectedUser) return
-    const result = updateUserRole(selectedUser.id, roleToEdit)
-    if (!result.ok) {
-      toast.error(result.message)
-      return
-    }
-    toast.success(result.message)
-    setEditRoleOpen(false)
-    setSelectedUser(null)
+    updateRoleMutation.mutate({ id: selectedUser.id, role: roleToEdit })
+  }
+
+  const handleApproveConfirm = () => {
+    if (!selectedUser) return
+    verifyMutation.mutate(selectedUser.id)
+  }
+
+  const handleRejectConfirm = () => {
+    if (!selectedUser) return
+    deleteMutation.mutate(selectedUser.id)
+  }
+
+  const handleSuspend = (_id: string) => {
+    toast.error('Hesap askıya alma API tarafında henüz desteklenmiyor')
+  }
+
+  const handleActivate = (_id: string) => {
+    toast.error('Hesap tekrar aktif etme API tarafında henüz desteklenmiyor')
   }
 
   return (
@@ -234,10 +313,11 @@ export function UsersListPage() {
                 users={filteredUsers}
                 currentUserId={currentUser?.id}
                 onApprove={handleApprove}
-                onSuspend={suspendUser}
-                onActivate={activateUser}
+                onSuspend={handleSuspend}
+                onActivate={handleActivate}
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
+                isLoading={isLoading}
               />
             </TabsContent>
             <TabsContent value="active">
@@ -245,10 +325,11 @@ export function UsersListPage() {
                 users={filteredUsers.filter(u => u.status === UserStatus.ACTIVE)}
                 currentUserId={currentUser?.id}
                 onApprove={handleApprove}
-                onSuspend={suspendUser}
-                onActivate={activateUser}
+                onSuspend={handleSuspend}
+                onActivate={handleActivate}
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
+                isLoading={isLoading}
               />
             </TabsContent>
             <TabsContent value="pending">
@@ -256,24 +337,63 @@ export function UsersListPage() {
                 users={filteredUsers.filter(u => u.status === UserStatus.PENDING)}
                 currentUserId={currentUser?.id}
                 onApprove={handleApprove}
-                onSuspend={suspendUser}
-                onActivate={activateUser}
+                onSuspend={handleSuspend}
+                onActivate={handleActivate}
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
+                isLoading={isLoading}
               />
             </TabsContent>
           </CardContent>
         </Card>
       </Tabs>
 
-      {/* Approval Modal */}
+      {/* Approval Modal — carousel ile bekleyen kullanıcılar arasında gezinme */}
       <Modal open={approvalOpen} onOpenChange={setApprovalOpen}>
         <ModalContent>
           <ModalHeader>
-            <ModalTitle>Kullanici Onay</ModalTitle>
-            <ModalDescription>
-              Bu kullaniciyi aktif hale getirmek istiyor musunuz?
-            </ModalDescription>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <ModalTitle>Kullanıcı Onay</ModalTitle>
+                <ModalDescription>
+                  {pendingUsers.length > 0
+                    ? `${pendingUsers.length} kullanıcı onay bekliyor. İleri/geri ile inceleyin.`
+                    : 'Bu kullanıcıyı aktif hale getirmek istiyor musunuz?'}
+                </ModalDescription>
+              </div>
+              {pendingUsers.length > 1 && selectedUser && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      const idx = pendingUsers.findIndex((u) => u.id === selectedUser.id)
+                      if (idx > 0) setSelectedUser(pendingUsers[idx - 1])
+                    }}
+                    disabled={pendingUsers.findIndex((u) => u.id === selectedUser.id) <= 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium text-surface-600 tabular-nums">
+                    {pendingUsers.findIndex((u) => u.id === selectedUser.id) + 1} / {pendingUsers.length}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      const idx = pendingUsers.findIndex((u) => u.id === selectedUser.id)
+                      if (idx >= 0 && idx < pendingUsers.length - 1) setSelectedUser(pendingUsers[idx + 1])
+                    }}
+                    disabled={
+                      pendingUsers.findIndex((u) => u.id === selectedUser.id) >= pendingUsers.length - 1 ||
+                      pendingUsers.findIndex((u) => u.id === selectedUser.id) < 0
+                    }
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </ModalHeader>
           {selectedUser && (
             <ModalBody>
@@ -294,26 +414,17 @@ export function UsersListPage() {
           <ModalFooter>
             <Button
               variant="outline"
-              onClick={() => {
-                if (selectedUser) {
-                  rejectUser(selectedUser.id)
-                }
-                setApprovalOpen(false)
-                toast.success('Kullanici basvurusu reddedildi')
-              }}
+              onClick={handleRejectConfirm}
+              disabled={verifyMutation.isPending || deleteMutation.isPending}
             >
               <UserX className="h-4 w-4" />
               Reddet
             </Button>
             <Button
               variant="default"
-              onClick={() => {
-                if (selectedUser) {
-                  approveUser(selectedUser.id)
-                }
-                setApprovalOpen(false)
-                toast.success('Kullanici onaylandi')
-              }}
+              onClick={handleApproveConfirm}
+              loading={verifyMutation.isPending}
+              disabled={deleteMutation.isPending}
             >
               <UserCheck className="h-4 w-4" />
               Onayla
@@ -352,60 +463,52 @@ export function UsersListPage() {
               label="Telefon"
               value={newUserForm.phone}
               onChange={(e) => setNewUserForm((s) => ({ ...s, phone: e.target.value }))}
+              placeholder="05XX XXX XX XX"
             />
-            <Input
-              label="Sifre"
-              type="password"
-              value={newUserForm.password}
-              onChange={(e) => setNewUserForm((s) => ({ ...s, password: e.target.value }))}
-            />
-            <Select
-              value={newUserForm.role}
-              onValueChange={(value) => setNewUserForm((s) => ({ ...s, role: value as UserRole, linkedClientId: '' }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Rol secin" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
-                <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
-                <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
-                <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
-                <SelectItem value={UserRole.DANISAN}>Danisan</SelectItem>
-              </SelectContent>
-            </Select>
-            {newUserForm.role === UserRole.DANISAN && (
-              <div className="space-y-1.5">
-                <label className="block text-[13px] font-medium text-surface-700">
-                  Mevcut danisan (client) ile eslestir
-                </label>
-                <Select
-                  value={newUserForm.linkedClientId || 'none'}
-                  onValueChange={(v) => setNewUserForm((s) => ({ ...s, linkedClientId: v === 'none' ? '' : v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seciniz — portalda bu danisanin kit/raporu gorunur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Eslestirme (yeni danisan)</SelectItem>
-                    {linkableClients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name} ({c.email || c.phone})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-surface-500">
-                  Secerseniz bu kullanici, secilen danisan kaydi ile ayni kimlikte olur; o danisana atanan kit/raporlar portalda gorunur.
-                </p>
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
+              <Select
+                value={newUserForm.gender}
+                onValueChange={(v) => setNewUserForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Erkek</SelectItem>
+                  <SelectItem value="female">Kadın</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-[13px] font-medium text-surface-700">Rol</label>
+              <Select
+                value={newUserForm.role}
+                onValueChange={(value) => setNewUserForm((s) => ({ ...s, role: value as UserRole }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Rol seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
+                  <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
+                  <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
+                  <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
+                  <SelectItem value={UserRole.DANISAN}>Danışan</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-surface-500">
+              Şifre kullanıcıya SMS ile gönderilir.
+            </p>
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" onClick={() => { setNewUserOpen(false); resetNewUserForm() }}>
-              Iptal
+              İptal
             </Button>
-            <Button onClick={submitNewUser}>Kullanici Olustur</Button>
+            <Button onClick={submitNewUser} loading={createMutation.isPending}>
+              Kullanıcı Oluştur
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -504,6 +607,7 @@ function UserTable({
   onActivate,
   onEditRole,
   onViewProfile,
+  isLoading,
 }: {
   users: User[]
   currentUserId?: string
@@ -512,6 +616,7 @@ function UserTable({
   onActivate: (id: string) => void
   onEditRole: (u: User) => void
   onViewProfile: (u: User) => void
+  isLoading?: boolean
 }) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -545,14 +650,21 @@ function UserTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {users.length === 0 && (
+          {isLoading && (
             <TableRow>
               <TableCell colSpan={6} className="py-10 text-center text-sm text-surface-500">
-                Filtreye uygun kullanici bulunamadi.
+                Yükleniyor...
               </TableCell>
             </TableRow>
           )}
-            {paginatedUsers.map((user) => (
+          {!isLoading && users.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={6} className="py-10 text-center text-sm text-surface-500">
+                Filtreye uygun kullanıcı bulunamadı.
+              </TableCell>
+            </TableRow>
+          )}
+          {!isLoading && paginatedUsers.map((user) => (
               <TableRow key={user.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">

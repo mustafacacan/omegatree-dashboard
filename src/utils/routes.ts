@@ -4,6 +4,7 @@ import { UserRole } from '@/utils/constants'
 export const ROUTES = {
   GIRIS: '/giris',
   KAYIT: '/kayit',
+  SIFREMI_UNUTTUM: '/sifremi-unuttum',
   KVKK_ONAY: '/kvkk-onay',
   ONAY_BEKLIYOR: '/onay-bekliyor',
 

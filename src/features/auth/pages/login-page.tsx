@@ -11,6 +11,7 @@ import { TreePine, Mail, Lock, Eye, EyeOff, Shield, FlaskConical, TestTubes, Ste
 import toast from 'react-hot-toast'
 import { useUsersStore } from '@/stores/users.store'
 import type { User as AppUser } from '@/types/user.types'
+import { login as apiLogin } from '@/services/auth.service'
 
 const loginSchema = z.object({
   email: z.string().email('Gecerli bir e-posta adresi girin'),
@@ -75,20 +76,25 @@ export function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800))
-
-      const authResult = authenticate(data.email, data.password)
-      if (authResult.ok) {
-        await doLogin(authResult.user)
-      } else if (authResult.reason === 'PENDING_APPROVAL') {
-        toast.error('Kaydiniz admin onayi bekliyor. Onaydan sonra giris yapabilirsiniz.')
-      } else if (authResult.reason === 'SUSPENDED') {
-        toast.error('Hesabiniz askiya alinmis. Lutfen yonetici ile iletisime gecin.')
+      const { user, token } = await apiLogin(data.email, data.password)
+      setAuth({ ...user, status: UserStatus.ACTIVE }, token)
+      const displayName = `${user.firstName} ${user.lastName}`.trim()
+      toast.success(`Hoş geldiniz, ${displayName}!`)
+      navigate(ROLE_HOME[user.role])
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { message?: string }; status?: number } }).response?.data?.message
+          : err instanceof Error
+            ? err.message
+            : null
+      if ((err as { response?: { status?: number } })?.response?.status === 401) {
+        toast.error('Geçersiz e-posta veya şifre. Hesap onay bekliyor olabilir.')
+      } else if (msg) {
+        toast.error(msg)
       } else {
-        toast.error('Gecersiz e-posta veya sifre')
+        toast.error('Giriş yapılamadı. API bağlantısını ve bilgilerinizi kontrol edin.')
       }
-    } catch {
-      toast.error('Giris yapilamadi. Lutfen tekrar deneyin.')
     } finally {
       setLoading(false)
     }
@@ -216,10 +222,10 @@ export function LoginPage() {
             <span className="text-sm text-surface-600">Beni hatirla</span>
           </label>
           <Link
-            to={ROUTES.GIRIS}
+            to={ROUTES.SIFREMI_UNUTTUM}
             className="text-sm text-primary-600 hover:text-primary-700 font-medium"
           >
-            Sifremi Unuttum
+            Şifremi Unuttum
           </Link>
         </div>
 
