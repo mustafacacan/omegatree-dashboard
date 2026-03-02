@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Button, Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui'
-import { StatusBadge } from '@/components/shared/status-badge'
 import { TablePagination } from '@/components/shared/table-pagination'
-import { KitStatus, UserRole, UserStatus } from '@/utils/constants'
 import { formatDate } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Package, Boxes, Search, ArrowRightLeft, AlertTriangle,
   TrendingUp, TrendingDown, X, Check,
-  User, Send, CheckCircle,
+  User, Send, CheckCircle, Loader2,
 } from 'lucide-react'
-import { useWorkflowStore } from '@/stores/workflow.store'
-import { useUsersStore } from '@/stores/users.store'
+import toast from 'react-hot-toast'
+import { getStocks, type Stock, type StockStatus } from '@/services/stocks.service'
+import { getDieticians, assignKitsToDietician, type DieticianOption } from '@/services/kits.service'
 
 const W = {
   olive: '#8B9A4B', oliveLight: '#EEF2DE',
@@ -24,80 +23,148 @@ const W = {
   text: '#4A4640', textLight: '#9C968D', warmGrayLight: '#B5AFA5',
 }
 
+const STOCK_STATUS_LABELS: Record<StockStatus, string> = {
+  available: 'Stokta',
+  used: 'Kullanıldı',
+  expired: 'Süresi geçmiş',
+  approval_pending: 'Onay bekliyor',
+}
+
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function StockPage() {
-  const { kits, assignKitsToDietitian } = useWorkflowStore()
-  const { users } = useUsersStore()
+  const [stockList, setStockList] = useState<Stock[]>([])
+  const [totalItems, setTotalItems] = useState(0)
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showAssignModal, setShowAssignModal] = useState(false)
-  const [selectedKits, setSelectedKits] = useState<string[]>([])
-  const [selectedDietitian, setSelectedDietitian] = useState<string | null>(null)
+  const [assignModalStocks, setAssignModalStocks] = useState<Stock[]>([])
+  const [assignModalLoading, setAssignModalLoading] = useState(false)
+  const [dietitiansList, setDietitiansList] = useState<DieticianOption[]>([])
+  const [selectedKitIds, setSelectedKitIds] = useState<number[]>([])
+  const [selectedDietitianId, setSelectedDietitianId] = useState<number | null>(null)
   const [assignSuccess, setAssignSuccess] = useState(false)
+  const [assigning, setAssigning] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
-  const availableKits = kits.filter(k => k.status === KitStatus.IN_STOCK)
-  const dietitians = users
-    .filter((u) => u.role === UserRole.DIETITIAN && u.status === UserStatus.ACTIVE)
-    .map((u) => ({
-      id: u.id,
-      name: `${u.firstName} ${u.lastName}`.trim(),
-      kitCount: kits.filter((k) => k.assignedDietitianId === u.id && k.status !== KitStatus.COMPLETED).length,
-    }))
+  const availableStocksForModal = useMemo(
+    () => assignModalStocks.filter((s) => s.status === 'available' && s.kitId?.id),
+    [assignModalStocks]
+  )
+
+  const fetchStocks = () => {
+    setLoading(true)
+    getStocks({
+      page,
+      limit: pageSize,
+      search: searchQuery || undefined,
+      sort: 'desc',
+    })
+      .then((res) => {
+        setStockList(res.data)
+        setTotalItems(res.totalItems)
+      })
+      .catch(() => setStockList([]))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    getStocks({
+      page,
+      limit: pageSize,
+      search: searchQuery || undefined,
+      sort: 'desc',
+    })
+      .then((res) => {
+        if (!cancelled) {
+          setStockList(res.data)
+          setTotalItems(res.totalItems)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStockList([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [page, pageSize, searchQuery])
+
+  useEffect(() => {
+    if (!showAssignModal) return
+    setAssignModalLoading(true)
+    setAssignModalStocks([])
+    setDietitiansList([])
+    Promise.all([
+      getStocks({ page: 1, limit: 200, sort: 'desc' }),
+      getDieticians(),
+    ])
+      .then(([stocksRes, dieticians]) => {
+        setAssignModalStocks(stocksRes.data)
+        setDietitiansList(dieticians)
+      })
+      .catch(() => {
+        setAssignModalStocks([])
+        setDietitiansList([])
+      })
+      .finally(() => setAssignModalLoading(false))
+  }, [showAssignModal])
 
   const filteredStock = useMemo(() => {
-    return kits.filter(kit => {
-      const matchSearch = !searchQuery || kit.barcode.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchStatus = statusFilter === 'all' || kit.status === statusFilter
-      return matchSearch && matchStatus
+    return stockList.filter((s) => {
+      const matchStatus = statusFilter === 'all' || s.status === statusFilter
+      return matchStatus
     })
-  }, [kits, searchQuery, statusFilter])
-  const paginatedStock = useMemo(
-    () => filteredStock.slice((page - 1) * pageSize, page * pageSize),
-    [filteredStock, page, pageSize]
-  )
+  }, [stockList, statusFilter])
+  const tableRows = filteredStock
 
   useEffect(() => {
     setPage(1)
   }, [searchQuery, statusFilter])
 
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(filteredStock.length / pageSize))
-    if (page > totalPages) {
-      setPage(totalPages)
-    }
-  }, [filteredStock.length, page, pageSize])
-
   const stats = useMemo(() => ({
-    inStock: kits.filter(k => k.status === KitStatus.IN_STOCK).length,
-    assigned: kits.filter(k => k.status === KitStatus.ASSIGNED).length,
-    inProcess: kits.filter(
-      (k) =>
-        k.status === KitStatus.DELIVERED ||
-        k.status === KitStatus.SAMPLE_SENT ||
-        k.status === KitStatus.IN_ANALYSIS
-    ).length,
-    damaged: kits.filter(k => k.status === KitStatus.DAMAGED).length,
-  }), [kits])
+    inStock: stockList.filter((s) => s.status === 'available').length,
+    assigned: stockList.filter((s) => s.status === 'used').length,
+    inProcess: stockList.filter((s) => s.status === 'approval_pending').length,
+    damaged: stockList.filter((s) => s.status === 'expired').length,
+  }), [stockList])
 
-  const toggleKitSelect = (barcode: string) => {
-    setSelectedKits(prev => prev.includes(barcode) ? prev.filter(b => b !== barcode) : [...prev, barcode])
+  const toggleKitSelect = (kitId: number) => {
+    setSelectedKitIds((prev) =>
+      prev.includes(kitId) ? prev.filter((id) => id !== kitId) : [...prev, kitId]
+    )
   }
 
   const handleAssign = () => {
-    if (!selectedDietitian || selectedKits.length === 0) return
-    const dietitian = dietitians.find((d) => d.id === selectedDietitian)
-    if (!dietitian) return
-    assignKitsToDietitian(dietitian.id, dietitian.name, selectedKits, 'Admin')
-    setAssignSuccess(true)
-    setTimeout(() => {
-      setAssignSuccess(false)
-      setShowAssignModal(false)
-      setSelectedKits([])
-      setSelectedDietitian(null)
-    }, 2000)
+    if (selectedDietitianId == null || selectedKitIds.length === 0) return
+    setAssigning(true)
+    assignKitsToDietician(selectedDietitianId, selectedKitIds)
+      .then(() => {
+        setAssignSuccess(true)
+        fetchStocks()
+        toast.success(`${selectedKitIds.length} kit diyetisyene zimmetlendi.`)
+        setTimeout(() => {
+          setAssignSuccess(false)
+          setShowAssignModal(false)
+          setSelectedKitIds([])
+          setSelectedDietitianId(null)
+        }, 2000)
+      })
+      .catch((err: { response?: { data?: { message?: string } }; message?: string }) => {
+        toast.error(err?.response?.data?.message || err?.message || 'Zimmetleme yapılamadı.')
+      })
+      .finally(() => setAssigning(false))
+  }
+
+  const closeAssignModal = () => {
+    setShowAssignModal(false)
+    setSelectedKitIds([])
+    setSelectedDietitianId(null)
+    setAssignSuccess(false)
   }
 
   return (
@@ -159,7 +226,7 @@ export function StockPage() {
           <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
             <div>
               <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kit Envanter</h3>
-              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Tum kitlerin guncel durumu ({filteredStock.length} kit)</p>
+              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Tüm kitlerin güncel durumu ({totalItems} kit)</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <div className="relative">
@@ -180,14 +247,11 @@ export function StockPage() {
                   <SelectValue placeholder="Tum Durumlar" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tum Durumlar</SelectItem>
-                  <SelectItem value={KitStatus.IN_STOCK}>Stokta</SelectItem>
-                  <SelectItem value={KitStatus.ASSIGNED}>Zimmetli</SelectItem>
-                  <SelectItem value={KitStatus.DELIVERED}>Teslim Edildi</SelectItem>
-                  <SelectItem value={KitStatus.RETURN_REQUESTED}>Iade Talebi</SelectItem>
-                  <SelectItem value={KitStatus.IN_ANALYSIS}>Analizde</SelectItem>
-                  <SelectItem value={KitStatus.COMPLETED}>Tamamlandi</SelectItem>
-                  <SelectItem value={KitStatus.DAMAGED}>Hasarli</SelectItem>
+                  <SelectItem value="all">Tüm Durumlar</SelectItem>
+                  <SelectItem value="available">Stokta</SelectItem>
+                  <SelectItem value="used">Kullanıldı</SelectItem>
+                  <SelectItem value="expired">Süresi geçmiş</SelectItem>
+                  <SelectItem value="approval_pending">Onay bekliyor</SelectItem>
                 </SelectContent>
               </Select>
               <Button variant="primary" size="sm" onClick={() => setShowAssignModal(true)}>
@@ -208,40 +272,65 @@ export function StockPage() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedStock.map((kit) => (
-                  <tr
-                    key={kit.barcode}
-                    className="transition-colors"
-                    style={{ borderBottom: `1px solid ${W.warmBorder}` }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                  >
-                    <td className="px-5 py-3.5">
-                      <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <StatusBadge status={kit.status as KitStatus} />
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="text-[12px]" style={{ color: W.text }}>
-                        {kit.assignedDietitianName ? (
-                          <span className="flex items-center gap-1.5">
-                            <User className="h-3 w-3" style={{ color: W.olive }} />
-                            {kit.assignedDietitianName}
-                          </span>
-                        ) : kit.location}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="text-[12px]" style={{ color: W.textLight }}>{formatDate(kit.createdAt)}</span>
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-12 text-center">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
+                      <p className="text-[12px]" style={{ color: W.textLight }}>Stok listesi yükleniyor...</p>
                     </td>
                   </tr>
-                ))}
+                ) : tableRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-12 text-center text-[12px]" style={{ color: W.textLight }}>
+                      Kayıt bulunamadı.
+                    </td>
+                  </tr>
+                ) : (
+                  tableRows.map((s) => (
+                    <tr
+                      key={s.id}
+                      className="transition-colors"
+                      style={{ borderBottom: `1px solid ${W.warmBorder}` }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      <td className="px-5 py-3.5">
+                        <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{s.kitId?.barcode ?? '—'}</code>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
+                          style={{
+                            background: s.status === 'available' ? W.oliveLight : s.status === 'used' ? W.orangeLight : s.status === 'expired' ? '#FDE8E8' : W.amberLight,
+                            color: s.status === 'available' ? '#5A6B2A' : s.status === 'used' ? W.orange : s.status === 'expired' ? '#C53030' : '#78600A',
+                          }}
+                        >
+                          {s.status ? STOCK_STATUS_LABELS[s.status] : '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-[12px]" style={{ color: W.text }}>
+                          {s.userId ? (
+                            <span className="flex items-center gap-1.5">
+                              <User className="h-3 w-3" style={{ color: W.olive }} />
+                              {[s.userId.firstName, s.userId.lastName].filter(Boolean).join(' ') || `#${s.userId.id}`}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-[12px]" style={{ color: W.textLight }}>{formatDate(s.createdAt)}</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
           <TablePagination
-            totalItems={filteredStock.length}
+            totalItems={totalItems}
             page={page}
             pageSize={pageSize}
             onPageChange={setPage}
@@ -260,7 +349,7 @@ export function StockPage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: 'rgba(45,42,38,0.5)', backdropFilter: 'blur(4px)' }}
-            onClick={() => { setShowAssignModal(false); setSelectedKits([]); setSelectedDietitian(null); setAssignSuccess(false) }}
+            onClick={closeAssignModal}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -281,7 +370,7 @@ export function StockPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setShowAssignModal(false); setSelectedKits([]); setSelectedDietitian(null); setAssignSuccess(false) }}
+                  onClick={closeAssignModal}
                   className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors"
                   style={{ background: W.cream, color: W.text }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }}
@@ -298,7 +387,7 @@ export function StockPage() {
                   </div>
                   <h3 className="text-[16px] font-bold" style={{ color: W.dark }}>Zimmetleme Basarili!</h3>
                   <p className="text-[13px] mt-2" style={{ color: W.textLight }}>
-                    {selectedKits.length} kit secilen diyetisyene zimmetlendi.
+                    {selectedKitIds.length} kit seçilen diyetisyene zimmetlendi.
                     Diyetisyen kiti teslim aldiginda barkod numarasini girerek stoguna ekleyecek.
                   </p>
                 </div>
@@ -309,23 +398,26 @@ export function StockPage() {
                     <div className="flex items-center gap-2 mb-3">
                       <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{ background: W.olive }}>1</div>
                       <span className="text-[13px] font-semibold" style={{ color: W.dark }}>Kit Secin</span>
-                      {selectedKits.length > 0 && (
+                      {selectedKitIds.length > 0 && (
                         <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: W.oliveLight, color: W.olive }}>
-                          {selectedKits.length} secildi
+                          {selectedKitIds.length} seçildi
                         </span>
                       )}
                     </div>
                     <div className="max-h-[160px] overflow-y-auto space-y-1.5 pr-1">
-                      {availableKits.length === 0 ? (
+                      {assignModalLoading ? (
+                        <p className="text-[12px] text-center py-4" style={{ color: W.textLight }}>Yükleniyor...</p>
+                      ) : availableStocksForModal.length === 0 ? (
                         <p className="text-[12px] text-center py-4" style={{ color: W.textLight }}>Stokta uygun kit bulunmuyor</p>
                       ) : (
-                        availableKits.map((kit) => {
-                          const selected = selectedKits.includes(kit.barcode)
+                        availableStocksForModal.map((s) => {
+                          const kitId = s.kitId?.id ?? 0
+                          const selected = selectedKitIds.includes(kitId)
                           return (
                             <button
-                              key={kit.barcode}
+                              key={s.id}
                               type="button"
-                              onClick={() => toggleKitSelect(kit.barcode)}
+                              onClick={() => toggleKitSelect(kitId)}
                               className="flex items-center gap-3 w-full p-3 rounded-xl text-left transition-all"
                               style={{
                                 background: selected ? W.oliveLight : W.cream,
@@ -342,9 +434,10 @@ export function StockPage() {
                                 {selected && <Check className="h-3 w-3 text-white" />}
                               </div>
                               <div className="flex-1">
-                                <code className="text-[12px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
+                                <code className="text-[12px] font-mono font-bold" style={{ color: W.dark }}>{s.kitId?.barcode ?? '—'}</code>
+                                {s.kitId?.name && <span className="text-[10px] block mt-0.5" style={{ color: W.textLight }}>{s.kitId.name}</span>}
                               </div>
-                              <span className="text-[10px]" style={{ color: W.textLight }}>{formatDate(kit.createdAt)}</span>
+                              <span className="text-[10px]" style={{ color: W.textLight }}>{formatDate(s.createdAt)}</span>
                             </button>
                           )
                         })
@@ -355,17 +448,17 @@ export function StockPage() {
                   {/* Step 2: Select Dietitian */}
                   <div className="p-5" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{ background: selectedKits.length > 0 ? W.olive : W.warmGrayLight }}>2</div>
-                      <span className="text-[13px] font-semibold" style={{ color: W.dark }}>Diyetisyen Secin</span>
+                      <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{ background: selectedKitIds.length > 0 ? W.olive : W.warmGrayLight }}>2</div>
+                      <span className="text-[13px] font-semibold" style={{ color: W.dark }}>Diyetisyen seçin</span>
                     </div>
                     <div className="space-y-1.5">
-                      {dietitians.map((d) => {
-                        const sel = selectedDietitian === d.id
+                      {dietitiansList.map((d) => {
+                        const sel = selectedDietitianId === d.id
                         return (
                           <button
                             key={d.id}
                             type="button"
-                            onClick={() => setSelectedDietitian(sel ? null : d.id)}
+                            onClick={() => setSelectedDietitianId(sel ? null : d.id)}
                             className="flex items-center gap-3 w-full p-3 rounded-xl text-left transition-all"
                             style={{
                               background: sel ? W.orangeLight : W.cream,
@@ -373,11 +466,10 @@ export function StockPage() {
                             }}
                           >
                             <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold" style={{ background: sel ? W.orange : W.creamDark, color: sel ? '#fff' : W.text }}>
-                              {d.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                              {d.label.split(' ').map(n => n[0]).join('').slice(0, 2)}
                             </div>
                             <div className="flex-1">
-                              <p className="text-[12px] font-semibold" style={{ color: W.dark }}>{d.name}</p>
-                              <p className="text-[10px]" style={{ color: W.textLight }}>{d.kitCount} aktif kit</p>
+                              <p className="text-[12px] font-semibold" style={{ color: W.dark }}>{d.label}</p>
                             </div>
                             {sel && <Check className="h-4 w-4" style={{ color: W.orange }} />}
                           </button>
@@ -395,10 +487,10 @@ export function StockPage() {
                       variant="primary"
                       size="sm"
                       onClick={handleAssign}
-                      disabled={selectedKits.length === 0 || !selectedDietitian}
+                      disabled={selectedKitIds.length === 0 || selectedDietitianId == null || assigning}
                     >
-                      <Send className="h-3.5 w-3.5" />
-                      Zimmetle ({selectedKits.length})
+                      {assigning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      Zimmetle ({selectedKitIds.length})
                     </Button>
                   </div>
                 </>

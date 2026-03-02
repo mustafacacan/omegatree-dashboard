@@ -1,310 +1,394 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Card,
-  Button, Input,
-  Modal, ModalContent, ModalHeader, ModalTitle, ModalBody, ModalFooter,
+  Card, CardHeader, CardTitle, CardContent,
+  Button, Input, Badge,
+  Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
 } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
-import { DollarSign, Pencil, Package, Layers, Plus, Trash2, Info } from 'lucide-react'
+import { Plus, Pencil, Search, ImageIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useWorkflowStore, type PriceBundle } from '@/stores/workflow.store'
-import { motion } from 'framer-motion'
+import {
+  getSalesKits,
+  createSalesKit,
+  updateSalesKit,
+  getSalesKitImageUrl,
+  type SalesKit,
+} from '@/services/sales-kits.service'
 
-const W = {
-  olive: '#8B9A4B',
-  oliveLight: '#EEF2DE',
-  orange: '#E8913A',
-  orangeLight: '#FDF0E2',
-  amber: '#F5C842',
-  amberLight: '#FDF8E8',
-  green: '#6ABF69',
-  greenLight: '#E8F5E8',
-  cream: '#F9F7F3',
-  creamDark: '#F0EDE7',
-  warmBorder: '#E8E4DE',
-  dark: '#2D2A26',
-  text: '#4A4640',
-  textLight: '#9C968D',
-  warmGrayLight: '#B5AFA5',
-}
-
-const fadeUp = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 } }
+const SALES_KITS_QUERY_KEY = ['sales-kits'] as const
 
 export function PricingPage() {
-  const { priceTiers, setPricingTiers } = useWorkflowStore()
-  const [singleEditOpen, setSingleEditOpen] = useState(false)
-  const [singleEditValue, setSingleEditValue] = useState('')
-  const [bundlesOpen, setBundlesOpen] = useState(false)
-  const [tiersBundles, setTiersBundles] = useState<{ quantity: string; total: string }[]>([])
+  const queryClient = useQueryClient()
+  const [searchQuery, setSearchQuery] = useState('')
 
-  const openSingleEditModal = () => {
-    setSingleEditValue(String(priceTiers.singleKitPrice))
-    setSingleEditOpen(true)
-  }
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editKit, setEditKit] = useState<SalesKit | null>(null)
+  const [formName, setFormName] = useState('')
+  const [formDescription, setFormDescription] = useState('')
+  const [formQuantity, setFormQuantity] = useState('')
+  const [formPrice, setFormPrice] = useState('')
+  const [formFile, setFormFile] = useState<File | null>(null)
+  const [formFilePreview, setFormFilePreview] = useState<string | null>(null)
+  const [failedImageIds, setFailedImageIds] = useState<Set<number>>(new Set())
 
-  const openBundlesModal = () => {
-    setTiersBundles(
-      priceTiers.bundles.length > 0
-        ? priceTiers.bundles.map((b) => ({ quantity: String(b.quantity), total: String(b.total) }))
-        : [{ quantity: '', total: '' }]
+  const { data: apiList = [], isLoading } = useQuery<SalesKit[]>({
+    queryKey: SALES_KITS_QUERY_KEY,
+    queryFn: getSalesKits,
+  })
+
+  const createMutation = useMutation<
+    SalesKit,
+    { response?: { data?: { message?: string } } },
+    Parameters<typeof createSalesKit>[0]
+  >({
+    mutationFn: createSalesKit,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SALES_KITS_QUERY_KEY })
+      setCreateOpen(false)
+      resetForm()
+      toast.success('Satış kiti oluşturuldu')
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err?.response?.data?.message ?? 'Oluşturulamadı')
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof updateSalesKit>[1] }) =>
+      updateSalesKit(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SALES_KITS_QUERY_KEY })
+      setEditKit(null)
+      resetForm()
+      toast.success('Satış kiti güncellendi')
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err?.response?.data?.message ?? 'Güncellenemedi')
+    },
+  })
+
+  useEffect(() => {
+    setFailedImageIds(new Set())
+  }, [apiList])
+
+  const filteredList = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return apiList
+    return apiList.filter(
+      (k) =>
+        k.name.toLowerCase().includes(q) ||
+        (k.description?.toLowerCase().includes(q)) ||
+        String(k.id).includes(q)
     )
-    setBundlesOpen(true)
+  }, [apiList, searchQuery])
+
+  function resetForm() {
+    setFormName('')
+    setFormDescription('')
+    setFormQuantity('')
+    setFormPrice('')
+    setFormFile(null)
+    setFormFilePreview(null)
   }
 
-  const addBundleRow = () => setTiersBundles((prev) => [...prev, { quantity: '', total: '' }])
-  const removeBundleRow = (index: number) =>
-    setTiersBundles((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)))
-  const updateBundleRow = (index: number, field: 'quantity' | 'total', value: string) =>
-    setTiersBundles((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)))
+  const openCreate = () => {
+    resetForm()
+    setCreateOpen(true)
+  }
 
-  const submitSinglePrice = () => {
-    const single = Number(singleEditValue)
-    if (!Number.isFinite(single) || single <= 0) {
-      toast.error('Tekil kit fiyati gecerli bir sayi olmali.')
+  const openEdit = (kit: SalesKit) => {
+    setEditKit(kit)
+    setFormName(kit.name)
+    setFormDescription(kit.description ?? '')
+    setFormQuantity(String(kit.quantity))
+    setFormPrice(String(kit.price))
+    setFormFile(null)
+    setFormFilePreview(getSalesKitImageUrl(kit.imageData?.url) ?? null)
+  }
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setFormFile(file)
+      setFormFilePreview(URL.createObjectURL(file))
+    } else {
+      setFormFile(null)
+      setFormFilePreview(null)
+    }
+  }
+
+  const handleCreate = () => {
+    const name = formName.trim()
+    const quantity = Math.floor(Number(formQuantity))
+    const price = Number(formPrice)
+    if (!name) {
+      toast.error('Ad girin')
       return
     }
-    setPricingTiers(single, priceTiers.bundles, 'Admin')
-    toast.success('Tekil fiyat guncellendi.')
-    setSingleEditOpen(false)
+    if (!Number.isFinite(quantity) || quantity < 0) {
+      toast.error('Geçerli miktar girin')
+      return
+    }
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error('Geçerli fiyat girin')
+      return
+    }
+    createMutation.mutate({
+      name,
+      description: formDescription.trim() || undefined,
+      quantity,
+      price,
+      file: formFile ?? undefined,
+    })
   }
 
-  const submitBundles = () => {
-    const single = priceTiers.singleKitPrice
-    const bundles: PriceBundle[] = []
-    for (let i = 0; i < tiersBundles.length; i++) {
-      const qty = Math.floor(Number(tiersBundles[i].quantity))
-      const total = Number(tiersBundles[i].total)
-      if (!Number.isFinite(qty) || qty < 2) continue
-      if (!Number.isFinite(total) || total <= 0) continue
-      if (total >= single * qty) {
-        toast.error(`${qty} adet paket toplam fiyati, tekil fiyatin ${qty} katindan dusuk olmali (indirim icin).`)
-        return
-      }
-      bundles.push({ quantity: qty, total })
+  const handleUpdate = () => {
+    if (!editKit) return
+    const name = formName.trim()
+    const quantity = Math.floor(Number(formQuantity))
+    const price = Number(formPrice)
+    if (!name) {
+      toast.error('Ad girin')
+      return
     }
-    setPricingTiers(single, bundles, 'Admin')
-    toast.success('Paketler guncellendi.')
-    setBundlesOpen(false)
+    if (!Number.isFinite(quantity) || quantity < 0) {
+      toast.error('Geçerli miktar girin')
+      return
+    }
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error('Geçerli fiyat girin')
+      return
+    }
+    updateMutation.mutate({
+      id: editKit.id,
+      payload: {
+        name,
+        description: formDescription.trim() || undefined,
+        quantity,
+        price,
+        file: formFile ?? undefined,
+      },
+    })
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      {/* Aciklama */}
-      <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
-        <div
-          className="rounded-2xl p-4 flex items-start gap-3 border"
-          style={{ background: W.cream, borderColor: W.warmBorder }}
-        >
-          <Info className="h-5 w-5 shrink-0 mt-0.5" style={{ color: W.olive }} />
-          <div>
-            <p className="text-[13px] font-medium" style={{ color: W.dark }}>
-              Nasil calisir?
-            </p>
-            <p className="text-[12px] mt-1 leading-relaxed" style={{ color: W.text }}>
-              <strong>Tekil fiyat:</strong> Diyetisyen 1 kit siparis ettiginde odenen birim fiyat.
-              <br />
-              <strong>Paket:</strong> Toplu alimda (ornegin 5 kit) diyetisyen toplam bir tutar oder; sistem otomatik indirim uygular. Her paket icin &quot;Kac adet?&quot; ve &quot;Bu adet icin toplam kac TL?&quot; giriyorsunuz.
-            </p>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Kartlar: Tekil + Paketler */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Tekil kit kartı — düzenleme alanı */}
-        <motion.div {...fadeUp} transition={{ duration: 0.3, delay: 0.05 }}>
-          <Card className="overflow-hidden border-0 shadow-sm h-full" style={{ border: `1px solid ${W.warmBorder}`, borderRadius: '1rem' }}>
-            <div className="p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-4 min-w-0">
-                  <div
-                    className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{ background: W.oliveLight }}
-                  >
-                    <Package className="h-7 w-7" style={{ color: W.olive }} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>
-                      Tekil satis (1 kit)
-                    </p>
-                    <p className="text-[20px] font-bold mt-1" style={{ color: W.dark }}>
-                      {formatCurrency(priceTiers.singleKitPrice)}
-                    </p>
-                    <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
-                      adet basi — tum siparislerde gecerli
-                    </p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={openSingleEditModal} className="shrink-0">
-                  <Pencil className="h-3.5 w-3.5" />
-                  Duzenle
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        {/* Paket kartları — paketleri düzenle butonu ilk kartın üstünde veya ayrı satırda */}
-        {priceTiers.bundles.map((b, i) => {
-          const perUnit = b.quantity > 0 ? b.total / b.quantity : 0
-          const discountPct = priceTiers.singleKitPrice > 0 ? Math.round((1 - perUnit / priceTiers.singleKitPrice) * 100) : 0
-          return (
-            <motion.div key={i} {...fadeUp} transition={{ duration: 0.3, delay: 0.05 + (i + 1) * 0.04 }}>
-              <Card className="overflow-hidden border-0 shadow-sm h-full" style={{ border: `1px solid ${W.warmBorder}`, borderRadius: '1rem' }}>
-                <div className="p-5">
-                  <div className="flex items-start gap-4">
-                    <div
-                      className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
-                      style={{ background: W.orangeLight }}
-                    >
-                      <Layers className="h-7 w-7" style={{ color: W.orange }} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>
-                        {b.quantity} kit paketi
-                      </p>
-                      <p className="text-[20px] font-bold mt-1" style={{ color: W.dark }}>
-                        {formatCurrency(b.total)}
-                      </p>
-                      <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
-                        toplam · birim {formatCurrency(perUnit)}
-                      </p>
-                      <span
-                        className="inline-block mt-2 text-[11px] font-semibold px-2 py-0.5 rounded-lg"
-                        style={{ background: W.greenLight, color: '#3D8B3D' }}
-                      >
-                        %{discountPct} indirim
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          )
-        })}
-      </div>
-
-      {/* Paketleri düzenle butonu */}
-      <motion.div {...fadeUp} transition={{ duration: 0.3, delay: 0.1 }}>
-        <Button variant="outline" size="sm" onClick={openBundlesModal}>
-          <Layers className="h-3.5 w-3.5" />
-          Paketleri duzenle
-        </Button>
-      </motion.div>
-
-      {/* Modal: Tekil fiyat düzenleme */}
-      <Modal open={singleEditOpen} onOpenChange={setSingleEditOpen}>
-        <ModalContent className="max-w-sm">
-          <ModalHeader>
-            <ModalTitle>Tekil kit fiyatini duzenle</ModalTitle>
-            <p className="text-[13px] mt-1" style={{ color: W.textLight }}>
-              Diyetisyen 1 adet kit siparis ettiginde odenen tutar (TL).
-            </p>
-          </ModalHeader>
-          <ModalBody>
-            <Input
-              type="number"
-              min={1}
-              value={singleEditValue}
-              onChange={(e) => setSingleEditValue(e.target.value)}
-              placeholder="Ornek: 1500"
-              leftIcon={<DollarSign className="h-4 w-4" />}
-            />
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="outline" onClick={() => setSingleEditOpen(false)}>Iptal</Button>
-            <Button onClick={submitSinglePrice}>Kaydet</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Modal: Paketler düzenleme */}
-      <Modal open={bundlesOpen} onOpenChange={setBundlesOpen}>
-        <ModalContent className="max-w-lg">
-          <ModalHeader>
-            <ModalTitle>Indirimli paketleri duzenle</ModalTitle>
-            <p className="text-[13px] mt-1" style={{ color: W.textLight }}>
-              Kac adet kit icin toplam kac TL? Indirim tekil fiyata gore otomatik hesaplanir.
-            </p>
-            <div className="mt-2 px-3 py-2 rounded-xl" style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}>
-              <p className="text-[12px]" style={{ color: W.text }}>
-                <strong>Tekil fiyat (referans):</strong> {formatCurrency(priceTiers.singleKitPrice)} / adet — degistirmek icin tekil karttaki Duzenle kullanin.
-              </p>
-            </div>
-          </ModalHeader>
-          <ModalBody className="space-y-4">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <label className="text-[13px] font-semibold" style={{ color: W.dark }}>
-                Paketler (adet + toplam TL)
-              </label>
-              <Button type="button" variant="outline" size="sm" onClick={addBundleRow}>
-                <Plus className="h-3.5 w-3.5" />
-                Yeni paket ekle
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <CardTitle>Fiyatlandırma — Satış kitleri</CardTitle>
+            <div className="flex items-center gap-3">
+              <Input
+                placeholder="Ad veya açıklama ara..."
+                leftIcon={<Search className="h-4 w-4" />}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-64"
+              />
+              <Button variant="primary" onClick={openCreate}>
+                <Plus className="h-4 w-4" />
+                Yeni satış kiti
               </Button>
             </div>
-
-            <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-              {tiersBundles.map((row, index) => {
-                const qty = Math.floor(Number(row.quantity))
-                const totalNum = Number(row.total)
-                const singleNum = priceTiers.singleKitPrice
-                const perUnit = qty >= 2 && totalNum > 0 ? totalNum / qty : 0
-                const discount = singleNum > 0 && perUnit > 0 && perUnit < singleNum
-                  ? Math.round((1 - perUnit / singleNum) * 100)
-                  : null
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading && (
+            <div className="py-16 text-center text-sm text-surface-500">
+              Yükleniyor...
+            </div>
+          )}
+          {!isLoading && filteredList.length === 0 && (
+            <div className="py-16 text-center text-sm text-surface-500 rounded-xl border border-dashed border-surface-200 bg-surface-50/50">
+              {apiList.length === 0
+                ? 'Henüz satış kiti yok. "Yeni satış kiti" ile ekleyin.'
+                : 'Arama kriterine uygun kayıt yok.'}
+            </div>
+          )}
+          {!isLoading && filteredList.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {filteredList.map((k) => {
+                const imageUrl = getSalesKitImageUrl(k.imageData?.url)
+                const showImg = imageUrl && !failedImageIds.has(k.id)
                 return (
                   <div
-                    key={index}
-                    className="flex items-center gap-3 p-3 rounded-xl border"
-                    style={{ background: W.cream, borderColor: W.warmBorder }}
+                    key={k.id}
+                    className="rounded-xl border border-surface-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
                   >
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[12px] font-medium whitespace-nowrap" style={{ color: W.text }}>Adet</span>
-                      <Input
-                        type="number"
-                        min={2}
-                        placeholder="5"
-                        value={row.quantity}
-                        onChange={(e) => updateBundleRow(index, 'quantity', e.target.value)}
-                        className="w-20"
-                      />
+                    <div className="aspect-[4/3] bg-surface-100 relative overflow-hidden">
+                      {showImg ? (
+                        <img
+                          src={imageUrl ?? ''}
+                          alt={k.name}
+                          className="w-full h-full object-cover"
+                          onError={() => setFailedImageIds((prev) => new Set(prev).add(k.id))}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="h-14 w-14 text-surface-300" />
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2">
+                        <Badge variant="outline" className="bg-white/90 backdrop-blur">
+                          {k.quantity} adet
+                        </Badge>
+                      </div>
                     </div>
-                    <span className="text-surface-400">=</span>
-                    <div className="flex-1 min-w-0">
-                      <Input
-                        type="number"
-                        min={1}
-                        placeholder="Toplam TL (ornek: 7000)"
-                        value={row.total}
-                        onChange={(e) => updateBundleRow(index, 'total', e.target.value)}
-                      />
+                    <div className="p-4 flex flex-col flex-1">
+                      <h3 className="font-semibold text-surface-800 truncate" title={k.name}>
+                        {k.name}
+                      </h3>
+                      <p className="text-sm text-surface-500 mt-1 line-clamp-2 min-h-[2.5rem]" title={k.description || ''}>
+                        {k.description || 'Açıklama yok'}
+                      </p>
+                      <div className="mt-3 pt-3 border-t border-surface-100 flex items-center justify-between gap-2">
+                        <span className="font-bold text-lg text-surface-800 tabular-nums">
+                          {formatCurrency(k.price)}
+                        </span>
+                        <Button variant="outline" size="sm" onClick={() => openEdit(k)}>
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Düzenle
+                        </Button>
+                      </div>
                     </div>
-                    {perUnit > 0 && discount != null && (
-                      <span className="text-[11px] font-medium shrink-0" style={{ color: W.olive }}>
-                        {formatCurrency(perUnit)}/adet · %{discount} indirim
-                      </span>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => removeBundleRow(index)}
-                      disabled={tiersBundles.length <= 1}
-                      title="Paketi kaldir"
-                    >
-                      <Trash2 className="h-4 w-4 text-surface-500" />
-                    </Button>
                   </div>
                 )
               })}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create Modal */}
+      <Modal open={createOpen} onOpenChange={setCreateOpen}>
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle>Yeni satış kiti</ModalTitle>
+            <ModalDescription>Ad, açıklama, miktar, fiyat ve isteğe bağlı görsel girin</ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-4">
+            <Input
+              label="Ad"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              placeholder="Örn: Standart Paket"
+            />
+            <Input
+              label="Açıklama / Avantajlar"
+              value={formDescription}
+              onChange={(e) => setFormDescription(e.target.value)}
+              placeholder="Kısa açıklama veya avantajlar (isteğe bağlı)"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Miktar (stok adedi)"
+                type="number"
+                min={0}
+                value={formQuantity}
+                onChange={(e) => setFormQuantity(e.target.value)}
+                placeholder="100"
+              />
+              <Input
+                label="Fiyat (₺)"
+                type="number"
+                min={0}
+                step={0.01}
+                value={formPrice}
+                onChange={(e) => setFormPrice(e.target.value)}
+                placeholder="49.99"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-surface-700 block mb-2">Görsel (isteğe bağlı)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={onFileChange}
+                className="block w-full text-sm text-surface-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-surface-100 file:text-surface-700"
+              />
+              {formFilePreview && (
+                <img
+                  src={formFilePreview}
+                  alt="Önizleme"
+                  className="mt-2 h-24 rounded-lg object-cover border border-surface-200"
+                />
+              )}
+            </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => setBundlesOpen(false)}>Iptal</Button>
-            <Button onClick={submitBundles}>Kaydet</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>İptal</Button>
+            <Button variant="primary" onClick={handleCreate} disabled={createMutation.isPending}>
+              Oluştur
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal open={!!editKit} onOpenChange={(open) => !open && setEditKit(null)}>
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle>Satış kitini düzenle</ModalTitle>
+            <ModalDescription>Ad, açıklama, miktar, fiyat ve isteğe bağlı yeni görsel</ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-4">
+            <Input
+              label="Ad"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              placeholder="Örn: Standart Paket"
+            />
+            <Input
+              label="Açıklama / Avantajlar"
+              value={formDescription}
+              onChange={(e) => setFormDescription(e.target.value)}
+              placeholder="Kısa açıklama (isteğe bağlı)"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Miktar (stok adedi)"
+                type="number"
+                min={0}
+                value={formQuantity}
+                onChange={(e) => setFormQuantity(e.target.value)}
+                placeholder="100"
+              />
+              <Input
+                label="Fiyat (₺)"
+                type="number"
+                min={0}
+                step={0.01}
+                value={formPrice}
+                onChange={(e) => setFormPrice(e.target.value)}
+                placeholder="49.99"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-surface-700 block mb-2">Görsel</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={onFileChange}
+                className="block w-full text-sm text-surface-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-surface-100 file:text-surface-700"
+              />
+              {formFilePreview && (
+                <img
+                  src={formFilePreview}
+                  alt="Önizleme"
+                  className="mt-2 h-24 rounded-lg object-cover border border-surface-200"
+                />
+              )}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setEditKit(null)}>İptal</Button>
+            <Button variant="primary" onClick={handleUpdate} disabled={updateMutation.isPending}>
+              Kaydet
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

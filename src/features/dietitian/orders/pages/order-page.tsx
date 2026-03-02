@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, Badge } from '@/components/ui'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
-import { ShoppingCart, Package, Truck, Layers, Check, Info } from 'lucide-react'
+import { ShoppingCart, Package, Truck, Check, Info, ImageIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { motion } from 'framer-motion'
+import { getSalesKits, getSalesKitImageUrl, type SalesKit } from '@/services/sales-kits.service'
 
 const W = {
   olive: '#8B9A4B',
@@ -28,23 +30,35 @@ const fadeUp = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 } }
 
 export function DietitianOrderPage() {
   const user = useCurrentUser()
-  const { priceTiers, getOrderTotal, orders, createDietitianOrder } = useWorkflowStore()
-  const [selectedQty, setSelectedQty] = useState<number>(() => priceTiers.bundles[0]?.quantity ?? 1)
+  const { orders, createDietitianOrder } = useWorkflowStore()
+  const [selectedKit, setSelectedKit] = useState<SalesKit | null>(null)
+  const [orderQty, setOrderQty] = useState(1)
   const [address, setAddress] = useState('')
+  const [failedImageIds, setFailedImageIds] = useState<Set<number>>(new Set())
+
+  const { data: salesKits = [], isLoading: kitsLoading } = useQuery({
+    queryKey: ['sales-kits'],
+    queryFn: getSalesKits,
+  })
 
   const myOrders = orders.filter((o) => o.dietitianId === user?.id)
 
-  const qtyNum = selectedQty
-  const total = getOrderTotal(qtyNum)
-  const tekilToplam = qtyNum * priceTiers.singleKitPrice
-  const hasBundleDiscount = qtyNum > 0 && total < tekilToplam
-  const effectiveUnitPrice = qtyNum > 0 ? total / qtyNum : priceTiers.singleKitPrice
+  const maxQty = selectedKit ? Math.max(1, Math.min(selectedKit.quantity, 999)) : 1
+  const safeQty = selectedKit ? Math.min(maxQty, Math.max(1, orderQty)) : 0
+  const total = selectedKit ? selectedKit.price * safeQty : 0
 
-  const handleSelectPackage = (qty: number) => setSelectedQty(qty)
+  const handleSelectKit = (kit: SalesKit) => {
+    setSelectedKit(kit)
+    setOrderQty(1)
+  }
 
   const handleCreateOrder = () => {
-    if (qtyNum <= 0) {
-      toast.error('Yukaridan bir paket secin')
+    if (!selectedKit) {
+      toast.error('Lutfen bir fiyat paketi secin')
+      return
+    }
+    if (safeQty <= 0) {
+      toast.error('Gecerli adet girin')
       return
     }
     if (!address.trim()) {
@@ -57,9 +71,10 @@ export function DietitianOrderPage() {
     }
 
     const dietitianName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Diyetisyen'
-    createDietitianOrder(user.id, dietitianName, qtyNum, dietitianName)
-    toast.success(`${qtyNum} adet kit siparisi olusturuldu. Toplam: ${formatCurrency(total)}`)
-    setSelectedQty(priceTiers.bundles[0]?.quantity ?? 1)
+    createDietitianOrder(user.id, dietitianName, safeQty, dietitianName, undefined, { total })
+    toast.success(`${selectedKit.name}: ${safeQty} adet siparis olusturuldu. Toplam: ${formatCurrency(total)}`)
+    setSelectedKit(null)
+    setOrderQty(1)
     setAddress('')
   }
 
@@ -85,99 +100,77 @@ export function DietitianOrderPage() {
         </div>
       </motion.div>
 
-      {/* Fiyat / Paket kartlari — admin tasarimi ile uyumlu */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {/* Tekil kit */}
-        <motion.div {...fadeUp} transition={{ duration: 0.3, delay: 0.05 }}>
-          <button
-            type="button"
-            onClick={() => handleSelectPackage(1)}
-            className="w-full h-full text-left rounded-2xl border-2 transition-all overflow-hidden"
-            style={{
-              background: selectedQty === 1 ? W.oliveLight : '#fff',
-              borderColor: selectedQty === 1 ? W.olive : W.warmBorder,
-              boxShadow: selectedQty === 1 ? '0 0 0 2px rgba(139,154,75,0.25)' : undefined,
-            }}
-          >
-            <div className="p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-4 min-w-0">
-                  <div
-                    className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{ background: W.oliveLight }}
-                  >
-                    <Package className="h-7 w-7" style={{ color: W.olive }} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>
-                      Tekil satis (1 kit)
-                    </p>
-                    <p className="text-[20px] font-bold mt-1" style={{ color: W.dark }}>
-                      {formatCurrency(priceTiers.singleKitPrice)}
-                    </p>
-                    <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
-                      adet basi
-                    </p>
-                  </div>
-                </div>
-                {selectedQty === 1 && <Check className="h-5 w-5 shrink-0" style={{ color: W.olive }} />}
-              </div>
-            </div>
-          </button>
-        </motion.div>
-
-        {/* Paketler */}
-        {priceTiers.bundles.map((b, i) => {
-          const perUnit = b.quantity > 0 ? b.total / b.quantity : 0
-          const discountPct = priceTiers.singleKitPrice > 0 ? Math.round((1 - perUnit / priceTiers.singleKitPrice) * 100) : 0
-          const isSelected = selectedQty === b.quantity
-          return (
-            <motion.div key={i} {...fadeUp} transition={{ duration: 0.3, delay: 0.05 + (i + 1) * 0.04 }}>
-              <button
-                type="button"
-                onClick={() => handleSelectPackage(b.quantity)}
-                className="w-full h-full text-left rounded-2xl border-2 transition-all overflow-hidden"
-                style={{
-                  background: isSelected ? W.orangeLight : '#fff',
-                  borderColor: isSelected ? W.orange : W.warmBorder,
-                  boxShadow: isSelected ? '0 0 0 2px rgba(232,145,58,0.25)' : undefined,
-                }}
-              >
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-4 min-w-0">
-                      <div
-                        className="h-14 w-14 rounded-2xl flex items-center justify-center shrink-0"
-                        style={{ background: W.orangeLight }}
-                      >
-                        <Layers className="h-7 w-7" style={{ color: W.orange }} />
+      {/* Fiyat paketleri — admin fiyatlandirma ile ayni kart yapisi */}
+      {kitsLoading ? (
+        <div className="py-12 text-center text-sm" style={{ color: W.textLight }}>
+          Paketler yukleniyor...
+        </div>
+      ) : salesKits.length === 0 ? (
+        <div className="py-12 text-center text-sm rounded-2xl border" style={{ color: W.textLight, borderColor: W.warmBorder, background: W.cream }}>
+          Henuz fiyat paketi tanimlanmamis.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {salesKits.map((k, i) => {
+            const imageUrl = getSalesKitImageUrl(k.imageData?.url)
+            const showImg = imageUrl && !failedImageIds.has(k.id)
+            const isSelected = selectedKit?.id === k.id
+            return (
+              <motion.div key={k.id} {...fadeUp} transition={{ duration: 0.3, delay: 0.05 + i * 0.04 }}>
+                <button
+                  type="button"
+                  onClick={() => handleSelectKit(k)}
+                  className="w-full h-full text-left rounded-xl border-2 transition-all overflow-hidden flex flex-col"
+                  style={{
+                    background: isSelected ? W.oliveLight : '#fff',
+                    borderColor: isSelected ? W.olive : W.warmBorder,
+                    boxShadow: isSelected ? '0 0 0 2px rgba(139,154,75,0.25)' : undefined,
+                  }}
+                >
+                  <div className="aspect-[4/3] relative overflow-hidden" style={{ background: W.cream }}>
+                    {showImg ? (
+                      <img
+                        src={imageUrl ?? ''}
+                        alt={k.name}
+                        className="w-full h-full object-cover"
+                        onError={() => setFailedImageIds((prev) => new Set(prev).add(k.id))}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ImageIcon className="h-14 w-14 opacity-50" style={{ color: W.textLight }} />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>
-                          {b.quantity} kit paketi
-                        </p>
-                        <p className="text-[20px] font-bold mt-1" style={{ color: W.dark }}>
-                          {formatCurrency(b.total)}
-                        </p>
-                        <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
-                          toplam · birim {formatCurrency(perUnit)}
-                        </p>
-                        <span
-                          className="inline-block mt-2 text-[11px] font-semibold px-2 py-0.5 rounded-lg"
-                          style={{ background: W.greenLight, color: '#3D8B3D' }}
-                        >
-                          %{discountPct} indirim
-                        </span>
-                      </div>
+                    )}
+                    <div className="absolute top-2 right-2">
+                      <Badge variant="outline" className="bg-white/90 backdrop-blur text-xs">
+                        Stok: {k.quantity} adet
+                      </Badge>
                     </div>
-                    {isSelected && <Check className="h-5 w-5 shrink-0" style={{ color: W.orange }} />}
+                    {isSelected && (
+                      <div className="absolute top-2 left-2 h-8 w-8 rounded-full flex items-center justify-center" style={{ background: W.olive }}>
+                        <Check className="h-4 w-4 text-white" />
+                      </div>
+                    )}
                   </div>
-                </div>
-              </button>
-            </motion.div>
-          )
-        })}
-      </div>
+                  <div className="p-4 flex flex-col flex-1">
+                    <h3 className="font-semibold text-surface-800 truncate" style={{ color: W.dark }}>
+                      {k.name}
+                    </h3>
+                    <p className="text-sm mt-1 line-clamp-2 min-h-[2.5rem]" style={{ color: W.textLight }}>
+                      {k.description || '—'}
+                    </p>
+                    <div className="mt-3 pt-3 flex items-center justify-between gap-2" style={{ borderTop: `1px solid ${W.warmBorder}` }}>
+                      <span className="font-bold text-lg tabular-nums" style={{ color: W.dark }}>
+                        {formatCurrency(k.price)}
+                      </span>
+                      <span className="text-xs" style={{ color: W.textLight }}>adet</span>
+                    </div>
+                  </div>
+                </button>
+              </motion.div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Siparis Ver karti */}
       <motion.div {...fadeUp} transition={{ duration: 0.3, delay: 0.1 }}>
@@ -196,6 +189,28 @@ export function DietitianOrderPage() {
             </div>
           </div>
           <CardContent className="p-5">
+            {selectedKit && (
+              <div className="mb-4 rounded-xl p-4 border" style={{ background: W.oliveLight, borderColor: W.warmBorder }}>
+                <p className="text-[13px] font-medium mb-2" style={{ color: W.dark }}>Secilen paket: {selectedKit.name}</p>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[13px]" style={{ color: W.text }}>Adet:</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={maxQty}
+                      value={safeQty}
+                      onChange={(e) => setOrderQty(Math.min(maxQty, Math.max(1, Number(e.target.value) || 1)))}
+                      className="w-20 rounded-lg border px-3 py-2 text-sm"
+                      style={{ borderColor: W.warmBorder }}
+                    />
+                  </div>
+                  <span className="text-[13px]" style={{ color: W.text }}>
+                    Birim {formatCurrency(selectedKit.price)} · Toplam <strong style={{ color: W.dark }}>{formatCurrency(total)}</strong>
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <Input
                 label="Teslimat Adresi"
@@ -209,7 +224,7 @@ export function DietitianOrderPage() {
                   size="lg"
                   className="w-full"
                   onClick={handleCreateOrder}
-                  disabled={qtyNum <= 0 || !address.trim()}
+                  disabled={!selectedKit || safeQty <= 0 || !address.trim()}
                   style={{ background: W.olive }}
                 >
                   <Package className="h-4 w-4" />
@@ -217,19 +232,18 @@ export function DietitianOrderPage() {
                 </Button>
               </div>
             </div>
-            <div className="rounded-xl p-4 border" style={{ background: W.cream, borderColor: W.warmBorder }}>
-              <div className="flex items-center justify-between text-[13px]">
-                <span style={{ color: W.text }}>Secilen: {qtyNum} adet</span>
-                <span className="font-semibold" style={{ color: W.dark }}>
-                  {formatCurrency(effectiveUnitPrice)}
-                  {hasBundleDiscount && <span className="text-[11px] font-normal ml-1" style={{ color: W.olive }}>(paket indirimi)</span>}
-                </span>
+            {selectedKit && (
+              <div className="rounded-xl p-4 border" style={{ background: W.cream, borderColor: W.warmBorder }}>
+                <div className="flex items-center justify-between text-[13px]">
+                  <span style={{ color: W.text }}>Secilen: {selectedKit.name} · {safeQty} adet</span>
+                  <span className="font-semibold" style={{ color: W.dark }}>{formatCurrency(selectedKit.price)} / adet</span>
+                </div>
+                <div className="flex items-center justify-between text-[13px] mt-2 pt-2" style={{ borderTop: `1px solid ${W.warmBorder}` }}>
+                  <span style={{ color: W.text }}>Toplam</span>
+                  <span className="font-bold text-lg" style={{ color: W.dark }}>{formatCurrency(total)}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-[13px] mt-2 pt-2" style={{ borderTop: `1px solid ${W.warmBorder}` }}>
-                <span style={{ color: W.text }}>Toplam</span>
-                <span className="font-bold text-lg" style={{ color: W.dark }}>{formatCurrency(total)}</span>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

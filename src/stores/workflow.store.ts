@@ -119,7 +119,7 @@ interface WorkflowState {
   generateBarcodes: (quantity: number, prefix: string, actor: string, ip?: string) => void
   markKitPrinted: (barcode: string, actor: string, ip?: string) => { ok: boolean; message: string }
   markKitsPrinted: (barcodes: string[], actor: string, ip?: string) => { ok: boolean; message: string; printedCount: number }
-  createDietitianOrder: (dietitianId: string, dietitianName: string, qty: number, actor: string, ip?: string) => void
+  createDietitianOrder: (dietitianId: string, dietitianName: string, qty: number, actor: string, ip?: string, options?: { total?: number }) => void
   assignKitsToDietitian: (dietitianId: string, dietitianName: string, barcodes: string[], actor: string, ip?: string, orderId?: string) => void
   receiveKitByBarcode: (
     barcode: string,
@@ -404,9 +404,9 @@ export const useWorkflowStore = create<WorkflowState>()(
         return { ok: true, message: `${printable.length} barkod yazdirildi.`, printedCount: printable.length }
       },
 
-      createDietitianOrder: (dietitianId, dietitianName, qty, actor, ip) =>
+      createDietitianOrder: (dietitianId, dietitianName, qty, actor, ip, options) =>
         set((state) => {
-          const total = get().getOrderTotal(qty)
+          const total = options?.total != null && Number.isFinite(options.total) ? options.total : get().getOrderTotal(qty)
           const order: DietitianOrder = {
             id: generateId('ord-'),
             dietitianId,

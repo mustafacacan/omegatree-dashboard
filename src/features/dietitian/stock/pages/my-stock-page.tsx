@@ -8,10 +8,10 @@ import {
   TrendingUp, TrendingDown, Search, CheckCircle, ArrowRight, Loader2,
 } from 'lucide-react'
 import { ROUTES } from '@/utils/routes'
-import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { useDietitianSettingsStore } from '@/stores/dietitian-settings.store'
 import { formatDate } from '@/lib/utils'
+import { getMyStockList, approveToStock } from '@/services/stocks.service'
 
 type BarcodeState = 'idle' | 'checking' | 'success' | 'error'
 
@@ -30,8 +30,9 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 export function MyStockPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
-  const { kits, receiveKitByBarcode } = useWorkflowStore()
   const { minStockAlert, setMinStockAlert } = useDietitianSettingsStore()
+  const [stockList, setStockList] = useState<Awaited<ReturnType<typeof getMyStockList>>>([])
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [minStockInput, setMinStockInput] = useState('')
   const [receiveKitModalOpen, setReceiveKitModalOpen] = useState(false)
@@ -40,24 +41,32 @@ export function MyStockPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const fetchMyStock = () => {
+    setLoading(true)
+    getMyStockList()
+      .then(setStockList)
+      .catch(() => setStockList([]))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetchMyStock()
+  }, [])
+
   const handleBarcodeSubmit = () => {
     const trimmed = barcodeInput.trim()
     if (!trimmed) return
     setBarcodeState('checking')
     setErrorMessage('')
-    setTimeout(() => {
-      const result = receiveKitByBarcode(
-        trimmed,
-        user?.id || '',
-        `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Diyetisyen'
-      )
-      if (result.ok) {
+    approveToStock([trimmed])
+      .then(() => {
         setBarcodeState('success')
-      } else {
+        fetchMyStock()
+      })
+      .catch((err: { response?: { data?: { message?: string } }; message?: string }) => {
         setBarcodeState('error')
-        setErrorMessage(result.message || 'Barkod eslesmedi.')
-      }
-    }, 600)
+        setErrorMessage(err?.response?.data?.message || err?.message || 'Barkod eşleşmedi veya stok onayı yapılamadı.')
+      })
   }
 
   const resetBarcode = () => {
@@ -80,16 +89,14 @@ export function MyStockPage() {
   }, [receiveKitModalOpen, barcodeState])
 
   const myKits = useMemo(() => {
-    return kits
-      .filter((k) => k.assignedDietitianId === user?.id)
-      .map((k) => ({
-        barcode: k.barcode,
-        receivedAt: k.createdAt,
-        status: k.assignedClientName ? ('assigned' as const) : ('available' as const),
-        client: k.assignedClientName,
-        kitStatus: k.status,
-      }))
-  }, [kits, user?.id])
+    return stockList.map((s) => ({
+      barcode: s.kitId?.barcode ?? '',
+      receivedAt: s.createdAt,
+      status: s.status === 'used' ? ('assigned' as const) : ('available' as const),
+      client: '',
+      kitStatus: s.status,
+    }))
+  }, [stockList])
 
   const availableKits = useMemo(() => myKits.filter((k) => k.status === 'available'), [myKits])
   const assignedKits = useMemo(() => myKits.filter((k) => k.status === 'assigned'), [myKits])
@@ -219,7 +226,12 @@ export function MyStockPage() {
               <span className="text-[12px] font-semibold" style={{ color: W.dark }}>Kullanilabilir</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: W.greenLight, color: '#3D8B3D' }}>{availableKits.length}</span>
             </div>
-            {availableKits.length === 0 ? (
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12 text-surface-500 text-sm">
+                <Loader2 className="h-8 w-8 animate-spin mb-2" style={{ color: W.olive }} />
+                <p>Stok listesi yükleniyor...</p>
+              </div>
+            ) : availableKits.length === 0 ? (
               <div className="text-center py-8 text-surface-500 text-sm">
                 <Package className="h-8 w-8 mx-auto mb-2 text-surface-300" />
                 <p>Kullanilabilir kit bulunmuyor</p>

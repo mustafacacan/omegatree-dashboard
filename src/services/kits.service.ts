@@ -2,8 +2,6 @@ import { api } from '@/lib/axios'
 import type { components } from '@/types/openapi'
 
 type KitResponse = components['schemas']['KitResponse']
-type CreateKitBody = components['schemas']['CreateKit']
-type UpdateKitBody = components['schemas']['UpdateKit']
 
 export interface Kit {
   id: number
@@ -67,4 +65,23 @@ export async function updateKit(
 /** POST /kits/assign/{dieticianId} — diyetisyene kit atar */
 export async function assignKitsToDietician(dieticianId: number, kitIds: number[]): Promise<void> {
   await api.post(`/kits/assign/${dieticianId}`, { kitIds })
+}
+
+/** Diyetisyen listesi (Diyetisyene kit ata modalı için) */
+export interface DieticianOption {
+  id: number
+  label: string
+}
+
+/** GET /dieticians — diyetisyen listesi (assign dropdown için) */
+export async function getDieticians(): Promise<DieticianOption[]> {
+  const { data } = await api.get<{
+    data?: Array<{ id: number; dietician?: { firstName?: string; lastName?: string }; [key: string]: unknown }>
+  }>('/dieticians', { params: { page: 1, limit: 200 } })
+  const raw = data?.data
+  const list = Array.isArray(raw) ? raw : []
+  return list.map((d) => ({
+    id: d.id,
+    label: [d.dietician?.firstName, d.dietician?.lastName].filter(Boolean).join(' ') || `Diyetisyen #${d.id}`,
+  }))
 }
