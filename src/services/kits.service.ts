@@ -1,5 +1,5 @@
 import { api } from '@/lib/axios'
-import type { components } from '@/types/openapi'
+import type { components, paths } from '@/types/openapi'
 
 type KitResponse = components['schemas']['KitResponse']
 
@@ -63,25 +63,115 @@ export async function updateKit(
 }
 
 /** POST /kits/assign/{dieticianId} — diyetisyene kit atar */
-export async function assignKitsToDietician(dieticianId: number, kitIds: number[]): Promise<void> {
-  await api.post(`/kits/assign/${dieticianId}`, { kitIds })
+type AssignKitsRequest =
+  paths['/kits/assign/{dieticianId}']['post']['requestBody']['content']['application/json']
+type AssignKitsResponse =
+  paths['/kits/assign/{dieticianId}']['post']['responses'][200]['content']['application/json']
+
+export async function assignKitsToDietician(
+  dieticianId: number,
+  kitIds: number[]
+): Promise<AssignKitsResponse> {
+  const payload: AssignKitsRequest = { kitIds }
+  const { data } = await api.post<AssignKitsResponse>(`/kits/assign/${dieticianId}`, payload)
+  return data
 }
 
 /** Diyetisyen listesi (Diyetisyene kit ata modalı için) */
 export interface DieticianOption {
   id: number
   label: string
+  firstName?: string
+  lastName?: string
+  email?: string
 }
 
 /** GET /dieticians — diyetisyen listesi (assign dropdown için) */
 export async function getDieticians(): Promise<DieticianOption[]> {
-  const { data } = await api.get<{
-    data?: Array<{ id: number; dietician?: { firstName?: string; lastName?: string }; [key: string]: unknown }>
-  }>('/dieticians', { params: { page: 1, limit: 200 } })
-  const raw = data?.data
-  const list = Array.isArray(raw) ? raw : []
-  return list.map((d) => ({
-    id: d.id,
-    label: [d.dietician?.firstName, d.dietician?.lastName].filter(Boolean).join(' ') || `Diyetisyen #${d.id}`,
-  }))
+  type DieticiansResponse = paths['/dieticians']['get']['responses'][200]['content']['application/json']
+  type DieticianItem = components['schemas']['DieticianWithClientsResponse']
+
+  // Backend bazı ortamlarda OpenAPI'den farklı olarak sayfalı bir yapı döndürüyor:
+  // { success, message, data: { totalItems, totalPages, currentPage, items: [{ id, user: { firstName, lastName, email } }] } }
+  type DieticiansPaginatedResponse = {
+    success?: boolean
+    message?: string
+    data?: {
+      totalItems?: number
+      totalPages?: number
+      currentPage?: string | number
+      items?: Array<{
+        id?: number
+        user?: {
+          firstName?: string
+          lastName?: string
+          email?: string
+        }
+      }>
+    }
+  }
+
+  const { data } = await api.get<DieticiansResponse | DieticiansPaginatedResponse>('/dieticians', {
+    params: { page: 1, limit: 200 },
+  })
+
+  const raw = (data as { data?: unknown })?.data
+
+  // 1) OpenAPI: data = DieticianWithClientsResponse[]
+  if (Array.isArray(raw)) {
+    const list = raw as DieticianItem[]
+    return list.map((d) => {
+      const firstName = d.dietician?.firstName
+      const lastName = d.dietician?.lastName
+      const fullName = [firstName, lastName].filter(Boolean).join(' ')
+      const email = d.dietician?.email
+      const id = Number(d.id) ?? 0
+      return {
+        id,
+        label: fullName || email || `Diyetisyen #${id}`,
+        firstName,
+        lastName,
+        email,
+      }
+    })
+  }
+
+  // 2) Backend: data = { items: [{ id, user: { firstName, lastName, email } }] }
+  if (raw && typeof raw === 'object' && 'items' in raw) {
+    const items = (raw as { items?: DieticiansPaginatedResponse['data']['items'] }).items ?? []
+    return (items ?? []).map((d) => {
+      const firstName = d?.user?.firstName
+      const lastName = d?.user?.lastName
+      const fullName = [firstName, lastName].filter(Boolean).join(' ')
+      const email = d?.user?.email
+      const id = Number(d?.id) ?? 0
+      return {
+        id,
+        label: fullName || email || `Diyetisyen #${id}`,
+        firstName,
+        lastName,
+        email,
+      }
+    })
+  }
+
+  // 3) Tolerans: data.items olabilir (eski mapping)
+  const list: DieticianItem[] = ((raw && typeof raw === 'object' && 'items' in raw
+    ? (raw as { items?: DieticianItem[] }).items
+    : []) ?? [])
+
+  return (list ?? []).map((d) => {
+    const firstName = d.dietician?.firstName
+    const lastName = d.dietician?.lastName
+    const fullName = [firstName, lastName].filter(Boolean).join(' ')
+    const email = d.dietician?.email
+    const id = Number(d.id) ?? 0
+    return {
+      id,
+      label: fullName || email || `Diyetisyen #${id}`,
+      firstName,
+      lastName,
+      email,
+    }
+  })
 }

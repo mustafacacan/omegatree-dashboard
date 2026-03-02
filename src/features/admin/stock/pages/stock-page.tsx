@@ -42,6 +42,8 @@ export function StockPage() {
   const [assignModalStocks, setAssignModalStocks] = useState<Stock[]>([])
   const [assignModalLoading, setAssignModalLoading] = useState(false)
   const [dietitiansList, setDietitiansList] = useState<DieticianOption[]>([])
+  const [assignKitSearch, setAssignKitSearch] = useState('')
+  const [assignDietitianSearch, setAssignDietitianSearch] = useState('')
   const [selectedKitIds, setSelectedKitIds] = useState<number[]>([])
   const [selectedDietitianId, setSelectedDietitianId] = useState<number | null>(null)
   const [assignSuccess, setAssignSuccess] = useState(false)
@@ -53,6 +55,35 @@ export function StockPage() {
     () => assignModalStocks.filter((s) => s.status === 'available' && s.kitId?.id),
     [assignModalStocks]
   )
+
+  const filteredAvailableStocksForModal = useMemo(() => {
+    const q = assignKitSearch.trim().toLowerCase()
+    if (!q) return availableStocksForModal
+    return availableStocksForModal.filter((s) => {
+      const barcode = s.kitId?.barcode ?? ''
+      const name = s.kitId?.name ?? ''
+      return barcode.toLowerCase().includes(q) || name.toLowerCase().includes(q)
+    })
+  }, [availableStocksForModal, assignKitSearch])
+
+  const filteredDietitiansForModal = useMemo(() => {
+    const q = assignDietitianSearch.trim().toLowerCase()
+    if (!q) return dietitiansList
+    return dietitiansList.filter((d) => d.label.toLowerCase().includes(q))
+  }, [dietitiansList, assignDietitianSearch])
+
+  const dietitianInitials = (d: DieticianOption) => {
+    const initialsFromName = [d.firstName?.[0], d.lastName?.[0]].filter(Boolean).join('')
+    if (initialsFromName) return initialsFromName.toUpperCase()
+
+    return (d.label || '')
+      .split(' ')
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase()
+  }
 
   const fetchStocks = () => {
     setLoading(true)
@@ -99,6 +130,8 @@ export function StockPage() {
     setAssignModalLoading(true)
     setAssignModalStocks([])
     setDietitiansList([])
+    setAssignKitSearch('')
+    setAssignDietitianSearch('')
     Promise.all([
       getStocks({ page: 1, limit: 200, sort: 'desc' }),
       getDieticians(),
@@ -140,7 +173,12 @@ export function StockPage() {
   }
 
   const handleAssign = () => {
-    if (selectedDietitianId == null || selectedKitIds.length === 0) return
+    if (selectedKitIds.length === 0) return
+
+    if (selectedDietitianId == null) {
+      toast.error('Lütfen bir diyetisyen seçin.')
+      return
+    }
     setAssigning(true)
     assignKitsToDietician(selectedDietitianId, selectedKitIds)
       .then(() => {
@@ -404,13 +442,28 @@ export function StockPage() {
                         </span>
                       )}
                     </div>
+
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+                      <input
+                        type="text"
+                        placeholder="Kit ara (barkod / isim)..."
+                        value={assignKitSearch}
+                        onChange={(e) => setAssignKitSearch(e.target.value)}
+                        className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-full outline-none transition-colors"
+                        style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = W.olive }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                      />
+                    </div>
+
                     <div className="max-h-[160px] overflow-y-auto space-y-1.5 pr-1">
                       {assignModalLoading ? (
                         <p className="text-[12px] text-center py-4" style={{ color: W.textLight }}>Yükleniyor...</p>
-                      ) : availableStocksForModal.length === 0 ? (
+                      ) : filteredAvailableStocksForModal.length === 0 ? (
                         <p className="text-[12px] text-center py-4" style={{ color: W.textLight }}>Stokta uygun kit bulunmuyor</p>
                       ) : (
-                        availableStocksForModal.map((s) => {
+                        filteredAvailableStocksForModal.map((s) => {
                           const kitId = s.kitId?.id ?? 0
                           const selected = selectedKitIds.includes(kitId)
                           return (
@@ -451,30 +504,55 @@ export function StockPage() {
                       <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{ background: selectedKitIds.length > 0 ? W.olive : W.warmGrayLight }}>2</div>
                       <span className="text-[13px] font-semibold" style={{ color: W.dark }}>Diyetisyen seçin</span>
                     </div>
-                    <div className="space-y-1.5">
-                      {dietitiansList.map((d) => {
-                        const sel = selectedDietitianId === d.id
-                        return (
-                          <button
-                            key={d.id}
-                            type="button"
-                            onClick={() => setSelectedDietitianId(sel ? null : d.id)}
-                            className="flex items-center gap-3 w-full p-3 rounded-xl text-left transition-all"
-                            style={{
-                              background: sel ? W.orangeLight : W.cream,
-                              border: `1.5px solid ${sel ? W.orange : 'transparent'}`,
-                            }}
-                          >
-                            <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold" style={{ background: sel ? W.orange : W.creamDark, color: sel ? '#fff' : W.text }}>
-                              {d.label.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-[12px] font-semibold" style={{ color: W.dark }}>{d.label}</p>
-                            </div>
-                            {sel && <Check className="h-4 w-4" style={{ color: W.orange }} />}
-                          </button>
-                        )
-                      })}
+
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+                      <input
+                        type="text"
+                        placeholder="Diyetisyen ara..."
+                        value={assignDietitianSearch}
+                        onChange={(e) => setAssignDietitianSearch(e.target.value)}
+                        className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-full outline-none transition-colors"
+                        style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = W.orange }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
+                      {assignModalLoading ? (
+                        <p className="text-[12px] text-center py-4" style={{ color: W.textLight }}>Yükleniyor...</p>
+                      ) : filteredDietitiansForModal.length === 0 ? (
+                        <p className="text-[12px] text-center py-4" style={{ color: W.textLight }}>Diyetisyen bulunamadı</p>
+                      ) : (
+                        filteredDietitiansForModal.map((d) => {
+                          const sel = selectedDietitianId === d.id
+                          const fullName = [d.firstName, d.lastName].filter(Boolean).join(' ')
+                          const primaryText = fullName || d.label
+                          const secondaryText = d.email || `#${d.id}`
+                          return (
+                            <button
+                              key={d.id}
+                              type="button"
+                              onClick={() => setSelectedDietitianId(sel ? null : d.id)}
+                              className="flex items-center gap-3 w-full p-3 rounded-xl text-left transition-all"
+                              style={{
+                                background: sel ? W.orangeLight : W.cream,
+                                border: `1.5px solid ${sel ? W.orange : 'transparent'}`,
+                              }}
+                            >
+                              <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold" style={{ background: sel ? W.orange : W.creamDark, color: sel ? '#fff' : W.text }}>
+                                {dietitianInitials(d)}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-[12px] font-semibold" style={{ color: W.dark }}>{primaryText}</p>
+                                <p className="text-[10px] mt-0.5" style={{ color: W.textLight }}>{secondaryText}</p>
+                              </div>
+                              {sel && <Check className="h-4 w-4" style={{ color: W.orange }} />}
+                            </button>
+                          )
+                        })
+                      )}
                     </div>
                   </div>
 
@@ -487,7 +565,7 @@ export function StockPage() {
                       variant="primary"
                       size="sm"
                       onClick={handleAssign}
-                      disabled={selectedKitIds.length === 0 || selectedDietitianId == null || assigning}
+                      disabled={selectedKitIds.length === 0 || assigning}
                     >
                       {assigning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                       Zimmetle ({selectedKitIds.length})
