@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, Badge } from '@/components/ui'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
-import { ShoppingCart, Package, Truck, Check, Info, ImageIcon } from 'lucide-react'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { ShoppingCart, Package, Truck, Check, Info, ImageIcon, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useCurrentUser } from '@/stores/auth.store'
 import { motion } from 'framer-motion'
 import { getSalesKits, getSalesKitImageUrl, type SalesKit } from '@/services/sales-kits.service'
-import { createOrder, getOrders, type Order } from '@/services/orders.service'
+import { createOrder, getOrders, uploadOrderDekont, type Order } from '@/services/orders.service'
 import { SalesKitImage } from '@/components/shared/sales-kit-image'
 
 const W = {
@@ -38,6 +39,8 @@ export function DietitianOrderPage() {
   const [orderQty, setOrderQty] = useState(1)
   const [address, setAddress] = useState('')
   const [failedImageIds, setFailedImageIds] = useState<Set<number>>(new Set())
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [dekontTargetOrderId, setDekontTargetOrderId] = useState<number | null>(null)
 
   const { data: salesKits = [], isLoading: kitsLoading } = useQuery({
     queryKey: ['sales-kits'],
@@ -60,9 +63,24 @@ export function DietitianOrderPage() {
       queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
       toast.success('Siparis basariyla olusturuldu.')
     },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Siparis olusturulamadi.' }))
+    },
+  })
+
+  const uploadDekontMutation = useMutation({
+    mutationFn: ({ orderId, file }: { orderId: number; file: File }) =>
+      uploadOrderDekont({ orderId, file }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
+      toast.success('Dekont yuklendi.')
+    },
     onError: (err: { response?: { data?: { message?: string; errors?: string[] } } }) => {
-      const msg = err.response?.data?.message || err.response?.data?.errors?.[0] || 'Siparis olusturulamadi.'
-      toast.error(msg)
+      toast.error(getApiErrorMessage(err, { fallback: 'Dekont yuklenemedi.' }))
+    },
+    onSettled: () => {
+      setDekontTargetOrderId(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     },
   })
 
@@ -109,9 +127,35 @@ export function DietitianOrderPage() {
     )
   }
 
+  const handlePickDekont = (orderId: number) => {
+    setDekontTargetOrderId(orderId)
+    fileInputRef.current?.click()
+  }
+
+  const handleDekontSelected = (file: File | null) => {
+    if (!file) {
+      setDekontTargetOrderId(null)
+      return
+    }
+    if (dekontTargetOrderId == null) {
+      toast.error('Siparis bulunamadi')
+      return
+    }
+
+    uploadDekontMutation.mutate({ orderId: dekontTargetOrderId, file })
+  }
+
   return (
     <div className="space-y-8 animate-fade-in">
       <PageHeader />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept="image/*,application/pdf"
+        onChange={(e) => handleDekontSelected(e.target.files?.[0] ?? null)}
+      />
 
       {/* Aciklama */}
       <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
@@ -302,6 +346,9 @@ export function DietitianOrderPage() {
                 {myOrders.map((order) => {
                   const paid = order.paymenStatus === 'paid'
                   const statusLabel = order.status === 'completed' ? 'Tamamlandi' : order.status === 'cancelled' ? 'Iptal' : 'Beklemede'
+                  const hasDekont = order.dekontMediaId != null
+                  const canUploadDekont = !paid && (order.paymentMethod === 'havale' || order.paymentMethod === 'eft')
+                  const isUploadingThis = uploadDekontMutation.isPending && dekontTargetOrderId === order.id
                   return (
                     <div
                       key={order.id}
@@ -325,6 +372,25 @@ export function DietitianOrderPage() {
                             {order.quantity} Kit · {formatDate(order.createdAt ?? '')}
                             {paid ? ' · Odendi' : ' · Odeme bekleniyor'}
                           </p>
+                          {canUploadDekont && (
+                            <div className="mt-2 flex items-center gap-2">
+                              {hasDekont ? (
+                                <Badge variant="success" size="sm" dot>Dekont eklendi</Badge>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePickDekont(order.id)}
+                                  disabled={uploadDekontMutation.isPending}
+                                  className="h-8"
+                                  style={{ borderColor: W.warmBorder, color: W.dark }}
+                                >
+                                  <Upload className="h-3.5 w-3.5" />
+                                  {isUploadingThis ? 'Yukleniyor...' : 'Dekont ekle'}
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">

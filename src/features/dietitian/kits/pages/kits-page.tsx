@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { Timeline } from '@/components/shared/timeline'
 import { KitStatus } from '@/utils/constants'
 import { formatDate } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { motion } from 'framer-motion'
 import {
   AlertTriangle, Clock, Send, RotateCcw, Image as ImageIcon, Eye, MapPin,
@@ -51,8 +52,7 @@ export function KitsPage() {
       queryClient.invalidateQueries({ queryKey: ['damaged-kits'] })
     },
     onError: (err: { response?: { data?: { message?: string; errors?: string[] } } }) => {
-      const msg = err.response?.data?.message || err.response?.data?.errors?.[0] || 'Iade talebi gonderilemedi.'
-      toast.error(msg)
+      toast.error(getApiErrorMessage(err, { fallback: 'Iade talebi gonderilemedi.' }))
     },
   })
   const myKits = kits

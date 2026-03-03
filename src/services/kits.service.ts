@@ -14,7 +14,7 @@ export interface Kit {
 
 function mapApiKit(apiKit: KitResponse): Kit {
   return {
-    id: Number(apiKit.id) ?? 0,
+    id: Number(apiKit.id) || 0,
     barcode: apiKit.barcode ?? '',
     name: apiKit.name ?? '',
     isActive: apiKit.isActive ?? true,
@@ -127,7 +127,7 @@ export async function getDieticians(): Promise<DieticianOption[]> {
       const lastName = d.dietician?.lastName
       const fullName = [firstName, lastName].filter(Boolean).join(' ')
       const email = d.dietician?.email
-      const id = Number(d.id) ?? 0
+      const id = Number(d.id) || 0
       const userId = Number((d.dietician as { id?: number } | undefined)?.id) || undefined
       return {
         id,
@@ -142,13 +142,13 @@ export async function getDieticians(): Promise<DieticianOption[]> {
 
   // 2) Backend: data = { items: [{ id, user: { id, firstName, lastName, email } }] }
   if (raw && typeof raw === 'object' && 'items' in raw) {
-    const items = (raw as { items?: DieticiansPaginatedResponse['data']['items'] }).items ?? []
+    const items = (raw as { items?: NonNullable<DieticiansPaginatedResponse['data']>['items'] }).items ?? []
     return (items ?? []).map((d) => {
       const firstName = d?.user?.firstName
       const lastName = d?.user?.lastName
       const fullName = [firstName, lastName].filter(Boolean).join(' ')
       const email = d?.user?.email
-      const id = Number(d?.id) ?? 0
+      const id = Number(d?.id) || 0
       const userId = Number((d?.user as { id?: number } | undefined)?.id) || undefined
       return {
         id,
@@ -171,7 +171,7 @@ export async function getDieticians(): Promise<DieticianOption[]> {
     const lastName = d.dietician?.lastName
     const fullName = [firstName, lastName].filter(Boolean).join(' ')
     const email = d.dietician?.email
-    const id = Number(d.id) ?? 0
+    const id = Number(d.id) || 0
     const userId = Number((d.dietician as { id?: number } | undefined)?.id) || undefined
     return {
       id,

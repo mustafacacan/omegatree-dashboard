@@ -64,6 +64,11 @@ export interface CreateOrderParams {
   isPaid?: boolean
 }
 
+export interface UploadOrderDekontParams {
+  orderId: number
+  file: File
+}
+
 /** Create a new order (dietitian places order for a sales kit) */
 export async function createOrder(
   salesKitId: number,
@@ -107,9 +112,9 @@ export async function getOrdersWithPagination(params?: GetOrdersParams): Promise
   const list = Array.isArray(items) ? items : []
   return {
     items: list,
-    totalItems: dataObj && typeof dataObj === 'object' && 'totalItems' in dataObj ? Number((dataObj as { totalItems?: number }).totalItems) ?? 0 : list.length,
-    totalPages: dataObj && typeof dataObj === 'object' && 'totalPages' in dataObj ? Number((dataObj as { totalPages?: number }).totalPages) ?? 1 : 1,
-    currentPage: dataObj && typeof dataObj === 'object' && 'currentPage' in dataObj ? Number((dataObj as { currentPage?: number }).currentPage) ?? 1 : 1,
+    totalItems: dataObj && typeof dataObj === 'object' && 'totalItems' in dataObj ? (Number((dataObj as { totalItems?: number }).totalItems) || 0) : list.length,
+    totalPages: dataObj && typeof dataObj === 'object' && 'totalPages' in dataObj ? (Number((dataObj as { totalPages?: number }).totalPages) || 1) : 1,
+    currentPage: dataObj && typeof dataObj === 'object' && 'currentPage' in dataObj ? (Number((dataObj as { currentPage?: number }).currentPage) || 1) : 1,
   }
 }
 
@@ -128,4 +133,29 @@ export async function updateOrderStatus(
     status,
   })
   return data
+}
+
+/** Upload dekont (receipt) file for an existing order.
+ *
+ * Note: This endpoint is not present in the current OpenAPI spec, but backend
+ * commonly supports updating an order with multipart/form-data similar to other
+ * modules (e.g. damaged-kits, laboratory-kits).
+ */
+export async function uploadOrderDekont(params: UploadOrderDekontParams): Promise<OrderItem | null> {
+  const form = new FormData()
+  form.append('dekontMediaId', params.file)
+
+  const { data } = await api.put<unknown>(`/add-dekont/${params.orderId}`, form, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+
+  const body =
+    data && typeof data === 'object' && data !== null && 'data' in data
+      ? (data as { data?: unknown }).data
+      : data
+
+  if (!body || typeof body !== 'object') return null
+  return body as OrderItem
 }

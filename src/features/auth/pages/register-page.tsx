@@ -9,6 +9,7 @@ import { UserRole } from '@/utils/constants'
 import { ROUTES } from '@/utils/routes'
 import { TreePine, Mail, User, Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { register as apiRegister } from '@/services/auth.service'
 
 const registerSchema = z.object({
@@ -58,11 +59,7 @@ export function RegisterPage() {
       toast.success('Hesabınız admin onayına gönderildi. Onaylandığında hesabınız aktif olacak ve telefona gelen SMS şifresi ile giriş yapabilirsiniz.')
       navigate(ROUTES.GIRIS)
     } catch (err: unknown) {
-      const res = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { message?: string } } }).response
-        : null
-      const msg = res?.data?.message
-      toast.error(msg ?? 'Kayıt yapılamadı. Lütfen tekrar deneyin.')
+      toast.error(getApiErrorMessage(err, { fallback: 'Kayıt yapılamadı. Lütfen tekrar deneyin.' }))
     } finally {
       setLoading(false)
     }

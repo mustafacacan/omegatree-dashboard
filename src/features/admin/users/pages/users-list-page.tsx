@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import type { User } from '@/types/user.types'
 import toast from 'react-hot-toast'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { useCurrentUser } from '@/stores/auth.store'
 import { TablePagination } from '@/components/shared/table-pagination'
 import {
@@ -80,10 +81,7 @@ export function UsersListPage() {
       toast.success('Kullanıcı onaylandı')
     },
     onError: (err: unknown) => {
-      const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-        : null
-      toast.error(msg ?? 'Onay işlemi başarısız')
+      toast.error(getApiErrorMessage(err, { fallback: 'Onay işlemi başarısız' }))
     },
   })
 
@@ -96,10 +94,7 @@ export function UsersListPage() {
       toast.success('Kullanıcı başvurusu reddedildi')
     },
     onError: (err: unknown) => {
-      const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-        : null
-      toast.error(msg ?? 'İşlem başarısız')
+      toast.error(getApiErrorMessage(err, { fallback: 'İşlem başarısız' }))
     },
   })
 
@@ -112,10 +107,7 @@ export function UsersListPage() {
       toast.success('Kullanıcı oluşturuldu')
     },
     onError: (err: unknown) => {
-      const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-        : null
-      toast.error(msg ?? 'Kullanıcı oluşturulamadı')
+      toast.error(getApiErrorMessage(err, { fallback: 'Kullanıcı oluşturulamadı' }))
     },
   })
 
@@ -128,10 +120,7 @@ export function UsersListPage() {
       toast.success('Rol güncellendi')
     },
     onError: (err: unknown) => {
-      const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-        : null
-      toast.error(msg ?? 'Rol güncellenemedi')
+      toast.error(getApiErrorMessage(err, { fallback: 'Rol güncellenemedi' }))
     },
   })
 

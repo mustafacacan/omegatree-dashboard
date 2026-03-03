@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { Button, Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { formatDate } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Package, Boxes, Search, ArrowRightLeft, AlertTriangle,
@@ -207,7 +208,7 @@ export function StockPage() {
         }, 2000)
       })
       .catch((err: { response?: { data?: { message?: string } }; message?: string }) => {
-        toast.error(err?.response?.data?.message || err?.message || 'Zimmetleme yapılamadı.')
+        toast.error(getApiErrorMessage(err, { fallback: 'Zimmetleme yapılamadı.' }))
       })
       .finally(() => setAssigning(false))
   }

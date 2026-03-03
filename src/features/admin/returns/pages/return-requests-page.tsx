@@ -10,6 +10,7 @@ import {
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { Search, RotateCcw, CheckCircle, XCircle, History, Package } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-error'
 import toast from 'react-hot-toast'
 import { KitStatus } from '@/utils/constants'
 import {
@@ -86,7 +87,7 @@ export function ReturnRequestsPage() {
       setCompensationSelectedBarcode('')
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
-      toast.error(err.response?.data?.message ?? 'Telafi atamasi yapilamadi.')
+      toast.error(getApiErrorMessage(err, { fallback: 'Telafi atamasi yapilamadi.' }))
     },
   })
 

@@ -7,6 +7,7 @@ import { Button, Input } from '@/components/ui'
 import { ROUTES } from '@/utils/routes'
 import { TreePine, Phone, Lock, Eye, EyeOff, ArrowLeft, Mail } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { forgotPassword, resetPassword } from '@/services/auth.service'
 
 const phoneSchema = z.object({
@@ -42,10 +43,7 @@ export function ForgotPasswordPage() {
       setStep('reset')
       toast.success('SMS kodu telefonunuza gönderildi.')
     } catch (err: unknown) {
-      const res = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { message?: string } } }).response
-        : null
-      toast.error(res?.data?.message ?? 'Kod gönderilemedi. Telefon numaranızı kontrol edin.')
+      toast.error(getApiErrorMessage(err, { fallback: 'Kod gönderilemedi. Telefon numaranızı kontrol edin.' }))
     } finally {
       setLoading(false)
     }
@@ -58,10 +56,7 @@ export function ForgotPasswordPage() {
       toast.success('Şifreniz güncellendi. Giriş yapabilirsiniz.')
       navigate(ROUTES.GIRIS)
     } catch (err: unknown) {
-      const res = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { message?: string } } }).response
-        : null
-      toast.error(res?.data?.message ?? 'Şifre sıfırlanamadı. Kodu kontrol edip tekrar deneyin.')
+      toast.error(getApiErrorMessage(err, { fallback: 'Şifre sıfırlanamadı. Kodu kontrol edip tekrar deneyin.' }))
     } finally {
       setLoading(false)
     }

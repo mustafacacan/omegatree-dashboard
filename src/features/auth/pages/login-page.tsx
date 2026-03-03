@@ -9,6 +9,7 @@ import { UserRole, UserStatus } from '@/utils/constants'
 import { ROLE_HOME, ROUTES } from '@/utils/routes'
 import { TreePine, Mail, Lock, Eye, EyeOff, Shield, FlaskConical, TestTubes, Stethoscope, User } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { useUsersStore } from '@/stores/users.store'
 import type { User as AppUser } from '@/types/user.types'
 import { login as apiLogin } from '@/services/auth.service'
@@ -82,18 +83,19 @@ export function LoginPage() {
       toast.success(`Hoş geldiniz, ${displayName}!`)
       navigate(ROLE_HOME[user.role])
     } catch (err: unknown) {
-      const msg =
+      const status =
         err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { message?: string }; status?: number } }).response?.data?.message
-          : err instanceof Error
-            ? err.message
-            : null
-      if ((err as { response?: { status?: number } })?.response?.status === 401) {
+          ? (err as { response?: { status?: number } }).response?.status
+          : undefined
+
+      if (status === 401) {
         toast.error('Geçersiz e-posta veya şifre. Hesap onay bekliyor olabilir.')
-      } else if (msg) {
-        toast.error(msg)
       } else {
-        toast.error('Giriş yapılamadı. API bağlantısını ve bilgilerinizi kontrol edin.')
+        toast.error(
+          getApiErrorMessage(err, {
+            fallback: 'Giriş yapılamadı. API bağlantısını ve bilgilerinizi kontrol edin.',
+          })
+        )
       }
     } finally {
       setLoading(false)

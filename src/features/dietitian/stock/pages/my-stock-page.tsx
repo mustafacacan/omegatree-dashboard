@@ -11,6 +11,7 @@ import { ROUTES } from '@/utils/routes'
 import { useCurrentUser } from '@/stores/auth.store'
 import { useDietitianSettingsStore } from '@/stores/dietitian-settings.store'
 import { formatDate } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { getMyStockList, approveToStock } from '@/services/stocks.service'
 
 type BarcodeState = 'idle' | 'checking' | 'success' | 'error'
@@ -65,7 +66,7 @@ export function MyStockPage() {
       })
       .catch((err: { response?: { data?: { message?: string } }; message?: string }) => {
         setBarcodeState('error')
-        setErrorMessage(err?.response?.data?.message || err?.message || 'Barkod eşleşmedi veya stok onayı yapılamadı.')
+        setErrorMessage(getApiErrorMessage(err, { fallback: 'Barkod eşleşmedi veya stok onayı yapılamadı.' }))
       })
   }
 

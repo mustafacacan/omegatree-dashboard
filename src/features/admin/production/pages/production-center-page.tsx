@@ -9,6 +9,7 @@ import {
 } from '@/components/ui'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { formatDate } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { motion } from 'framer-motion'
 import { Factory, Barcode, Package, Plus, Copy, Check, Pencil, Printer, Search, MoreHorizontal, Loader2, TrendingUp } from 'lucide-react'
 import JsBarcode from 'jsbarcode'
@@ -64,7 +65,7 @@ export function ProductionCenterPage() {
       toast.success('Kit oluşturuldu')
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
-      toast.error(err?.response?.data?.message ?? 'Kit oluşturulamadı')
+      toast.error(getApiErrorMessage(err, { fallback: 'Kit oluşturulamadı' }))
     },
   })
   const updateKitMutation = useMutation({
@@ -76,7 +77,7 @@ export function ProductionCenterPage() {
       toast.success('Kit güncellendi')
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
-      toast.error(err?.response?.data?.message ?? 'Güncellenemedi')
+      toast.error(getApiErrorMessage(err, { fallback: 'Güncellenemedi' }))
     },
   })
   const filteredKits = useMemo(() => {

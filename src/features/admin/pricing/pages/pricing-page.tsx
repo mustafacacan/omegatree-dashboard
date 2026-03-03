@@ -7,6 +7,7 @@ import {
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
 } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { Plus, Pencil, Search, ImageIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -52,7 +53,7 @@ export function PricingPage() {
       toast.success('Satış kiti oluşturuldu')
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
-      toast.error(err?.response?.data?.message ?? 'Oluşturulamadı')
+      toast.error(getApiErrorMessage(err, { fallback: 'Oluşturulamadı' }))
     },
   })
 
@@ -66,7 +67,7 @@ export function PricingPage() {
       toast.success('Satış kiti güncellendi')
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
-      toast.error(err?.response?.data?.message ?? 'Güncellenemedi')
+      toast.error(getApiErrorMessage(err, { fallback: 'Güncellenemedi' }))
     },
   })
 
