@@ -1,15 +1,25 @@
 import { useMemo, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Card, CardHeader, CardTitle, CardContent,
   Button, Input, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
+  Badge,
 } from '@/components/ui'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { Search, RotateCcw, CheckCircle, XCircle, History, Package } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { KitStatus } from '@/utils/constants'
+import {
+  getDamagedKits,
+  approveDamagedKit,
+  assignReplacementForDamaged,
+  type DamagedKit,
+} from '@/services/damaged-kits.service'
+
+const DAMAGED_KITS_QUERY_KEY = ['damaged-kits'] as const
 
 const W = {
   olive: '#8B9A4B',
@@ -20,72 +30,138 @@ const W = {
   textLight: '#9C968D',
 }
 
+function dietitianName(d: DamagedKit): string {
+  const u = d.dieticianId
+  if (!u) return '—'
+  return [u.firstName, u.lastName].filter(Boolean).join(' ') || '—'
+}
+
+function kitBarcode(d: DamagedKit): string {
+  return d.kitId?.barcode ?? String(d.kitId?.id ?? '—')
+}
+
 export function ReturnRequestsPage() {
+  const queryClient = useQueryClient()
   const { kits, auditLogs, adminApproveReturn, adminRejectReturn, assignKitsToDietitian, markDamagedCompensationAssigned } = useWorkflowStore()
   const [query, setQuery] = useState('')
   const [photoModalUrl, setPhotoModalUrl] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending')
-  const [compensationForBarcode, setCompensationForBarcode] = useState<string | null>(null)
+  const [compensationForDamaged, setCompensationForDamaged] = useState<DamagedKit | null>(null)
   const [compensationSelectedBarcode, setCompensationSelectedBarcode] = useState('')
 
-  const returnRequests = useMemo(
-    () =>
-      kits.filter((k) => k.status === KitStatus.RETURN_REQUESTED).filter((k) => {
-        if (!query.trim()) return true
-        const q = query.toLowerCase()
-        return (
-          k.barcode.toLowerCase().includes(q) ||
-          (k.assignedDietitianName || '').toLowerCase().includes(q) ||
-          (k.returnRequest?.reason || '').toLowerCase().includes(q)
-        )
-      }),
-    [kits, query]
-  )
+  const { data: damagedList = [], isLoading: damagedLoading } = useQuery({
+    queryKey: DAMAGED_KITS_QUERY_KEY,
+    queryFn: getDamagedKits,
+  })
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => approveDamagedKit(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: DAMAGED_KITS_QUERY_KEY })
+    },
+  })
+
+  const assignMutation = useMutation({
+    mutationFn: ({
+      damagedId,
+      barcode,
+      dietitianId,
+      dietitianNameVal,
+      damagedBarcode,
+    }: {
+      damagedId: string
+      barcode: string
+      dietitianId: string
+      dietitianNameVal: string
+      damagedBarcode: string
+    }) => assignReplacementForDamaged(damagedId, barcode),
+    onSuccess: (_, { barcode, dietitianId, dietitianNameVal, damagedBarcode }) => {
+      queryClient.invalidateQueries({ queryKey: DAMAGED_KITS_QUERY_KEY })
+      if (dietitianId && dietitianNameVal) {
+        assignKitsToDietitian(dietitianId, dietitianNameVal, [barcode], 'Admin')
+        if (damagedBarcode) markDamagedCompensationAssigned(damagedBarcode, 'Admin')
+      }
+      toast.success('Telafi kiti atandi')
+      setCompensationForDamaged(null)
+      setCompensationSelectedBarcode('')
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message ?? 'Telafi atamasi yapilamadi.')
+    },
+  })
+
+  const returnRequests = useMemo(() => {
+    const pending = damagedList.filter((d) => !d.approved)
+    if (!query.trim()) return pending
+    const q = query.toLowerCase()
+    return pending.filter(
+      (d) =>
+        kitBarcode(d).toLowerCase().includes(q) ||
+        dietitianName(d).toLowerCase().includes(q) ||
+        (d.reason ?? '').toLowerCase().includes(q)
+    )
+  }, [damagedList, query])
 
   const damagedAwaitingCompensation = useMemo(
     () =>
-      kits.filter(
-        (k) => k.status === KitStatus.DAMAGED && k.assignedDietitianId && k.assignedDietitianName
+      damagedList.filter(
+        (d) => Boolean(d.approved) && !d.assignedKitId && d.dieticianId?.id != null
       ),
-    [kits]
+    [damagedList]
   )
+
   const inStockBarcodes = useMemo(
     () => kits.filter((k) => k.status === KitStatus.IN_STOCK).map((k) => k.barcode),
     [kits]
   )
 
-  const handleAssignCompensation = (damagedBarcode: string) => {
-    const damaged = kits.find((k) => k.barcode === damagedBarcode && k.status === KitStatus.DAMAGED)
-    if (!damaged?.assignedDietitianId || !damaged?.assignedDietitianName) return
-    if (!compensationSelectedBarcode || !inStockBarcodes.includes(compensationSelectedBarcode)) {
-      toast.error('Stoktan bir barkod secin')
-      return
-    }
-    assignKitsToDietitian(damaged.assignedDietitianId, damaged.assignedDietitianName, [compensationSelectedBarcode], 'Admin')
-    markDamagedCompensationAssigned(damagedBarcode, 'Admin')
-    toast.success('Telafi kiti atandi')
-    setCompensationForBarcode(null)
-    setCompensationSelectedBarcode('')
-  }
-
-  const returnHistory = useMemo(
-    () =>
-      auditLogs.filter(
-        (log) => log.action === 'RETURN_APPROVED' || log.action === 'RETURN_REJECTED'
-      ),
-    [auditLogs]
+  /** İade geçmişi: API'den approved === true olanlar (onaylananlar) */
+  const returnHistoryFromApi = useMemo(
+    () => damagedList.filter((d) => Boolean(d.approved)),
+    [damagedList]
   )
 
   const filteredHistory = useMemo(() => {
-    if (!query.trim()) return returnHistory
+    if (!query.trim()) return returnHistoryFromApi
     const q = query.toLowerCase()
-    return returnHistory.filter(
-      (log) =>
-        log.entityId.toLowerCase().includes(q) ||
-        log.details.toLowerCase().includes(q) ||
-        log.user.toLowerCase().includes(q)
+    return returnHistoryFromApi.filter(
+      (d) =>
+        kitBarcode(d).toLowerCase().includes(q) ||
+        dietitianName(d).toLowerCase().includes(q) ||
+        (d.reason ?? '').toLowerCase().includes(q)
     )
-  }, [returnHistory, query])
+  }, [returnHistoryFromApi, query])
+
+  const handleApprove = (d: DamagedKit) => {
+    const id = d.id != null ? String(d.id) : ''
+    if (!id) return
+    const barcode = kitBarcode(d)
+    if (barcode) adminApproveReturn(barcode, 'Admin')
+    approveMutation.mutate(id, {
+      onSuccess: () => {
+        toast.success('Iade onaylandi, kit hasarli olarak isaretlendi.')
+      },
+    })
+  }
+
+  const handleAssignCompensation = () => {
+    if (!compensationForDamaged) return
+    const id = compensationForDamaged.id != null ? String(compensationForDamaged.id) : ''
+    if (!id || !compensationSelectedBarcode || !inStockBarcodes.includes(compensationSelectedBarcode)) {
+      toast.error('Stoktan bir barkod secin')
+      return
+    }
+    const dietitianId = compensationForDamaged.dieticianId?.id != null ? String(compensationForDamaged.dieticianId.id) : ''
+    const dietitianNameVal = dietitianName(compensationForDamaged)
+    const damagedBarcode = kitBarcode(compensationForDamaged)
+    assignMutation.mutate({
+      damagedId: id,
+      barcode: compensationSelectedBarcode,
+      dietitianId,
+      dietitianNameVal,
+      damagedBarcode,
+    })
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -118,7 +194,7 @@ export function ReturnRequestsPage() {
                   }`}
                 >
                   <History className="h-4 w-4" />
-                  Iade Gecmisi ({returnHistory.length})
+                  Iade Gecmisi ({returnHistoryFromApi.length})
                 </button>
                 {damagedAwaitingCompensation.length > 0 && (
                   <span className="text-xs text-amber-600 font-medium flex items-center gap-1">
@@ -148,11 +224,11 @@ export function ReturnRequestsPage() {
                 <div className="mb-4 rounded-xl p-4 border border-amber-200 bg-amber-50/50">
                   <p className="text-sm font-semibold text-amber-800 mb-2">Telafi kiti atanacak (hasar onaylandi)</p>
                   <div className="space-y-2">
-                    {damagedAwaitingCompensation.map((kit) => (
-                      <div key={kit.barcode} className="flex items-center justify-between gap-3 py-2 border-b border-amber-100 last:border-0">
-                        <span className="font-mono text-sm">{kit.barcode}</span>
-                        <span className="text-sm text-surface-600">{kit.assignedDietitianName}</span>
-                        <Button variant="outline" size="sm" onClick={() => { setCompensationForBarcode(kit.barcode); setCompensationSelectedBarcode('') }}>
+                    {damagedAwaitingCompensation.map((d) => (
+                      <div key={d.id ?? kitBarcode(d)} className="flex items-center justify-between gap-3 py-2 border-b border-amber-100 last:border-0">
+                        <span className="font-mono text-sm">{kitBarcode(d)}</span>
+                        <span className="text-sm text-surface-600">{dietitianName(d)}</span>
+                        <Button variant="outline" size="sm" onClick={() => { setCompensationForDamaged(d); setCompensationSelectedBarcode('') }}>
                           <Package className="h-3.5 w-3.5" />
                           Telafi kiti ata
                         </Button>
@@ -162,7 +238,13 @@ export function ReturnRequestsPage() {
                 </div>
               )}
 
-              {returnRequests.length === 0 && (
+              {damagedLoading && (
+                <div className="rounded-xl p-4" style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}>
+                  <p className="text-sm" style={{ color: W.textLight }}>Yukleniyor...</p>
+                </div>
+              )}
+
+              {!damagedLoading && returnRequests.length === 0 && (
                 <div
                   className="rounded-xl p-4"
                   style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
@@ -173,42 +255,24 @@ export function ReturnRequestsPage() {
                 </div>
               )}
 
-              {returnRequests.map((kit) => (
+              {returnRequests.map((d) => (
                 <div
-                  key={kit.barcode}
+                  key={d.id ?? kitBarcode(d)}
                   className="rounded-xl p-4 flex flex-col xl:flex-row gap-4 xl:items-center xl:justify-between"
                   style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
                 >
                   <div className="space-y-1.5">
                     <p className="text-sm font-semibold" style={{ color: W.dark }}>
-                      {kit.barcode} - {kit.assignedDietitianName}
+                      {kitBarcode(d)} - {dietitianName(d)}
                     </p>
                     <p className="text-sm" style={{ color: W.text }}>
                       <span className="font-medium">Neden:</span>{' '}
-                      {kit.returnRequest?.reason || '-'}
+                      {d.reason || '-'}
                     </p>
                     <p className="text-xs" style={{ color: W.textLight }}>
                       Talep Tarihi:{' '}
-                      {kit.returnRequest?.requestedAt
-                        ? formatDateTime(kit.returnRequest.requestedAt)
-                        : '-'}
+                      {d.createdAt ? formatDateTime(d.createdAt) : '-'}
                     </p>
-                    {kit.returnRequest?.photoUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setPhotoModalUrl(kit.returnRequest!.photoUrl!)}
-                        className="block mt-1 text-left focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg overflow-hidden"
-                      >
-                        <img
-                          src={kit.returnRequest.photoUrl}
-                          alt="Iade kanit gorseli"
-                          className="h-24 w-40 object-cover rounded-lg border border-surface-200 hover:border-primary-300 transition-colors cursor-pointer"
-                        />
-                        <span className="text-xs text-surface-500 mt-0.5 block">
-                          Goruntuyu buyutmek icin tiklayin
-                        </span>
-                      </button>
-                    )}
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -216,7 +280,8 @@ export function ReturnRequestsPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const result = adminRejectReturn(kit.barcode, 'Admin')
+                        const barcode = kitBarcode(d)
+                        const result = adminRejectReturn(barcode, 'Admin')
                         if (result.ok) toast.success(result.message)
                         else toast.error(result.message)
                       }}
@@ -227,11 +292,8 @@ export function ReturnRequestsPage() {
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => {
-                        const result = adminApproveReturn(kit.barcode, 'Admin')
-                        if (result.ok) toast.success(result.message)
-                        else toast.error(result.message)
-                      }}
+                      disabled={approveMutation.isPending}
+                      onClick={() => handleApprove(d)}
                     >
                       <RotateCcw className="h-4 w-4" />
                       Iadeyi Kabul Et
@@ -244,42 +306,55 @@ export function ReturnRequestsPage() {
 
           {activeTab === 'history' && (
             <div className="p-5 space-y-3">
-              {filteredHistory.length === 0 && (
+              {damagedLoading && (
+                <div
+                  className="rounded-xl p-4"
+                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
+                >
+                  <p className="text-sm" style={{ color: W.textLight }}>Yukleniyor...</p>
+                </div>
+              )}
+
+              {!damagedLoading && filteredHistory.length === 0 && (
                 <div
                   className="rounded-xl p-4"
                   style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
                 >
                   <p className="text-sm font-medium" style={{ color: W.text }}>
-                    Iade gecmisi kaydi bulunmuyor.
+                    Iade gecmisi kaydi bulunmuyor. Onaylanan talepler burada listelenir.
                   </p>
                 </div>
               )}
 
-              {filteredHistory.map((log) => (
+              {!damagedLoading && filteredHistory.map((d) => (
                 <div
-                  key={log.id}
+                  key={d.id ?? kitBarcode(d)}
                   className="rounded-xl p-4 flex flex-wrap items-center justify-between gap-3"
                   style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    {log.action === 'RETURN_APPROVED' ? (
-                      <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-600 shrink-0" />
-                    )}
+                    <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
                     <div className="min-w-0">
                       <p className="text-sm font-semibold" style={{ color: W.dark }}>
-                        {log.entityId}
-                        <span className="ml-2 font-normal text-surface-500">
-                          {log.action === 'RETURN_APPROVED' ? 'Iade onaylandi' : 'Iade reddedildi'}
-                        </span>
+                        {kitBarcode(d)} · {dietitianName(d)}
+                        <span className="ml-2 font-normal text-surface-500">Onaylandi</span>
                       </p>
-                      <p className="text-sm" style={{ color: W.text }}>
-                        {log.details}
+                      <p className="text-sm mt-0.5" style={{ color: W.text }}>
+                        <span className="font-medium">Neden:</span> {d.reason || '-'}
                       </p>
                       <p className="text-xs mt-1" style={{ color: W.textLight }}>
-                        {log.user} · {formatDateTime(log.timestamp)}
+                        Talep: {d.createdAt ? formatDateTime(d.createdAt) : '-'}
                       </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Badge variant="success" dot>Onaylandi</Badge>
+                        {d.assignedKitId && (
+                          <Badge variant="primary" dot>
+                            Telafi atandi: {typeof d.assignedKitId === 'object' && d.assignedKitId?.barcode
+                              ? d.assignedKitId.barcode
+                              : '—'}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -290,12 +365,12 @@ export function ReturnRequestsPage() {
       </Card>
 
       {/* Telafi kiti ata modal */}
-      <Modal open={!!compensationForBarcode} onOpenChange={(open) => !open && (setCompensationForBarcode(null), setCompensationSelectedBarcode(''))}>
+      <Modal open={!!compensationForDamaged} onOpenChange={(open) => !open && (setCompensationForDamaged(null), setCompensationSelectedBarcode(''))}>
         <ModalContent>
           <ModalHeader>
             <ModalTitle>Telafi kiti ata</ModalTitle>
             <ModalDescription>
-              Hasarlı kit: <code className="font-mono">{compensationForBarcode}</code>. Stoktan bir barkod secip bu diyetisyene atayin.
+              Hasarlı kit: <code className="font-mono">{compensationForDamaged ? kitBarcode(compensationForDamaged) : ''}</code>. Stoktan bir barkod secip bu diyetisyene atayin.
             </ModalDescription>
           </ModalHeader>
           <ModalBody>
@@ -315,13 +390,13 @@ export function ReturnRequestsPage() {
             )}
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => { setCompensationForBarcode(null); setCompensationSelectedBarcode('') }}>Iptal</Button>
+            <Button variant="outline" onClick={() => { setCompensationForDamaged(null); setCompensationSelectedBarcode('') }}>Iptal</Button>
             <Button
               variant="primary"
-              onClick={() => compensationForBarcode && handleAssignCompensation(compensationForBarcode)}
-              disabled={!compensationSelectedBarcode}
+              onClick={handleAssignCompensation}
+              disabled={!compensationSelectedBarcode || assignMutation.isPending}
             >
-              Telafi kiti ata
+              {assignMutation.isPending ? 'Ataniyor...' : 'Telafi kiti ata'}
             </Button>
           </ModalFooter>
         </ModalContent>

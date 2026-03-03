@@ -155,12 +155,12 @@ export async function getMyStockList(): Promise<Stock[]> {
 }
 
 /**
- * POST /stocks/approved-to-stock — Barkod(lar) ile stok onayı; diyetisyene atanır.
- * Body: { barcode: string[] }
+ * POST /stocks/approved-to-stock — Barkod ile stok onayı; diyetisyen kiti teslim alır.
+ * Body: { barcode: string } (tek string, dizi değil)
  */
-export async function approveToStock(barcodes: string[]): Promise<Stock> {
+export async function approveToStock(barcode: string): Promise<Stock> {
   const { data } = await api.post<StockResponse | { data?: StockResponse }>('/stocks/approved-to-stock', {
-    barcode: barcodes,
+    barcode,
   })
   const body = (data && typeof data === 'object' && 'data' in data ? (data as { data?: StockResponse }).data : data) ?? data
   return mapStockResponse(body as StockResponse)

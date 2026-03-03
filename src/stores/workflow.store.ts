@@ -120,6 +120,8 @@ interface WorkflowState {
   markKitPrinted: (barcode: string, actor: string, ip?: string) => { ok: boolean; message: string }
   markKitsPrinted: (barcodes: string[], actor: string, ip?: string) => { ok: boolean; message: string; printedCount: number }
   createDietitianOrder: (dietitianId: string, dietitianName: string, qty: number, actor: string, ip?: string, options?: { total?: number }) => void
+  /** Sync orders from API into store; preserves assignedBarcodes for existing order ids */
+  setOrdersFromApi: (apiOrders: Array<{ id: number; user?: { id?: number; firstName?: string; lastName?: string }; quantity: number; totalPrice?: string | number; paymenStatus?: string; createdAt?: string }>) => void
   assignKitsToDietitian: (dietitianId: string, dietitianName: string, barcodes: string[], actor: string, ip?: string, orderId?: string) => void
   receiveKitByBarcode: (
     barcode: string,
@@ -428,6 +430,28 @@ export const useWorkflowStore = create<WorkflowState>()(
               ip: defaultIp(ip),
             }),
           }
+        }),
+
+      setOrdersFromApi: (apiOrders) =>
+        set((state) => {
+          const existingById = new Map(state.orders.map((o) => [o.id, o]))
+          const merged: DietitianOrder[] = apiOrders.map((o) => {
+            const id = String(o.id)
+            const existing = existingById.get(id)
+            const dietitianName = [o.user?.firstName, o.user?.lastName].filter(Boolean).join(' ') || '—'
+            const total = typeof o.totalPrice === 'string' ? Number.parseFloat(o.totalPrice) : Number(o.totalPrice)
+            return {
+              id,
+              dietitianId: o.user?.id != null ? String(o.user.id) : '',
+              dietitianName,
+              qty: o.quantity ?? 0,
+              total: Number.isFinite(total) ? total : 0,
+              paid: o.paymenStatus === 'paid',
+              createdAt: o.createdAt ?? nowIso(),
+              assignedBarcodes: existing?.assignedBarcodes ?? [],
+            }
+          })
+          return { orders: merged }
         }),
 
       markOrderPaid: (orderId, actor, ip) => {

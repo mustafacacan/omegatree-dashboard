@@ -16,6 +16,7 @@ import {
   getSalesKitImageUrl,
   type SalesKit,
 } from '@/services/sales-kits.service'
+import { SalesKitImage } from '@/components/shared/sales-kit-image'
 
 const SALES_KITS_QUERY_KEY = ['sales-kits'] as const
 
@@ -220,18 +221,19 @@ export function PricingPage() {
                     className="rounded-xl border border-surface-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
                   >
                     <div className="aspect-[4/3] bg-surface-100 relative overflow-hidden">
-                      {showImg ? (
-                        <img
-                          src={imageUrl ?? ''}
-                          alt={k.name}
-                          className="w-full h-full object-cover"
-                          onError={() => setFailedImageIds((prev) => new Set(prev).add(k.id))}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ImageIcon className="h-14 w-14 text-surface-300" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <ImageIcon className="h-14 w-14 text-surface-300" />
+                      </div>
+                      {showImg && imageUrl ? (
+                        <div className="absolute inset-0">
+                          <SalesKitImage
+                            url={imageUrl}
+                            alt={k.name}
+                            className="w-full h-full object-cover"
+                            onError={() => setFailedImageIds((prev) => new Set(prev).add(k.id))}
+                          />
                         </div>
-                      )}
+                      ) : null}
                       <div className="absolute top-2 right-2">
                         <Badge variant="outline" className="bg-white/90 backdrop-blur">
                           {k.quantity} adet

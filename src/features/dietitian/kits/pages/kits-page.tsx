@@ -13,6 +13,8 @@ import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { useLaboratoriesStore } from '@/stores/laboratories.store'
 import toast from 'react-hot-toast'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { createDamagedKit } from '@/services/damaged-kits.service'
 
 const W = {
   olive: '#8B9A4B', oliveLight: '#EEF2DE',
@@ -33,12 +35,26 @@ export function KitsPage() {
     ? laboratories.find((l) => l.assignedDietitians.includes(user.id))
     : null
   const { kits, markSampleSent, requestKitReturn } = useWorkflowStore()
+  const queryClient = useQueryClient()
   const [returnFormBarcode, setReturnFormBarcode] = useState<string | null>(null)
   const [returnReason, setReturnReason] = useState('')
   const [returnPhotoUrl, setReturnPhotoUrl] = useState<string | undefined>(undefined)
+  const [returnPhotoFile, setReturnPhotoFile] = useState<File | null>(null)
   const [returnPhotoName, setReturnPhotoName] = useState('')
   const [returnError, setReturnError] = useState('')
   const [detailModalBarcode, setDetailModalBarcode] = useState<string | null>(null)
+
+  const createDamagedMutation = useMutation({
+    mutationFn: ({ kitId, description, imageFile }: { kitId: string; description: string; imageFile: File }) =>
+      createDamagedKit(kitId, { description, imageFile }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['damaged-kits'] })
+    },
+    onError: (err: { response?: { data?: { message?: string; errors?: string[] } } }) => {
+      const msg = err.response?.data?.message || err.response?.data?.errors?.[0] || 'Iade talebi gonderilemedi.'
+      toast.error(msg)
+    },
+  })
   const myKits = kits
     .filter((k) => k.assignedDietitianId === user?.id)
     .map((k) => ({
@@ -85,6 +101,7 @@ export function KitsPage() {
   const handleReturnPhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
+    setReturnPhotoFile(file)
     setReturnPhotoName(file.name)
     const reader = new FileReader()
     reader.onload = () => {
@@ -100,23 +117,26 @@ export function KitsPage() {
       setReturnError('Kullanici bilgisi bulunamadi.')
       return
     }
-    if (!returnPhotoUrl) {
+    if (!returnPhotoFile) {
       setReturnError('Hasar bildirimi icin fotoğraf yuklemeniz zorunludur.')
       return
     }
     const actorName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Diyetisyen'
-    const result = requestKitReturn(barcode, user.id, returnReason, actorName, { photoUrl: returnPhotoUrl })
-    if (!result.ok) {
-      setReturnError(result.message)
-      return
-    }
-
-    toast.success(result.message)
-    setReturnFormBarcode(null)
-    setReturnReason('')
-    setReturnPhotoUrl(undefined)
-    setReturnPhotoName('')
-    setReturnError('')
+    createDamagedMutation.mutate(
+      { kitId: barcode, description: returnReason, imageFile: returnPhotoFile },
+      {
+        onSuccess: () => {
+          requestKitReturn(barcode, user.id, returnReason, actorName, { photoUrl: returnPhotoUrl })
+          toast.success('Iade talebiniz gonderildi. Admin incelemesi bekleniyor.')
+          setReturnFormBarcode(null)
+          setReturnReason('')
+          setReturnPhotoUrl(undefined)
+          setReturnPhotoFile(null)
+          setReturnPhotoName('')
+          setReturnError('')
+        },
+      }
+    )
   }
 
   return (
@@ -318,13 +338,13 @@ export function KitsPage() {
                         <Button
                           variant="primary"
                           size="sm"
-                          disabled={!returnPhotoUrl}
+                          disabled={!returnPhotoUrl || !returnPhotoFile || createDamagedMutation.isPending}
                           onClick={() => {
                             submitReturnRequest(kit.barcode)
                             setDetailModalBarcode(null)
                           }}
                         >
-                          Iade Talebini Gonder
+                          {createDamagedMutation.isPending ? 'Gonderiliyor...' : 'Iade Talebini Gonder'}
                         </Button>
                       </div>
                     </div>

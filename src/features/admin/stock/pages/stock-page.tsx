@@ -304,6 +304,7 @@ export function StockPage() {
               <thead>
                 <tr style={{ background: W.cream }}>
                   <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Barkod</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Kit Adı</th>
                   <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Durum</th>
                   <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Konum / Zimmet</th>
                   <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Tarih</th>
@@ -312,14 +313,14 @@ export function StockPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={4} className="px-5 py-12 text-center">
+                    <td colSpan={5} className="px-5 py-12 text-center">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
                       <p className="text-[12px]" style={{ color: W.textLight }}>Stok listesi yükleniyor...</p>
                     </td>
                   </tr>
                 ) : tableRows.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-5 py-12 text-center text-[12px]" style={{ color: W.textLight }}>
+                    <td colSpan={5} className="px-5 py-12 text-center text-[12px]" style={{ color: W.textLight }}>
                       Kayıt bulunamadı.
                     </td>
                   </tr>
@@ -334,6 +335,9 @@ export function StockPage() {
                     >
                       <td className="px-5 py-3.5">
                         <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{s.kitId?.barcode ?? '—'}</code>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-[12px]" style={{ color: W.text }}>{s.kitId?.name ?? '—'}</span>
                       </td>
                       <td className="px-5 py-3.5">
                         <span

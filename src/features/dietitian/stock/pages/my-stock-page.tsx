@@ -58,7 +58,7 @@ export function MyStockPage() {
     if (!trimmed) return
     setBarcodeState('checking')
     setErrorMessage('')
-    approveToStock([trimmed])
+    approveToStock(trimmed)
       .then(() => {
         setBarcodeState('success')
         fetchMyStock()

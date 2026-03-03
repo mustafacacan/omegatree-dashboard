@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, Badge } from '@/components/ui'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 import { ShoppingCart, Package, Truck, Check, Info, ImageIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { motion } from 'framer-motion'
 import { getSalesKits, getSalesKitImageUrl, type SalesKit } from '@/services/sales-kits.service'
+import { createOrder, getOrders, type Order } from '@/services/orders.service'
+import { SalesKitImage } from '@/components/shared/sales-kit-image'
 
 const W = {
   olive: '#8B9A4B',
@@ -28,9 +29,11 @@ const W = {
 
 const fadeUp = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 } }
 
+const ORDERS_QUERY_KEY = ['orders'] as const
+
 export function DietitianOrderPage() {
   const user = useCurrentUser()
-  const { orders, createDietitianOrder } = useWorkflowStore()
+  const queryClient = useQueryClient()
   const [selectedKit, setSelectedKit] = useState<SalesKit | null>(null)
   const [orderQty, setOrderQty] = useState(1)
   const [address, setAddress] = useState('')
@@ -41,7 +44,31 @@ export function DietitianOrderPage() {
     queryFn: getSalesKits,
   })
 
-  const myOrders = orders.filter((o) => o.dietitianId === user?.id)
+  const { data: ordersFromApi = [], isLoading: ordersLoading } = useQuery({
+    queryKey: ORDERS_QUERY_KEY,
+    queryFn: () => getOrders(),
+  })
+
+  const createOrderMutation = useMutation({
+    mutationFn: ({ salesKitId, quantity }: { salesKitId: number; quantity: number }) =>
+      createOrder(salesKitId, {
+        quantity,
+        paymentMethod: 'havale',
+        isPaid: false,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
+      toast.success('Siparis basariyla olusturuldu.')
+    },
+    onError: (err: { response?: { data?: { message?: string; errors?: string[] } } }) => {
+      const msg = err.response?.data?.message || err.response?.data?.errors?.[0] || 'Siparis olusturulamadi.'
+      toast.error(msg)
+    },
+  })
+
+  const myOrders: Order[] = ordersFromApi.filter(
+    (o) => o.user?.id != null && String(o.user.id) === String(user?.id)
+  )
 
   const maxQty = selectedKit ? Math.max(1, Math.min(selectedKit.quantity, 999)) : 1
   const safeQty = selectedKit ? Math.min(maxQty, Math.max(1, orderQty)) : 0
@@ -70,12 +97,16 @@ export function DietitianOrderPage() {
       return
     }
 
-    const dietitianName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Diyetisyen'
-    createDietitianOrder(user.id, dietitianName, safeQty, dietitianName, undefined, { total })
-    toast.success(`${selectedKit.name}: ${safeQty} adet siparis olusturuldu. Toplam: ${formatCurrency(total)}`)
-    setSelectedKit(null)
-    setOrderQty(1)
-    setAddress('')
+    createOrderMutation.mutate(
+      { salesKitId: selectedKit.id, quantity: safeQty },
+      {
+        onSuccess: () => {
+          setSelectedKit(null)
+          setOrderQty(1)
+          setAddress('')
+        },
+      }
+    )
   }
 
   return (
@@ -112,7 +143,7 @@ export function DietitianOrderPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {salesKits.map((k, i) => {
-            const imageUrl = getSalesKitImageUrl(k.imageData?.url)
+            const imageUrl = getSalesKitImageUrl(k.imageData?.url ?? k.imageUrl)
             const showImg = imageUrl && !failedImageIds.has(k.id)
             const isSelected = selectedKit?.id === k.id
             return (
@@ -128,18 +159,19 @@ export function DietitianOrderPage() {
                   }}
                 >
                   <div className="aspect-[4/3] relative overflow-hidden" style={{ background: W.cream }}>
-                    {showImg ? (
-                      <img
-                        src={imageUrl ?? ''}
-                        alt={k.name}
-                        className="w-full h-full object-cover"
-                        onError={() => setFailedImageIds((prev) => new Set(prev).add(k.id))}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <ImageIcon className="h-14 w-14 opacity-50" style={{ color: W.textLight }} />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <ImageIcon className="h-14 w-14 opacity-50" style={{ color: W.textLight }} />
+                    </div>
+                    {showImg && imageUrl ? (
+                      <div className="absolute inset-0">
+                        <SalesKitImage
+                          url={imageUrl}
+                          alt={k.name}
+                          className="w-full h-full object-cover"
+                          onError={() => setFailedImageIds((prev) => new Set(prev).add(k.id))}
+                        />
                       </div>
-                    )}
+                    ) : null}
                     <div className="absolute top-2 right-2">
                       <Badge variant="outline" className="bg-white/90 backdrop-blur text-xs">
                         Stok: {k.quantity} adet
@@ -224,11 +256,11 @@ export function DietitianOrderPage() {
                   size="lg"
                   className="w-full"
                   onClick={handleCreateOrder}
-                  disabled={!selectedKit || safeQty <= 0 || !address.trim()}
+                  disabled={!selectedKit || safeQty <= 0 || !address.trim() || createOrderMutation.isPending}
                   style={{ background: W.olive }}
                 >
                   <Package className="h-4 w-4" />
-                  Siparis Ver — {formatCurrency(total)}
+                  {createOrderMutation.isPending ? 'Gonderiliyor...' : `Siparis Ver — ${formatCurrency(total)}`}
                 </Button>
               </div>
             </div>
@@ -256,50 +288,57 @@ export function DietitianOrderPage() {
             <CardDescription className="text-[12px]" style={{ color: W.textLight }}>Onceki siparisleriniz ve durumlari</CardDescription>
           </CardHeader>
           <CardContent className="p-5">
-            {myOrders.length === 0 ? (
+            {ordersLoading ? (
+              <div className="text-center py-10" style={{ color: W.textLight }}>
+                <p className="text-[13px]">Siparisler yukleniyor...</p>
+              </div>
+            ) : myOrders.length === 0 ? (
               <div className="text-center py-10" style={{ color: W.textLight }}>
                 <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p className="text-[13px]">Henuz siparisiniz yok</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {myOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex items-center justify-between p-4 rounded-xl border transition-colors"
-                    style={{ borderColor: W.warmBorder, background: W.cream }}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: order.assignedBarcodes.length > 0 ? W.oliveLight : W.creamDark }}
-                      >
-                        {order.assignedBarcodes.length > 0 ? (
-                          <Truck className="h-5 w-5" style={{ color: W.olive }} />
-                        ) : (
-                          <Package className="h-5 w-5" style={{ color: W.textLight }} />
-                        )}
+                {myOrders.map((order) => {
+                  const paid = order.paymenStatus === 'paid'
+                  const statusLabel = order.status === 'completed' ? 'Tamamlandi' : order.status === 'cancelled' ? 'Iptal' : 'Beklemede'
+                  return (
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between p-4 rounded-xl border transition-colors"
+                      style={{ borderColor: W.warmBorder, background: W.cream }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: order.status === 'completed' ? W.oliveLight : W.creamDark }}
+                        >
+                          {order.status === 'completed' ? (
+                            <Truck className="h-5 w-5" style={{ color: W.olive }} />
+                          ) : (
+                            <Package className="h-5 w-5" style={{ color: W.textLight }} />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-[13px]" style={{ color: W.dark }}>Siparis #{order.id}</p>
+                          <p className="text-[11px] mt-0.5" style={{ color: W.textLight }}>
+                            {order.quantity} Kit · {formatDate(order.createdAt ?? '')}
+                            {paid ? ' · Odendi' : ' · Odeme bekleniyor'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-[13px]" style={{ color: W.dark }}>{order.id}</p>
-                        <p className="text-[11px] mt-0.5" style={{ color: W.textLight }}>
-                          {order.qty} Kit · {formatDate(order.createdAt)}
-                          {order.assignedBarcodes.length > 0 && ` · ${order.assignedBarcodes.length} kit kargoya verildi`}
-                          {order.paid ? ` · Odendi ${order.paidAt ? formatDateTime(order.paidAt) : ''}` : ' · Odeme bekleniyor'}
-                        </p>
+                      <div className="text-right">
+                        <p className="font-semibold text-[13px] mb-1" style={{ color: W.dark }}>{formatCurrency(Number(order.totalPrice) || 0)}</p>
+                        <div className="flex flex-col gap-1 items-end">
+                          {paid ? <Badge variant="success" dot>Odendi</Badge> : <Badge variant="warning" dot>Odeme bekleniyor</Badge>}
+                          <Badge variant={order.status === 'completed' ? 'primary' : 'default'} dot>
+                            {statusLabel}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-[13px] mb-1" style={{ color: W.dark }}>{formatCurrency(order.total)}</p>
-                      <div className="flex flex-col gap-1 items-end">
-                        {order.paid ? <Badge variant="success" dot>Odendi</Badge> : <Badge variant="warning" dot>Odeme bekleniyor</Badge>}
-                        <Badge variant={order.assignedBarcodes.length > 0 ? 'primary' : 'default'} dot>
-                          {order.assignedBarcodes.length > 0 ? 'Kargoya Verildi' : 'Beklemede'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </CardContent>

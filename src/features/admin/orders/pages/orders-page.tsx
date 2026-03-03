@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Card, CardHeader, CardTitle, CardContent, Badge,
@@ -12,9 +13,23 @@ import toast from 'react-hot-toast'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { KitStatus } from '@/utils/constants'
+import { getOrders } from '@/services/orders.service'
+
+const ORDERS_QUERY_KEY = ['orders'] as const
 
 export function OrdersPage() {
-  const { orders, kits, assignKitsToDietitian } = useWorkflowStore()
+  const { orders, kits, assignKitsToDietitian, setOrdersFromApi } = useWorkflowStore()
+
+  const { data: apiOrders } = useQuery({
+    queryKey: ORDERS_QUERY_KEY,
+    queryFn: getOrders,
+  })
+
+  useEffect(() => {
+    if (apiOrders && apiOrders.length >= 0) {
+      setOrdersFromApi(apiOrders)
+    }
+  }, [apiOrders, setOrdersFromApi])
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)

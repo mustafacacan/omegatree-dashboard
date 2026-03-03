@@ -2,17 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Card, CardHeader, CardTitle, CardContent,
-  Button, Input, Badge,
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+  Button, Input,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
 } from '@/components/ui'
-import { StatCard } from '@/components/shared/stat-card'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { formatDate } from '@/lib/utils'
-import { Factory, Barcode, Package, Plus, Copy, Check, Pencil, Printer, Search, MoreHorizontal, Filter, ArrowDownUp } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Factory, Barcode, Package, Plus, Copy, Check, Pencil, Printer, Search, MoreHorizontal, Loader2, TrendingUp } from 'lucide-react'
 import JsBarcode from 'jsbarcode'
 import toast from 'react-hot-toast'
 import {
@@ -23,6 +21,18 @@ import {
 } from '@/services/kits.service'
 
 const KITS_QUERY_KEY = ['kits'] as const
+
+const W = {
+  olive: '#8B9A4B', oliveLight: '#EEF2DE',
+  orange: '#E8913A', orangeLight: '#FDF0E2',
+  amber: '#F5C842', amberLight: '#FDF8E8',
+  green: '#6ABF69', greenLight: '#E8F5E8',
+  cream: '#F9F7F3', creamDark: '#F0EDE7',
+  warmBorder: '#E8E4DE', dark: '#2D2A26',
+  text: '#4A4640', textLight: '#9C968D', warmGrayLight: '#B5AFA5',
+}
+
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function ProductionCenterPage() {
   const queryClient = useQueryClient()
@@ -219,31 +229,65 @@ export function ProductionCenterPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <PageHeader />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="Toplam Kit" value={String(apiKits.length)} icon={Package} color="primary" />
-        <StatCard title="Aktif" value={String(apiKits.filter((k) => k.isActive).length)} icon={Barcode} color="sky" />
-        <StatCard title="Pasif" value={String(apiKits.filter((k) => !k.isActive).length)} icon={Package} color="amber" />
-        <StatCard title="Bu Ay Eklenen" value={String(kitsThisMonth)} icon={Factory} color="violet" />
+      {/* Stat cards - stok sayfası ile aynı stil */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { title: 'Toplam Kit', value: apiKits.length, icon: Package, iconColor: W.olive, iconBg: W.oliveLight },
+          { title: 'Aktif', value: apiKits.filter((k) => k.isActive).length, icon: Barcode, iconColor: W.orange, iconBg: W.orangeLight },
+          { title: 'Pasif', value: apiKits.filter((k) => !k.isActive).length, icon: Package, iconColor: W.amber, iconBg: W.amberLight },
+          { title: 'Bu Ay Eklenen', value: kitsThisMonth, icon: Factory, iconColor: '#7C5CBF', iconBg: '#EDE8F5' },
+        ].map((s, i) => {
+          const Icon = s.icon
+          return (
+            <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.05 }}>
+              <div className="rounded-2xl p-5 transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+                <div className="flex items-center gap-3.5">
+                  <div className="h-12 w-12 rounded-full flex items-center justify-center shrink-0" style={{ background: s.iconBg }}>
+                    <Icon className="h-5 w-5" style={{ color: s.iconColor }} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: W.textLight }}>{s.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xl font-bold" style={{ color: W.dark }}>{s.value}</span>
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: W.greenLight, color: '#3D8B3D' }}>
+                        <TrendingUp className="h-2.5 w-2.5" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )
+        })}
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle>Kitler</CardTitle>
-            <div className="flex items-center gap-3">
-              <Input
-                placeholder="Barkod, ad veya ID ara..."
-                leftIcon={<Search className="h-4 w-4" />}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-64"
-              />
+      {/* Kitler tablosu - stok takibi ile aynı yazı tipi / şekil */}
+      <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
+        <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
+            <div>
+              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kitler</h3>
+              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Üretim merkezi kit tanımları ({filteredKits.length} kit)</p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+                <input
+                  type="text"
+                  placeholder="Barkod, ad veya ID ara..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors"
+                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = W.olive }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                />
+              </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-44">
-                  <Filter className="h-4 w-4 mr-2 text-surface-400" />
+                <SelectTrigger className="min-w-[10rem]">
                   <SelectValue placeholder="Durum" />
                 </SelectTrigger>
                 <SelectContent>
@@ -253,8 +297,7 @@ export function ProductionCenterPage() {
                 </SelectContent>
               </Select>
               <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as 'newest' | 'oldest')}>
-                <SelectTrigger className="w-44">
-                  <ArrowDownUp className="h-4 w-4 mr-2 text-surface-400" />
+                <SelectTrigger className="min-w-[10rem]">
                   <SelectValue placeholder="Sıra" />
                 </SelectTrigger>
                 <SelectContent>
@@ -262,72 +305,86 @@ export function ProductionCenterPage() {
                   <SelectItem value="oldest">Eski</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="primary" onClick={() => { setNewKitName(''); setNewKitActive(true); setCreateKitOpen(true) }}>
+              <Button variant="primary" size="sm" onClick={() => { setNewKitName(''); setNewKitActive(true); setCreateKitOpen(true) }}>
                 <Plus className="h-4 w-4" />
                 Yeni Kit
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Barkod</TableHead>
-                <TableHead>Ad</TableHead>
-                <TableHead>Oluşturulma</TableHead>
-                <TableHead>Durum</TableHead>
-                <TableHead className="w-20" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {kitsLoading && (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-sm text-surface-500">
-                    Yükleniyor...
-                  </TableCell>
-                </TableRow>
-              )}
-              {!kitsLoading && filteredKits.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-sm text-surface-500">
-                    {apiKits.length === 0
-                      ? 'Henüz kit yok. Yeni Kit ile ekleyin.'
-                      : 'Arama veya filtreye uygun kit bulunamadı.'}
-                  </TableCell>
-                </TableRow>
-              )}
-              {!kitsLoading && paginatedKits.map((k) => (
-                    <TableRow key={k.id}>
-                      <TableCell className="font-mono text-sm">{k.id}</TableCell>
-                      <TableCell>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr style={{ background: W.cream }}>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>ID</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Barkod</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Ad</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Oluşturulma</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Durum</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20" style={{ color: W.textLight }} />
+                </tr>
+              </thead>
+              <tbody>
+                {kitsLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-12 text-center">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
+                      <p className="text-[12px]" style={{ color: W.textLight }}>Kit listesi yükleniyor...</p>
+                    </td>
+                  </tr>
+                ) : paginatedKits.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-12 text-center text-[12px]" style={{ color: W.textLight }}>
+                      {apiKits.length === 0 ? 'Henüz kit yok. Yeni Kit ile ekleyin.' : 'Arama veya filtreye uygun kit bulunamadı.'}
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedKits.map((k) => (
+                    <tr
+                      key={k.id}
+                      className="transition-colors"
+                      style={{ borderBottom: `1px solid ${W.warmBorder}` }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      <td className="px-5 py-3.5">
+                        <span className="text-[12px] font-mono" style={{ color: W.text }}>{k.id}</span>
+                      </td>
+                      <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
-                          <code className="text-sm font-mono text-surface-800 bg-surface-50 px-2 py-1 rounded-lg">
-                            {k.barcode || '—'}
-                          </code>
+                          <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{k.barcode || '—'}</code>
                           {k.barcode && (
                             <button
+                              type="button"
                               onClick={() => handleCopyBarcode(k.barcode, k.id)}
-                              className="p-1 rounded hover:bg-surface-100 transition-colors"
+                              className="p-1 rounded transition-colors"
+                              style={{ color: W.warmGrayLight }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                             >
-                              {copiedId === k.id ? (
-                                <Check className="h-3.5 w-3.5 text-primary-500" />
-                              ) : (
-                                <Copy className="h-3.5 w-3.5 text-surface-400" />
-                              )}
+                              {copiedId === k.id ? <Check className="h-3.5 w-3.5" style={{ color: W.olive }} /> : <Copy className="h-3.5 w-3.5" />}
                             </button>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell className="font-medium text-surface-800">{k.name}</TableCell>
-                      <TableCell className="text-sm text-surface-500">{formatDate(k.createdAt)}</TableCell>
-                      <TableCell>
-                        <Badge variant={k.isActive ? 'success' : 'outline'} dot>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-[12px]" style={{ color: W.text }}>{k.name}</span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-[12px]" style={{ color: W.textLight }}>{formatDate(k.createdAt)}</span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
+                          style={{
+                            background: k.isActive ? W.oliveLight : W.creamDark,
+                            color: k.isActive ? '#5A6B2A' : W.textLight,
+                          }}
+                        >
                           {k.isActive ? 'Aktif' : 'Pasif'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon-sm">
@@ -345,23 +402,25 @@ export function ProductionCenterPage() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <TablePagination
-                totalItems={filteredKits.length}
-                page={page}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={(next) => {
-                  setPageSize(next)
-                  setPage(1)
-                }}
-              />
-        </CardContent>
-      </Card>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination
+            totalItems={filteredKits.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(next) => {
+              setPageSize(next)
+              setPage(1)
+            }}
+          />
+        </div>
+      </motion.div>
 
       {/* Create Kit Modal */}
       <Modal open={createKitOpen} onOpenChange={setCreateKitOpen}>
