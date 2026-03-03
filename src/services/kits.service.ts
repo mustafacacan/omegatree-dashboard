@@ -80,6 +80,8 @@ export async function assignKitsToDietician(
 /** Diyetisyen listesi (Diyetisyene kit ata modalı için) */
 export interface DieticianOption {
   id: number
+  /** Backend stocks?user= için gerekli: dietitian.user.id */
+  userId?: number
   label: string
   firstName?: string
   lastName?: string
@@ -117,7 +119,7 @@ export async function getDieticians(): Promise<DieticianOption[]> {
 
   const raw = (data as { data?: unknown })?.data
 
-  // 1) OpenAPI: data = DieticianWithClientsResponse[]
+  // 1) OpenAPI: data = DieticianWithClientsResponse[] — dietician.id = user id
   if (Array.isArray(raw)) {
     const list = raw as DieticianItem[]
     return list.map((d) => {
@@ -126,8 +128,10 @@ export async function getDieticians(): Promise<DieticianOption[]> {
       const fullName = [firstName, lastName].filter(Boolean).join(' ')
       const email = d.dietician?.email
       const id = Number(d.id) ?? 0
+      const userId = Number((d.dietician as { id?: number } | undefined)?.id) || undefined
       return {
         id,
+        userId,
         label: fullName || email || `Diyetisyen #${id}`,
         firstName,
         lastName,
@@ -136,7 +140,7 @@ export async function getDieticians(): Promise<DieticianOption[]> {
     })
   }
 
-  // 2) Backend: data = { items: [{ id, user: { firstName, lastName, email } }] }
+  // 2) Backend: data = { items: [{ id, user: { id, firstName, lastName, email } }] }
   if (raw && typeof raw === 'object' && 'items' in raw) {
     const items = (raw as { items?: DieticiansPaginatedResponse['data']['items'] }).items ?? []
     return (items ?? []).map((d) => {
@@ -145,8 +149,10 @@ export async function getDieticians(): Promise<DieticianOption[]> {
       const fullName = [firstName, lastName].filter(Boolean).join(' ')
       const email = d?.user?.email
       const id = Number(d?.id) ?? 0
+      const userId = Number((d?.user as { id?: number } | undefined)?.id) || undefined
       return {
         id,
+        userId,
         label: fullName || email || `Diyetisyen #${id}`,
         firstName,
         lastName,
@@ -166,8 +172,10 @@ export async function getDieticians(): Promise<DieticianOption[]> {
     const fullName = [firstName, lastName].filter(Boolean).join(' ')
     const email = d.dietician?.email
     const id = Number(d.id) ?? 0
+    const userId = Number((d.dietician as { id?: number } | undefined)?.id) || undefined
     return {
       id,
+      userId,
       label: fullName || email || `Diyetisyen #${id}`,
       firstName,
       lastName,

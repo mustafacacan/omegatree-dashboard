@@ -349,7 +349,7 @@ export function MyStockPage() {
                         type="text"
                         value={barcodeInput}
                         onChange={(e) => {
-                          setBarcodeInput(e.target.value.toUpperCase())
+                          setBarcodeInput(e.target.value)
                           if (barcodeState === 'error') setBarcodeState('idle')
                         }}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleBarcodeSubmit() }}

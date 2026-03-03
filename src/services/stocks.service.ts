@@ -171,6 +171,8 @@ export interface GetStocksParams {
   limit?: number
   search?: string
   sort?: 'asc' | 'desc'
+  /** Diyetisyen ID; gönderilmezse admin stoğu (tüm stok) döner. */
+  user?: number
 }
 
 export interface GetStocksResult {
@@ -203,17 +205,38 @@ export async function getStocks(params?: GetStocksParams): Promise<GetStocksResu
           limit: params.limit ?? 10,
           ...(params.search != null && params.search !== '' && { search: params.search }),
           ...(params.sort != null && { sort: params.sort }),
+          ...(params.user != null && params.user !== undefined && { user: params.user }),
         }
       : undefined,
   })
   const payload = data?.data
-  const items = payload?.items ?? []
-  const totalItems = payload?.totalItems ?? 0
-  const totalPages = payload?.totalPages ?? 1
-  const currentPage = typeof payload?.currentPage === 'string' ? parseInt(payload.currentPage, 10) : (payload?.currentPage ?? 1)
+  const top = data as { items?: StockApiItem[]; totalItems?: number; totalPages?: number; currentPage?: number | string } | undefined
+  // Backend farklı formatlarda dönebilir: data.data.items | data.data = dizi | data.items (üst seviye)
+  const rawItems = Array.isArray(payload)
+    ? payload
+    : (payload && typeof payload === 'object' && 'items' in payload
+        ? (payload as { items?: StockApiItem[] }).items
+        : top?.items) ?? []
+  const items = Array.isArray(rawItems) ? rawItems : []
+  const totalItems = Array.isArray(payload)
+    ? payload.length
+    : Number(
+        (payload && typeof payload === 'object' && 'totalItems' in payload
+          ? (payload as { totalItems?: number }).totalItems
+          : top?.totalItems) ?? 0
+      ) || 0
+  const totalPages = Number(
+    (payload && typeof payload === 'object' && 'totalPages' in payload
+      ? (payload as { totalPages?: number }).totalPages
+      : top?.totalPages) ?? 1
+  ) || 1
+  const currentPageRaw = payload && typeof payload === 'object' && 'currentPage' in payload
+    ? (payload as { currentPage?: number | string }).currentPage
+    : top?.currentPage
+  const currentPage = typeof currentPageRaw === 'string' ? parseInt(currentPageRaw, 10) : Number(currentPageRaw) || 1
   return {
     data: items.map((item) => mapStockApiItem(item)),
-    totalItems,
+    totalItems: Number.isNaN(totalItems) ? 0 : totalItems,
     totalPages: Number.isNaN(totalPages) ? 1 : totalPages,
     currentPage: Number.isNaN(currentPage) ? 1 : currentPage,
   }

@@ -50,6 +50,9 @@ export function StockPage() {
   const [assigning, setAssigning] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  /** Query'de gönderilecek dietitian.user.id (userId); null = tümü (admin stoğu) */
+  const [filterUserId, setFilterUserId] = useState<number | null>(null)
+  const [dietitiansForFilter, setDietitiansForFilter] = useState<DieticianOption[]>([])
 
   const availableStocksForModal = useMemo(
     () => assignModalStocks.filter((s) => s.status === 'available' && s.kitId?.id),
@@ -72,6 +75,9 @@ export function StockPage() {
     return dietitiansList.filter((d) => d.label.toLowerCase().includes(q))
   }, [dietitiansList, assignDietitianSearch])
 
+  /** Sayfa filtresi için diyetisyen listesi */
+  const filteredDietitiansForFilter = dietitiansForFilter
+
   const dietitianInitials = (d: DieticianOption) => {
     const initialsFromName = [d.firstName?.[0], d.lastName?.[0]].filter(Boolean).join('')
     if (initialsFromName) return initialsFromName.toUpperCase()
@@ -92,6 +98,7 @@ export function StockPage() {
       limit: pageSize,
       search: searchQuery || undefined,
       sort: 'desc',
+      user: filterUserId ?? undefined,
     })
       .then((res) => {
         setStockList(res.data)
@@ -109,6 +116,7 @@ export function StockPage() {
       limit: pageSize,
       search: searchQuery || undefined,
       sort: 'desc',
+      user: filterUserId ?? undefined,
     })
       .then((res) => {
         if (!cancelled) {
@@ -123,7 +131,13 @@ export function StockPage() {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [page, pageSize, searchQuery])
+  }, [page, pageSize, searchQuery, filterUserId])
+
+  useEffect(() => {
+    getDieticians()
+      .then(setDietitiansForFilter)
+      .catch(() => setDietitiansForFilter([]))
+  }, [])
 
   useEffect(() => {
     if (!showAssignModal) return
@@ -157,7 +171,7 @@ export function StockPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [searchQuery, statusFilter])
+  }, [searchQuery, statusFilter, filterUserId])
 
   const stats = useMemo(() => ({
     inStock: stockList.filter((s) => s.status === 'available').length,
@@ -250,9 +264,9 @@ export function StockPage() {
             <Send className="h-4 w-4" style={{ color: '#5A6B2A' }} />
           </div>
           <div className="flex-1">
-            <p className="text-[12px] font-semibold" style={{ color: '#5A6B2A' }}>Zimmetleme Akisi</p>
+            <p className="text-[12px] font-semibold" style={{ color: '#5A6B2A' }}>Stok takibi</p>
             <p className="text-[11px]" style={{ color: '#7A8A4A' }}>
-              Kit zimmetlendiginde diyetisyen bunu goremez. Fiziksel kit ulastiginda diyetisyen barkod numarasini girerek kiti stoguna ekler.
+              Varsayılan olarak <strong>sizin stokunuzdaki (admin) tüm kitler</strong> listelenir. Diyetisyen seçerek <strong>hangi diyetisyende hangi kitlerin</strong> olduğunu görebilirsiniz. Kit zimmetlendiginde diyetisyen fiziksel teslimatta barkod ile kiti stoguna ekler.
             </p>
           </div>
         </div>
@@ -264,7 +278,11 @@ export function StockPage() {
           <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
             <div>
               <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kit Envanter</h3>
-              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Tüm kitlerin güncel durumu ({totalItems} kit)</p>
+              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
+                {filterUserId != null
+                  ? `${dietitiansForFilter.find((d) => (d.userId ?? d.id) === filterUserId)?.label ?? 'Diyetisyen'} – bu diyetisyene zimmetli kitler (${totalItems} kit)`
+                  : `Sizin stokunuzdaki tüm kitler (${totalItems} kit)`}
+              </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <div className="relative">
@@ -280,6 +298,25 @@ export function StockPage() {
                   onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
                 />
               </div>
+              <Select
+                value={filterUserId === null ? 'all' : String(filterUserId)}
+                onValueChange={(v) => setFilterUserId(v === 'all' ? null : parseInt(v, 10))}
+              >
+                <SelectTrigger className="min-w-[11rem]">
+                  <SelectValue placeholder="Diyetisyen seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Benim stokum (tüm kitler)</SelectItem>
+                  {filteredDietitiansForFilter.map((d) => {
+                    const valueId = d.userId ?? d.id
+                    return (
+                      <SelectItem key={d.id} value={String(valueId)}>
+                        {d.label}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="min-w-[10rem]">
                   <SelectValue placeholder="Tum Durumlar" />
