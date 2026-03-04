@@ -13,7 +13,7 @@ import {
   Download, X,
 } from 'lucide-react'
 import type { Laboratory } from '@/types/laboratory.types'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useLaboratoriesStore } from '@/stores/laboratories.store'
 import { useUsersStore } from '@/stores/users.store'
 import { UserRole } from '@/utils/constants'

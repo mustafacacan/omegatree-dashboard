@@ -8,7 +8,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { UserRole } from '@/utils/constants'
 import { ROUTES } from '@/utils/routes'
 import { TreePine, Mail, User, Phone } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { register as apiRegister } from '@/services/auth.service'
 

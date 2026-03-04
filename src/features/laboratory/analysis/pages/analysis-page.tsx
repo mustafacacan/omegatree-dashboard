@@ -13,7 +13,7 @@ import { Upload, Clock, CheckCircle, Eye } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { formatDate, formatDateTime } from '@/lib/utils'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 const LAB_ACTOR = 'Lab Teknisyen'
 

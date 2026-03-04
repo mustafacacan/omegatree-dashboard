@@ -5,7 +5,7 @@ import { ReportShareModal } from '@/features/dietitian/clients/components/report
 import { Card, CardHeader, CardContent, Button, Badge, Input } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { FileText, Download, Share2, Eye, Search } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { KitStatus } from '@/utils/constants'

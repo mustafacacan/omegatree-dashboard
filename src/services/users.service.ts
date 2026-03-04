@@ -31,8 +31,8 @@ function mapAppRoleToApiRole(role: UserRole): CreateUserBody['role'] {
   return roleMap[role] ?? 'client'
 }
 
-/** API UserResponse (+ isVerified backend ekstra dönebilir) → User */
-function mapApiUserToAppUser(apiUser: ApiUser & { isVerified?: boolean }): User {
+/** API UserResponse (+ isVerified, deletedAt backend) → User */
+function mapApiUserToAppUser(apiUser: ApiUser & { isVerified?: boolean; deletedAt?: string | null }): User {
   const isVerified = apiUser.isVerified
   const status = isVerified === false ? UserStatus.PENDING : UserStatus.ACTIVE
   return {
@@ -45,6 +45,9 @@ function mapApiUserToAppUser(apiUser: ApiUser & { isVerified?: boolean }): User 
     status,
     createdAt: apiUser.createdAt ?? new Date().toISOString(),
     updatedAt: apiUser.updatedAt ?? new Date().toISOString(),
+    gender: (apiUser as ApiUser & { gender?: string }).gender as 'male' | 'female' | undefined,
+    isVerified,
+    deletedAt: (apiUser as ApiUser & { deletedAt?: string | null }).deletedAt,
   }
 }
 
@@ -58,11 +61,13 @@ export interface GetUsersResponse {
   total?: number
 }
 
-/** GET /users — backend cevabı: { data: { items: UserResponse[], totalItems, totalPages, currentPage } } */
+/** GET /users — backend: { success, message, data: { items, totalItems, totalPages, currentPage } } */
 export async function getUsers(params?: GetUsersParams): Promise<GetUsersResponse> {
   const { data } = await api.get<{
+    success?: boolean
+    message?: string
     data?: {
-      items?: (ApiUser & { isVerified?: boolean })[]
+      items?: (ApiUser & { isVerified?: boolean; gender?: string; deletedAt?: string | null })[]
       totalItems?: number
       totalPages?: number
       currentPage?: string | number

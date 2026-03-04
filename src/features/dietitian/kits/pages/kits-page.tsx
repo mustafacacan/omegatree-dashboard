@@ -13,7 +13,7 @@ import {
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { useLaboratoriesStore } from '@/stores/laboratories.store'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createDamagedKit } from '@/services/damaged-kits.service'
 

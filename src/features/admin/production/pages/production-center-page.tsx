@@ -13,7 +13,7 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { motion } from 'framer-motion'
 import { Factory, Barcode, Package, Plus, Copy, Check, Pencil, Printer, Search, MoreHorizontal, Loader2, TrendingUp } from 'lucide-react'
 import JsBarcode from 'jsbarcode'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import {
   getKits,
   createKit,

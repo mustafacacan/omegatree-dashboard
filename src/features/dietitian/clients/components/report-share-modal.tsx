@@ -5,7 +5,7 @@ import {
 } from '@/components/ui'
 import { Link2, Copy, Check, Clock, Shield } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface ReportShareModalProps {
   open: boolean

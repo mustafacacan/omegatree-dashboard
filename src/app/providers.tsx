@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'react-hot-toast'
+import { Toaster } from 'sonner'
 import { TooltipProvider } from '@/components/ui'
 import { queryClient } from '@/lib/query-client'
 
@@ -13,23 +13,19 @@ export function Providers({ children }: ProvidersProps) {
       <TooltipProvider>
         {children}
         <Toaster
-          position="top-right"
+          position="bottom-right"
+          expand={false}
+          richColors
+          closeButton
+          duration={4000}
+          visibleToasts={3}
           toastOptions={{
-            duration: 3000,
             style: {
-              background: '#fff',
-              color: '#0f172a',
-              border: '1px solid #e2e8f0',
               borderRadius: '12px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              padding: '14px 18px',
               fontSize: '14px',
-              padding: '12px 16px',
-            },
-            success: {
-              iconTheme: { primary: '#10b981', secondary: '#fff' },
-            },
-            error: {
-              iconTheme: { primary: '#ef4444', secondary: '#fff' },
+              boxShadow: '0 10px 40px rgba(0,0,0,0.12), 0 2px 10px rgba(0,0,0,0.06)',
+              border: '1px solid rgba(0,0,0,0.06)',
             },
           }}
         />

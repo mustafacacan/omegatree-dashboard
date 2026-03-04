@@ -21,7 +21,7 @@ import {
   Truck, Building2, CheckCircle, Boxes, Send, X,
 } from 'lucide-react'
 import { useClientsStore } from '@/stores/clients.store'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'

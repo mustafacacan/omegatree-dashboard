@@ -2,7 +2,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, Button, Badge } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { FileText, Upload, Eye, Pencil } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 const demoTemplates = [
   { id: '1', name: 'Standart Omega-3 Rapor Sablonu', version: 'v2.1', updatedAt: '2025-06-10', active: true },

@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { ROUTES } from '@/utils/routes'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Textarea, Badge } from '@/components/ui'
 import { Upload, Send, FileText, Table as TableIcon, Save, ArrowLeft } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 

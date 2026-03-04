@@ -20,7 +20,7 @@ import { useClientsStore } from '@/stores/clients.store'
 import type { ClientRecord } from '@/stores/clients.store'
 import { KitStatus } from '@/utils/constants'
 import { ROUTES, danisanDetayPath, danisanDuzenlePath } from '@/utils/routes'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 // Demo data for modal
 const demoKits = [

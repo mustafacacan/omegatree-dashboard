@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Card, CardHeader, CardTitle, CardContent, Button, Input, Badge, Avatar,
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+  Button, Input, Badge, Avatar,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
@@ -11,12 +10,13 @@ import {
 } from '@/components/ui'
 import { UserRole, UserStatus, USER_ROLE_LABELS } from '@/utils/constants'
 import { formatDate } from '@/lib/utils'
+import { motion } from 'framer-motion'
 import {
   Search, Plus, MoreHorizontal, UserCheck, UserX, Mail, Shield, Eye,
-  Filter, Download, ChevronLeft, ChevronRight,
+  Filter, Download, ChevronLeft, ChevronRight, Loader2,
 } from 'lucide-react'
 import type { User } from '@/types/user.types'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { useCurrentUser } from '@/stores/auth.store'
 import { TablePagination } from '@/components/shared/table-pagination'
@@ -39,6 +39,16 @@ const statusLabels: Record<UserStatus, string> = {
   [UserStatus.PENDING]: 'Onay Bekliyor',
   [UserStatus.SUSPENDED]: 'Askiya Alindi',
 }
+
+const W = {
+  olive: '#8B9A4B', oliveLight: '#EEF2DE',
+  orange: '#E8913A', orangeLight: '#FDF0E2',
+  warmBorder: '#E8E4DE', dark: '#2D2A26',
+  text: '#4A4640', textLight: '#9C968D', warmGrayLight: '#B5AFA5',
+  cream: '#F9F7F3', creamDark: '#F0EDE7',
+}
+
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 const USERS_QUERY_KEY = ['users'] as const
 
@@ -148,14 +158,14 @@ export function UsersListPage() {
   }
 
   const handleExportCsv = () => {
-    const headers = ['Ad Soyad', 'E-posta', 'Rol', 'Durum', 'Kayit Tarihi', 'Son Giris']
+    const headers = ['Ad Soyad', 'E-posta', 'Telefon', 'Rol', 'Onay', 'Kayıt Tarihi']
     const rows = filteredUsers.map((u) => [
       `${u.firstName} ${u.lastName}`,
       u.email,
+      u.phone ?? '-',
       USER_ROLE_LABELS[u.role],
-      statusLabels[u.status],
+      u.isVerified === true ? 'Onaylı' : u.isVerified === false ? 'Beklemede' : '-',
       formatDate(u.createdAt),
-      u.lastLoginAt ? formatDate(u.lastLoginAt) : '-',
     ])
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -253,50 +263,57 @@ export function UsersListPage() {
       )}
 
       <Tabs defaultValue="all">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <CardTitle>Kullanicilar</CardTitle>
-                <TabsList>
-                  <TabsTrigger value="all">Tumunu ({users.length})</TabsTrigger>
+        <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
+          <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+            <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
+              <div className="flex flex-wrap items-center gap-3">
+                <div>
+                  <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kullanıcılar</h3>
+                  <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Kayıtlı kullanıcılar ({filteredUsers.length} kişi)</p>
+                </div>
+                <TabsList className="ml-0">
+                  <TabsTrigger value="all">Tümü ({users.length})</TabsTrigger>
                   <TabsTrigger value="active">Aktif ({users.filter(u => u.status === UserStatus.ACTIVE).length})</TabsTrigger>
                   <TabsTrigger value="pending">Bekleyen ({pendingUsers.length})</TabsTrigger>
                 </TabsList>
               </div>
-              <div className="flex items-center gap-3">
-                <Input
-                  placeholder="Kullanici ara..."
-                  leftIcon={<Search className="h-4 w-4" />}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-64"
-                />
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+                  <input
+                    type="text"
+                    placeholder="Ad, e-posta ara..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors"
+                    style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = W.olive }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                  />
+                </div>
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="w-44">
-                    <Filter className="h-4 w-4 mr-2 text-surface-400" />
-                    <SelectValue placeholder="Rol Filtrele" />
+                  <SelectTrigger className="min-w-[10rem]">
+                    <Filter className="h-3.5 w-3.5 mr-2" style={{ color: W.warmGrayLight }} />
+                    <SelectValue placeholder="Rol" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tum Roller</SelectItem>
+                    <SelectItem value="all">Tüm roller</SelectItem>
                     <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
                     <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
                     <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
                     <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
-                    <SelectItem value={UserRole.DANISAN}>Danisan</SelectItem>
+                    <SelectItem value={UserRole.DANISAN}>Danışan</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline" size="icon" onClick={handleExportCsv}>
+                <Button variant="outline" size="sm" onClick={handleExportCsv}>
                   <Download className="h-4 w-4" />
                 </Button>
-                <Button variant="primary" onClick={() => setNewUserOpen(true)}>
+                <Button variant="primary" size="sm" onClick={() => setNewUserOpen(true)}>
                   <Plus className="h-4 w-4" />
-                  Yeni Kullanici
+                  Yeni Kullanıcı
                 </Button>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
             <TabsContent value="all">
               <UserTable
                 users={filteredUsers}
@@ -307,6 +324,7 @@ export function UsersListPage() {
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
                 isLoading={isLoading}
+                W={W}
               />
             </TabsContent>
             <TabsContent value="active">
@@ -319,6 +337,7 @@ export function UsersListPage() {
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
                 isLoading={isLoading}
+                W={W}
               />
             </TabsContent>
             <TabsContent value="pending">
@@ -331,10 +350,11 @@ export function UsersListPage() {
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
                 isLoading={isLoading}
+                W={W}
               />
             </TabsContent>
-          </CardContent>
-        </Card>
+          </div>
+        </motion.div>
       </Tabs>
 
       {/* Approval Modal — carousel ile bekleyen kullanıcılar arasında gezinme */}
@@ -535,12 +555,12 @@ export function UsersListPage() {
         </ModalContent>
       </Modal>
 
-      {/* Profile Detail Modal */}
+      {/* Kullanıcı detay modalı — API'deki tüm alanlar */}
       <Modal open={profileOpen} onOpenChange={setProfileOpen}>
         <ModalContent>
           <ModalHeader>
-            <ModalTitle>Kullanici Profili</ModalTitle>
-            <ModalDescription>Secilen kullanicinin detay bilgileri</ModalDescription>
+            <ModalTitle>Kullanıcı detayı</ModalTitle>
+            <ModalDescription>Seçilen kullanıcının bilgileri</ModalDescription>
           </ModalHeader>
           {profileUser && (
             <ModalBody className="space-y-4">
@@ -555,26 +575,40 @@ export function UsersListPage() {
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-lg border border-surface-200 p-3">
-                  <p className="text-surface-500 text-xs mb-1">Rol</p>
-                  <p className="font-medium text-surface-800">{USER_ROLE_LABELS[profileUser.role]}</p>
+                  <p className="text-surface-500 text-xs mb-1">Ad</p>
+                  <p className="font-medium text-surface-800">{profileUser.firstName}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3">
-                  <p className="text-surface-500 text-xs mb-1">Durum</p>
-                  <Badge variant={statusBadgeVariant[profileUser.status]} dot>
-                    {statusLabels[profileUser.status]}
-                  </Badge>
+                  <p className="text-surface-500 text-xs mb-1">Soyad</p>
+                  <p className="font-medium text-surface-800">{profileUser.lastName}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3">
                   <p className="text-surface-500 text-xs mb-1">Telefon</p>
                   <p className="font-medium text-surface-800">{profileUser.phone || '-'}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3">
-                  <p className="text-surface-500 text-xs mb-1">Son Giris</p>
-                  <p className="font-medium text-surface-800">{profileUser.lastLoginAt ? formatDate(profileUser.lastLoginAt) : '-'}</p>
+                  <p className="text-surface-500 text-xs mb-1">E-posta</p>
+                  <p className="font-medium text-surface-800">{profileUser.email}</p>
+                </div>
+                <div className="rounded-lg border border-surface-200 p-3">
+                  <p className="text-surface-500 text-xs mb-1">Rol</p>
+                  <p className="font-medium text-surface-800">{USER_ROLE_LABELS[profileUser.role]}</p>
+                </div>
+                <div className="rounded-lg border border-surface-200 p-3">
+                  <p className="text-surface-500 text-xs mb-1">Onay</p>
+                  <p className="font-medium text-surface-800">{profileUser.isVerified === true ? 'Onaylı' : profileUser.isVerified === false ? 'Beklemede' : '-'}</p>
+                </div>
+                <div className="rounded-lg border border-surface-200 p-3">
+                  <p className="text-surface-500 text-xs mb-1">Oluşturulma</p>
+                  <p className="font-medium text-surface-800">{formatDate(profileUser.createdAt)}</p>
+                </div>
+                <div className="rounded-lg border border-surface-200 p-3">
+                  <p className="text-surface-500 text-xs mb-1">Güncellenme</p>
+                  <p className="font-medium text-surface-800">{formatDate(profileUser.updatedAt)}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3 col-span-2">
-                  <p className="text-surface-500 text-xs mb-1">Kayit Tarihi</p>
-                  <p className="font-medium text-surface-800">{formatDate(profileUser.createdAt)}</p>
+                  <p className="text-surface-500 text-xs mb-1">Silinme (deletedAt)</p>
+                  <p className="font-medium text-surface-800">{profileUser.deletedAt ? formatDate(profileUser.deletedAt) : '-'}</p>
                 </div>
               </div>
             </ModalBody>
@@ -597,6 +631,7 @@ function UserTable({
   onEditRole,
   onViewProfile,
   isLoading,
+  W,
 }: {
   users: User[]
   currentUserId?: string
@@ -606,6 +641,7 @@ function UserTable({
   onEditRole: (u: User) => void
   onViewProfile: (u: User) => void
   isLoading?: boolean
+  W: typeof W
 }) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -627,98 +663,114 @@ function UserTable({
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Kullanici</TableHead>
-            <TableHead>Rol</TableHead>
-            <TableHead>Durum</TableHead>
-            <TableHead>Kayit Tarihi</TableHead>
-            <TableHead>Son Giris</TableHead>
-            <TableHead className="w-20" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isLoading && (
-            <TableRow>
-              <TableCell colSpan={6} className="py-10 text-center text-sm text-surface-500">
-                Yükleniyor...
-              </TableCell>
-            </TableRow>
-          )}
-          {!isLoading && users.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={6} className="py-10 text-center text-sm text-surface-500">
-                Filtreye uygun kullanıcı bulunamadı.
-              </TableCell>
-            </TableRow>
-          )}
-          {!isLoading && paginatedUsers.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar name={`${user.firstName} ${user.lastName}`} size="sm" />
-                    <div>
-                      <p className="font-medium text-surface-800">
-                        {user.firstName} {user.lastName}
-                      </p>
-                      <p className="text-xs text-surface-400">{user.email}</p>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr style={{ background: W.cream }}>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Ad Soyad</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>E-posta</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Telefon</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Rol</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Onay</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Kayıt Tarihi</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20" style={{ color: W.textLight }} />
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-12 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
+                  <p className="text-[12px]" style={{ color: W.textLight }}>Kullanıcı listesi yükleniyor...</p>
+                </td>
+              </tr>
+            ) : users.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-12 text-center text-[12px]" style={{ color: W.textLight }}>
+                  Filtreye uygun kullanıcı bulunamadı.
+                </td>
+              </tr>
+            ) : (
+              paginatedUsers.map((user) => (
+                <tr
+                  key={user.id}
+                  className="transition-colors"
+                  style={{ borderBottom: `1px solid ${W.warmBorder}` }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2">
+                      <Avatar name={`${user.firstName} ${user.lastName}`} size="sm" />
+                      <span className="text-[12px]" style={{ color: W.text }}>{user.firstName} {user.lastName}</span>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">{USER_ROLE_LABELS[user.role]}</Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={statusBadgeVariant[user.status]} dot pulse={user.status === UserStatus.PENDING}>
-                    {statusLabels[user.status]}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-sm text-surface-500">{formatDate(user.createdAt)}</TableCell>
-                <TableCell className="text-sm text-surface-500">
-                  {user.lastLoginAt ? formatDate(user.lastLoginAt) : '-'}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {user.status === UserStatus.PENDING && (
-                        <>
-                          <DropdownMenuItem onClick={() => onApprove(user)}>
-                            <UserCheck className="h-4 w-4 mr-2" /> Onayla
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
-                      <DropdownMenuItem onClick={() => onViewProfile(user)}>
-                        <Eye className="h-4 w-4 mr-2" /> Profili Gor
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => toast.success(`${user.firstName} ${user.lastName} adresine e-posta gonderildi`)}>
-                        <Mail className="h-4 w-4 mr-2" /> E-posta Gonder
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEditRole(user)}>
-                        <Shield className="h-4 w-4 mr-2" /> Yetkileri Duzenle
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="text-[12px]" style={{ color: W.text }}>{user.email}</span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="text-[12px]" style={{ color: W.textLight }}>{user.phone || '—'}</span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: W.creamDark, color: W.text }}>
+                      {USER_ROLE_LABELS[user.role]}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span
+                      className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
+                      style={{
+                        background: user.isVerified === true ? W.oliveLight : user.isVerified === false ? W.orangeLight : W.creamDark,
+                        color: user.isVerified === true ? '#5A6B2A' : user.isVerified === false ? '#B56B1E' : W.textLight,
+                      }}
+                    >
+                      {user.isVerified === true ? 'Onaylı' : user.isVerified === false ? 'Beklemede' : statusLabels[user.status]}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="text-[12px]" style={{ color: W.textLight }}>{formatDate(user.createdAt)}</span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon-sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {user.status === UserStatus.PENDING && (
+                          <>
+                            <DropdownMenuItem onClick={() => onApprove(user)}>
+                              <UserCheck className="h-4 w-4 mr-2" /> Onayla
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        <DropdownMenuItem onClick={() => onViewProfile(user)}>
+                          <Eye className="h-4 w-4 mr-2" /> Profili Gör
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => toast.success(`${user.firstName} ${user.lastName} adresine e-posta gönderildi`)}>
+                          <Mail className="h-4 w-4 mr-2" /> E-posta Gönder
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEditRole(user)}>
+                          <Shield className="h-4 w-4 mr-2" /> Yetkileri Düzenle
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         {user.status === UserStatus.ACTIVE && (
                           <DropdownMenuItem
                             className="text-danger"
                             disabled={user.id === currentUserId}
                             onClick={() => {
                               if (user.id === currentUserId) {
-                                toast.error('Kendi hesabinizi askiya alamazsiniz')
+                                toast.error('Kendi hesabınızı askıya alamazsınız')
                                 return
                               }
                               onSuspend(user.id)
-                              toast.success(`${user.firstName} ${user.lastName} askiya alindi`)
+                              toast.success(`${user.firstName} ${user.lastName} askıya alındı`)
                             }}
                           >
-                            <UserX className="h-4 w-4 mr-2" /> Askiya Al
+                            <UserX className="h-4 w-4 mr-2" /> Askıya Al
                           </DropdownMenuItem>
                         )}
                         {user.status === UserStatus.SUSPENDED && (
@@ -731,13 +783,15 @@ function UserTable({
                             <UserCheck className="h-4 w-4 mr-2" /> Aktif Et
                           </DropdownMenuItem>
                         )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-        </TableBody>
-      </Table>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
       <TablePagination
         totalItems={users.length}
         page={page}

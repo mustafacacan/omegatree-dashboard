@@ -9,7 +9,7 @@ import { formatDate } from '@/lib/utils'
 import { useState, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 type BarcodeState = 'idle' | 'checking' | 'success' | 'error'

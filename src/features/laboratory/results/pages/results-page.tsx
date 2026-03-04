@@ -7,7 +7,7 @@ import {
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody,
 } from '@/components/ui'
 import { Upload, FileSpreadsheet, Check, Eye } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { KitStatus, KIT_STATUS_LABELS } from '@/utils/constants'
 import { ROUTES } from '@/utils/routes'

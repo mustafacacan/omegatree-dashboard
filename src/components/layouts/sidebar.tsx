@@ -202,8 +202,8 @@ export function Sidebar() {
           </div>
           {!collapsed && (
             <div className="overflow-hidden min-w-0">
-              <h1 className="text-[15px] font-semibold leading-tight truncate" style={{ color: W.dark }}>OmegaTree</h1>
-              <p className="text-[10px] leading-tight" style={{ color: W.textLight }}>Kit Takip</p>
+              <h1 className="text-[13px] font-semibold leading-tight truncate" style={{ color: W.dark }}>OmegaTree</h1>
+              <p className="text-[8px] leading-tight" style={{ color: W.textLight }}>Kit Takip</p>
             </div>
           )}
         </div>
@@ -214,7 +214,7 @@ export function Sidebar() {
             <div key={gi}>
               {!collapsed && group.title && (
                 <p
-                  className="text-[10px] font-semibold uppercase tracking-wider mb-2 px-3"
+                  className="text-[8px] font-semibold uppercase tracking-wider mb-2 px-3"
                   style={{ color: W.warmGrayLight }}
                 >
                   {group.title}
@@ -236,7 +236,7 @@ export function Sidebar() {
                       key={item.href}
                       to={item.href}
                       onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200"
+                      className="flex items-center gap-3 rounded-xl px-3 py-2 text-[12px] font-medium transition-all duration-200"
                       style={
                         isActive
                           ? { background: W.oliveLight, color: W.oliveDark }
@@ -264,7 +264,7 @@ export function Sidebar() {
                       )}
                       {!collapsed && badge != null && badge > 0 && (
                         <span
-                          className="flex h-5 min-w-5 items-center justify-center rounded-full text-[10px] font-bold px-1"
+                          className="flex h-5 min-w-5 items-center justify-center rounded-full text-[8px] font-bold px-1"
                           style={{ background: W.oliveLight, color: W.olive }}
                         >
                           {badge}
@@ -319,9 +319,9 @@ export function Sidebar() {
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 shrink-0 mt-0.5" style={{ color: W.olive }} />
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>Laboratuvarim</p>
-                    <p className="text-[12px] font-semibold mt-0.5 truncate" style={{ color: W.dark }} title={assignedLab.name}>{assignedLab.name}</p>
-                    <p className="text-[11px] mt-1 leading-snug line-clamp-2" style={{ color: W.text }} title={`${assignedLab.address}${assignedLab.district ? `, ${assignedLab.district}` : ''} / ${assignedLab.city}`}>
+                    <p className="text-[8px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>Laboratuvarim</p>
+                    <p className="text-[10px] font-semibold mt-0.5 truncate" style={{ color: W.dark }} title={assignedLab.name}>{assignedLab.name}</p>
+                    <p className="text-[9px] mt-1 leading-snug line-clamp-2" style={{ color: W.text }} title={`${assignedLab.address}${assignedLab.district ? `, ${assignedLab.district}` : ''} / ${assignedLab.city}`}>
                       {assignedLab.address}
                       {assignedLab.district ? `, ${assignedLab.district}` : ''} / {assignedLab.city}
                     </p>
@@ -330,7 +330,7 @@ export function Sidebar() {
               </div>
             ) : (
               <div className="rounded-xl p-3 border" style={{ background: W.cream, borderColor: W.warmBorder }}>
-                <p className="text-[11px]" style={{ color: W.textLight }}>Atanmis laboratuvar yok.</p>
+                <p className="text-[9px]" style={{ color: W.textLight }}>Atanmis laboratuvar yok.</p>
               </div>
             )}
           </div>
@@ -342,7 +342,7 @@ export function Sidebar() {
             type="button"
             onClick={toggle}
             className={cn(
-              'flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-[13px] transition-all duration-200',
+              'flex items-center gap-3 w-full rounded-xl px-3 py-2 text-[11px] transition-all duration-200',
               collapsed && 'justify-center'
             )}
             style={{ color: W.warmGrayLight }}

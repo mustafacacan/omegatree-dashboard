@@ -7,7 +7,7 @@ import {
 } from '@/components/ui'
 import { formatDateTime } from '@/lib/utils'
 import { Search, Download, Filter, Shield } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { TablePagination } from '@/components/shared/table-pagination'
 

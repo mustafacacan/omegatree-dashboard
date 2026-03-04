@@ -10,7 +10,7 @@ import {
   Ruler, Weight, Droplets, Heart,
   Hash, BadgeCheck, Sparkles,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { ROUTES, danisanDetayPath } from '@/utils/routes'
 import { useClientsStore } from '@/stores/clients.store'
 

@@ -4,7 +4,7 @@ import { Button, Checkbox } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth.store'
 import { ROLE_HOME } from '@/utils/routes'
 import { Shield, TreePine } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 export function KvkkConsentPage() {
   const navigate = useNavigate()

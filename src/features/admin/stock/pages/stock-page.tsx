@@ -10,7 +10,7 @@ import {
   TrendingUp, TrendingDown, X, Check,
   User, Send, CheckCircle, Loader2,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { getStocks, type Stock, type StockStatus } from '@/services/stocks.service'
 import { getDieticians, assignKitsToDietician, type DieticianOption } from '@/services/kits.service'
 

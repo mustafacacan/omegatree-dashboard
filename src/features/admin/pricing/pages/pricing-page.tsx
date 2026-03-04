@@ -9,7 +9,7 @@ import {
 import { formatCurrency } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { Plus, Pencil, Search, ImageIcon } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import {
   getSalesKits,
   createSalesKit,

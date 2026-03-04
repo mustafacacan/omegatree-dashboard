@@ -11,7 +11,7 @@ import { useWorkflowStore } from '@/stores/workflow.store'
 import { Search, RotateCcw, CheckCircle, XCircle, History, Package } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { KitStatus } from '@/utils/constants'
 import {
   getDamagedKits,

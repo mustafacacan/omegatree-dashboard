@@ -13,6 +13,10 @@ export interface User {
   lastLoginAt?: string
   createdAt: string
   updatedAt: string
+  /** API'den gelebilir */
+  gender?: 'male' | 'female'
+  isVerified?: boolean
+  deletedAt?: string | null
 }
 
 export interface LoginRequest {

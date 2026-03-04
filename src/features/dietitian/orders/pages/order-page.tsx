@@ -1,16 +1,29 @@
 import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, Badge } from '@/components/ui'
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Badge } from '@/components/ui'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui'
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalBody,
+  ModalFooter,
+} from '@/components/ui'
+import { formatCurrency, formatDate } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { ShoppingCart, Package, Truck, Check, Info, ImageIcon, Upload } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { ShoppingCart, Package, Truck, Check, Info, ImageIcon, Upload, MapPin, Copy, CreditCard, Building2, Landmark } from 'lucide-react'
+import { toast } from 'sonner'
 import { useCurrentUser } from '@/stores/auth.store'
 import { motion } from 'framer-motion'
 import { getSalesKits, getSalesKitImageUrl, type SalesKit } from '@/services/sales-kits.service'
 import { createOrder, getOrders, uploadOrderDekont, type Order } from '@/services/orders.service'
+import { getAddresses, getAddressLabel, getAddressFullLine } from '@/services/addresses.service'
 import { SalesKitImage } from '@/components/shared/sales-kit-image'
+import { ROUTES } from '@/utils/routes'
 
 const W = {
   olive: '#8B9A4B',
@@ -31,16 +44,31 @@ const W = {
 const fadeUp = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 } }
 
 const ORDERS_QUERY_KEY = ['orders'] as const
+const ADDRESSES_QUERY_KEY = ['addresses'] as const
+
+type PaymentMethod = 'credit_card' | 'eft' | 'havale'
+
+/** EFT/Havale için açıklamaya yazılacak sipariş referans numarası üretir */
+function generateTransferRef(): string {
+  const hex = Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16)).join('').toUpperCase()
+  return `ORD-${hex}`
+}
+
+/** Örnek gösterim için sabit IBAN (gerçek ödeme için backend'den gelmeli) */
+const DEMO_IBAN = 'TR33 0006 1005 1978 6457 8413 26'
 
 export function DietitianOrderPage() {
   const user = useCurrentUser()
   const queryClient = useQueryClient()
   const [selectedKit, setSelectedKit] = useState<SalesKit | null>(null)
   const [orderQty, setOrderQty] = useState(1)
-  const [address, setAddress] = useState('')
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
   const [failedImageIds, setFailedImageIds] = useState<Set<number>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dekontTargetOrderId, setDekontTargetOrderId] = useState<number | null>(null)
+  const [confirmOrderModalOpen, setConfirmOrderModalOpen] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('havale')
+  const [transferRef, setTransferRef] = useState<string>('')
 
   const { data: salesKits = [], isLoading: kitsLoading } = useQuery({
     queryKey: ['sales-kits'],
@@ -52,19 +80,35 @@ export function DietitianOrderPage() {
     queryFn: () => getOrders(),
   })
 
+  const { data: addresses = [], isLoading: addressesLoading } = useQuery({
+    queryKey: ADDRESSES_QUERY_KEY,
+    queryFn: getAddresses,
+  })
+
   const createOrderMutation = useMutation({
-    mutationFn: ({ salesKitId, quantity }: { salesKitId: number; quantity: number }) =>
+    mutationFn: ({
+      salesKitId,
+      quantity,
+      addressId,
+      paymentMethod: method,
+    }: {
+      salesKitId: number
+      quantity: number
+      addressId?: number
+      paymentMethod: PaymentMethod
+    }) =>
       createOrder(salesKitId, {
         quantity,
-        paymentMethod: 'havale',
+        paymentMethod: method,
         isPaid: false,
+        addressId,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
-      toast.success('Siparis basariyla olusturuldu.')
+      toast.success('Sipariş başarıyla oluşturuldu.')
     },
     onError: (err: unknown) => {
-      toast.error(getApiErrorMessage(err, { fallback: 'Siparis olusturulamadi.' }))
+      toast.error(getApiErrorMessage(err, { fallback: 'Sipariş oluşturulamadı. Lütfen tekrar deneyin.' }))
     },
   })
 
@@ -73,10 +117,10 @@ export function DietitianOrderPage() {
       uploadOrderDekont({ orderId, file }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
-      toast.success('Dekont yuklendi.')
+      toast.success('Dekont yüklendi.')
     },
     onError: (err: { response?: { data?: { message?: string; errors?: string[] } } }) => {
-      toast.error(getApiErrorMessage(err, { fallback: 'Dekont yuklenemedi.' }))
+      toast.error(getApiErrorMessage(err, { fallback: 'Dekont yüklenemedi. Lütfen tekrar deneyin.' }))
     },
     onSettled: () => {
       setDekontTargetOrderId(null)
@@ -97,31 +141,47 @@ export function DietitianOrderPage() {
     setOrderQty(1)
   }
 
-  const handleCreateOrder = () => {
+  const openConfirmOrderModal = () => {
     if (!selectedKit) {
-      toast.error('Lutfen bir fiyat paketi secin')
+      toast.error('Lütfen bir fiyat paketi seçin.')
       return
     }
     if (safeQty <= 0) {
-      toast.error('Gecerli adet girin')
+      toast.error('Geçerli adet girin.')
       return
     }
-    if (!address.trim()) {
-      toast.error('Teslimat adresi gerekli')
+    if (addresses.length === 0) {
+      toast.error('Sipariş için önce Ayarlar sayfasından en az bir adres ekleyin.')
+      return
+    }
+    if (!selectedAddressId) {
+      toast.error('Lütfen bir teslimat adresi seçin.')
       return
     }
     if (!user?.id) {
-      toast.error('Kullanici bilgisi bulunamadi')
+      toast.error('Kullanıcı bilgisi bulunamadı.')
       return
     }
+    setTransferRef(generateTransferRef())
+    setConfirmOrderModalOpen(true)
+  }
 
+  const handleConfirmOrder = () => {
+    if (!selectedKit || !user?.id) return
+    const addressId = Number(selectedAddressId)
     createOrderMutation.mutate(
-      { salesKitId: selectedKit.id, quantity: safeQty },
+      {
+        salesKitId: selectedKit.id,
+        quantity: safeQty,
+        addressId: Number.isNaN(addressId) ? undefined : addressId,
+        paymentMethod,
+      },
       {
         onSuccess: () => {
+          setConfirmOrderModalOpen(false)
           setSelectedKit(null)
           setOrderQty(1)
-          setAddress('')
+          setSelectedAddressId(null)
         },
       }
     )
@@ -187,7 +247,7 @@ export function DietitianOrderPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {salesKits.map((k, i) => {
-            const imageUrl = getSalesKitImageUrl(k.imageData?.url ?? k.imageUrl)
+            const imageUrl = getSalesKitImageUrl(k.imageData?.url)
             const showImg = imageUrl && !failedImageIds.has(k.id)
             const isSelected = selectedKit?.id === k.id
             return (
@@ -257,9 +317,9 @@ export function DietitianOrderPage() {
                 <ShoppingCart className="h-6 w-6" style={{ color: W.olive }} />
               </div>
               <div>
-                <h3 className="text-[17px] font-semibold" style={{ color: W.dark }}>Siparis Ver</h3>
+                <h3 className="text-[17px] font-semibold" style={{ color: W.dark }}>Sipariş Ver</h3>
                 <p className="text-[12px] mt-0.5" style={{ color: W.text }}>
-                  Paket secin, teslimat adresini girin ve siparisi tamamlayin
+                  Paket seçin, teslimat adresini listeden seçin ve siparişi tamamlayın
                 </p>
               </div>
             </div>
@@ -288,23 +348,63 @@ export function DietitianOrderPage() {
               </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <Input
-                label="Teslimat Adresi"
-                placeholder="Klinik adresi"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-surface-700 flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4" style={{ color: W.olive }} /> Teslimat adresi
+                </label>
+                {addressesLoading ? (
+                  <p className="text-sm text-surface-500">Adresler yükleniyor...</p>
+                ) : addresses.length === 0 ? (
+                  <div
+                    className="rounded-xl border border-dashed p-4 text-center text-sm"
+                    style={{ borderColor: W.warmBorder, color: W.textLight }}
+                  >
+                    Henüz adres yok.{' '}
+                    <Link
+                      to={ROUTES.DIYETISYEN_AYARLAR}
+                      className="font-medium underline"
+                      style={
+                        {
+                           color: W.olive,
+                           marginRight:"5px",
+                        }
+                      }
+                    >
+                      Ayarlar
+                    </Link>
+                      sayfasından teslimat adresi ekleyin.
+                  </div>
+                ) : (
+                  <Select value={selectedAddressId ?? ''} onValueChange={(v) => setSelectedAddressId(v || null)}>
+                    <SelectTrigger className="w-full" style={{ borderColor: W.warmBorder }}>
+                      <SelectValue placeholder="Adres seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {addresses.map((a) => (
+                        <SelectItem key={a.id} value={String(a.id)}>
+                          {getAddressLabel(a)} — {getAddressFullLine(a)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
               <div className="flex flex-col justify-end gap-2">
                 <Button
                   variant="primary"
                   size="lg"
                   className="w-full"
-                  onClick={handleCreateOrder}
-                  disabled={!selectedKit || safeQty <= 0 || !address.trim() || createOrderMutation.isPending}
+                  onClick={openConfirmOrderModal}
+                  disabled={
+                    !selectedKit ||
+                    safeQty <= 0 ||
+                    addresses.length === 0 ||
+                    !selectedAddressId
+                  }
                   style={{ background: W.olive }}
                 >
                   <Package className="h-4 w-4" />
-                  {createOrderMutation.isPending ? 'Gonderiliyor...' : `Siparis Ver — ${formatCurrency(total)}`}
+                  Sipariş Ver — {formatCurrency(total)}
                 </Button>
               </div>
             </div>
@@ -323,6 +423,131 @@ export function DietitianOrderPage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Sipariş onay modalı: özet + ödeme yöntemi */}
+      <Modal open={confirmOrderModalOpen} onOpenChange={setConfirmOrderModalOpen}>
+        <ModalContent className="flex flex-col max-h-[90vh] overflow-hidden p-0">
+          <ModalHeader className="flex-shrink-0">
+            <ModalTitle>Siparişi onayla</ModalTitle>
+            <ModalDescription>
+              Sipariş özeti ve ödeme yöntemini seçin.
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="flex-1 min-h-0 overflow-y-auto space-y-5">
+            {selectedKit && (
+              <>
+                <div className="rounded-xl p-4 border" style={{ background: W.oliveLight, borderColor: W.warmBorder }}>
+                  <p className="text-sm font-medium" style={{ color: W.dark }}>Sipariş özeti</p>
+                  <p className="text-[13px] mt-1" style={{ color: W.text }}>
+                    {selectedKit.name} · {safeQty} adet × {formatCurrency(selectedKit.price)}
+                  </p>
+                  <p className="text-base font-bold mt-2" style={{ color: W.dark }}>
+                    Toplam: {formatCurrency(total)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-surface-700 mb-2">Ödeme yöntemi</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('credit_card')}
+                      className="flex items-center gap-2 p-3 rounded-xl border-2 text-left transition-all"
+                      style={{
+                        borderColor: paymentMethod === 'credit_card' ? W.olive : W.warmBorder,
+                        background: paymentMethod === 'credit_card' ? W.oliveLight : 'transparent',
+                      }}
+                    >
+                      <CreditCard className="h-5 w-5" style={{ color: paymentMethod === 'credit_card' ? W.olive : W.textLight }} />
+                      <span className="text-sm font-medium">Kredi kartı</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('eft')}
+                      className="flex items-center gap-2 p-3 rounded-xl border-2 text-left transition-all"
+                      style={{
+                        borderColor: paymentMethod === 'eft' ? W.olive : W.warmBorder,
+                        background: paymentMethod === 'eft' ? W.oliveLight : 'transparent',
+                      }}
+                    >
+                      <Building2 className="h-5 w-5" style={{ color: paymentMethod === 'eft' ? W.olive : W.textLight }} />
+                      <span className="text-sm font-medium">EFT</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('havale')}
+                      className="flex items-center gap-2 p-3 rounded-xl border-2 text-left transition-all"
+                      style={{
+                        borderColor: paymentMethod === 'havale' ? W.olive : W.warmBorder,
+                        background: paymentMethod === 'havale' ? W.oliveLight : 'transparent',
+                      }}
+                    >
+                      <Landmark className="h-5 w-5" style={{ color: paymentMethod === 'havale' ? W.olive : W.textLight }} />
+                      <span className="text-sm font-medium">Havale</span>
+                    </button>
+                  </div>
+                </div>
+
+                {(paymentMethod === 'eft' || paymentMethod === 'havale') && (
+                  <div className="rounded-xl p-4 border space-y-3" style={{ background: W.cream, borderColor: W.warmBorder }}>
+                    <p className="text-sm font-medium" style={{ color: W.dark }}>
+                      {paymentMethod === 'havale' ? 'Havale' : 'EFT'} ile ödeme
+                    </p>
+                    <p className="text-xs" style={{ color: W.text }}>
+                      Lütfen açıklama kısmına aşağıdaki sipariş numarasını yazın.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-surface-500">Açıklamaya yazılacak numara:</span>
+                      <code className="flex-1 px-2 py-1.5 rounded bg-white border text-sm font-mono" style={{ borderColor: W.warmBorder }}>
+                        {transferRef}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(transferRef).then(() => toast.success('Kopyalandı'))
+                        }}
+                        className="p-1.5 rounded hover:bg-surface-200"
+                        title="Kopyala"
+                      >
+                        <Copy className="h-4 w-4" style={{ color: W.textLight }} />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-surface-500 shrink-0">IBAN:</span>
+                      <code className="flex-1 px-2 py-1.5 rounded bg-white border text-sm font-mono break-all" style={{ borderColor: W.warmBorder }}>
+                        {DEMO_IBAN}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(DEMO_IBAN.replace(/\s/g, '')).then(() => toast.success('IBAN kopyalandı'))
+                        }}
+                        className="p-1.5 rounded hover:bg-surface-200"
+                        title="Kopyala"
+                      >
+                        <Copy className="h-4 w-4" style={{ color: W.textLight }} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </ModalBody>
+          <ModalFooter className="flex-shrink-0 border-t border-surface-200">
+            <Button variant="outline" onClick={() => setConfirmOrderModalOpen(false)}>
+              İptal
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleConfirmOrder}
+              disabled={createOrderMutation.isPending}
+              style={{ background: W.olive }}
+            >
+              {createOrderMutation.isPending ? 'Gönderiliyor...' : 'Siparişi onayla'}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* Siparis Gecmisi */}
       <motion.div {...fadeUp} transition={{ duration: 0.3, delay: 0.15 }}>
@@ -367,7 +592,24 @@ export function DietitianOrderPage() {
                           )}
                         </div>
                         <div>
-                          <p className="font-semibold text-[13px]" style={{ color: W.dark }}>Siparis #{order.id}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-[13px]" style={{ color: W.dark }}>
+                              Sipariş no: {order.orderNumber ?? `#${order.id}`}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const num = order.orderNumber ?? String(order.id)
+                                void navigator.clipboard.writeText(num).then(() => {
+                                  toast.success('Sipariş numarası kopyalandı')
+                                })
+                              }}
+                              className="p-1 rounded hover:bg-surface-200 transition-colors"
+                              title="Kopyala"
+                            >
+                              <Copy className="h-3.5 w-3.5" style={{ color: W.textLight }} />
+                            </button>
+                          </div>
                           <p className="text-[11px] mt-0.5" style={{ color: W.textLight }}>
                             {order.quantity} Kit · {formatDate(order.createdAt ?? '')}
                             {paid ? ' · Odendi' : ' · Odeme bekleniyor'}

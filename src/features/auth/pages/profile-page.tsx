@@ -6,7 +6,7 @@ import { USER_ROLE_LABELS } from '@/utils/constants'
 import { getBasePath } from '@/utils/routes'
 import { formatDate } from '@/lib/utils'
 import { ArrowLeft, Mail, Shield, Calendar, Edit2, User } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 export function ProfilePage() {
   const user = useCurrentUser()

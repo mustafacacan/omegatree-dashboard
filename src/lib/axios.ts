@@ -1,7 +1,12 @@
-import axios from 'axios'
+import axios, { type AxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/stores/auth.store'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3005/api'
+
+/** 401 alındığında otomatik çıkış yapma (örn. adres API'si henüz yoksa) */
+export interface ApiRequestConfig extends AxiosRequestConfig {
+  skipAuthRedirect?: boolean
+}
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,6 +16,7 @@ export const api = axios.create({
   },
 })
 
+// Her istekte token varsa Authorization: Bearer <token> header'ı eklenir
 api.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token
@@ -28,7 +34,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const skipAuthRedirect = (error.config as ApiRequestConfig)?.skipAuthRedirect
+    if (error.response?.status === 401 && !skipAuthRedirect) {
       useAuthStore.getState().logout()
       window.location.href = '/giris'
     }

@@ -8,7 +8,7 @@ import {
 } from '@/components/ui'
 import { PenTool, Eye } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
 import { raporDuzenleyiciPath } from '@/utils/routes'
 import { useWorkflowStore } from '@/stores/workflow.store'

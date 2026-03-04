@@ -8,7 +8,9 @@ type Pagination = components['schemas']['Pagination']
 /** API'den dönen sipariş satırı (GET /orders response.data.items[]) */
 export interface OrderItem {
   id: number
+  orderNumber?: string
   userId?: number
+  addressId?: number
   salesKitId?: number
   quantity: number
   unitPrice?: string | number
@@ -30,6 +32,12 @@ export interface OrderItem {
     name?: string
     price?: string | number
     quantity?: number
+  }
+  address?: {
+    id?: number
+    city?: string
+    district?: string
+    fullAddress?: string
   }
 }
 
@@ -62,6 +70,8 @@ export interface CreateOrderParams {
   quantity: number
   paymentMethod: CreateOrderBody['paymentMethod']
   isPaid?: boolean
+  /** Teslimat adresi (ayarlardan seçilen); backend destekliyorsa kullanılır */
+  addressId?: number
 }
 
 export interface UploadOrderDekontParams {
@@ -79,6 +89,9 @@ export async function createOrder(
   form.append('paymentMethod', params.paymentMethod)
   if (params.isPaid !== undefined) {
     form.append('isPaid', String(params.isPaid))
+  }
+  if (params.addressId != null) {
+    form.append('addressId', String(params.addressId))
   }
   const { data } = await api.post<OrderResponse>(
     `/orders/create/${salesKitId}`,

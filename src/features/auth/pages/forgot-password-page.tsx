@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { Button, Input } from '@/components/ui'
 import { ROUTES } from '@/utils/routes'
 import { TreePine, Phone, Lock, Eye, EyeOff, ArrowLeft, Mail } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { forgotPassword, resetPassword } from '@/services/auth.service'
 

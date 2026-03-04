@@ -11,7 +11,7 @@ import { useUsersStore } from '@/stores/users.store'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { UserRole } from '@/utils/constants'
 import { TablePagination } from '@/components/shared/table-pagination'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 export function CariPage() {
   const { users } = useUsersStore()

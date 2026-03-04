@@ -4,7 +4,7 @@ import {
   ModalBody, ModalFooter, Button, Input,
 } from '@/components/ui'
 import { Package, Building2, Home, MapPin, Truck } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface KitRequestModalProps {
   open: boolean
