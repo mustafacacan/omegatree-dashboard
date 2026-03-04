@@ -183,7 +183,7 @@ export function MyStockPage() {
 
       {/* ═══ STOCK LIST ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.15 }}>
-        <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+        <div className="panel">
 
           {/* Header — tablonun ustunde Kit Teslim Al butonu */}
           <div className="p-5 flex items-center justify-between gap-3 flex-wrap" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>

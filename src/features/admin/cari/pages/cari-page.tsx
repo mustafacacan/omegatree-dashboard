@@ -1,17 +1,33 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Card, CardHeader, CardTitle, CardContent, Badge, Avatar,
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
-  Button, Input, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
+  Badge, Avatar, Button, Input,
+  Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
 } from '@/components/ui'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Search, TrendingUp, TrendingDown, Plus, History } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { useUsersStore } from '@/stores/users.store'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { UserRole } from '@/utils/constants'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { toast } from 'sonner'
+
+const W = {
+  olive: '#8B9A4B',
+  oliveLight: '#EEF2DE',
+  orange: '#E8913A',
+  orangeLight: '#FDF0E2',
+  warmBorder: '#E8E4DE',
+  dark: '#2D2A26',
+  text: '#4A4640',
+  textLight: '#9C968D',
+  warmGrayLight: '#B5AFA5',
+  cream: '#F9F7F3',
+  creamDark: '#F0EDE7',
+}
+
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function CariPage() {
   const { users } = useUsersStore()
@@ -72,80 +88,105 @@ export function CariPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Cari Hesap Listesi</CardTitle>
-            <Input
-              placeholder="Diyetisyen ara..."
-              leftIcon={<Search className="h-4 w-4" />}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-64"
-            />
+      <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
+        <div className="panel">
+          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
+            <div>
+              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Cari Hesap Listesi</h3>
+              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Diyetisyen cari hesaplari ({filteredCari.length} kayit)</p>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+              <input
+                type="text"
+                placeholder="Diyetisyen ara..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors"
+                style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = W.olive }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+              />
+            </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Diyetisyen</TableHead>
-                <TableHead>Toplam Odeme</TableHead>
-                <TableHead>Kit Borcu</TableHead>
-                <TableHead>Bakiye</TableHead>
-                <TableHead>Durum</TableHead>
-                <TableHead className="w-32">Islem</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedCari.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-sm text-surface-500">
-                    Filtreye uygun cari kaydi bulunamadi.
-                  </TableCell>
-                </TableRow>
-              )}
-              {paginatedCari.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar name={item.name} size="sm" />
-                      <div>
-                        <p className="font-medium text-surface-800">{item.name}</p>
-                        <p className="text-xs text-surface-400">{item.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium text-primary-700">
-                    {formatCurrency(item.totalPayments)}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {formatCurrency(item.totalKitCharge)}
-                  </TableCell>
-                  <TableCell>
-                    <span className={item.balance >= 0 ? 'font-semibold text-primary-700' : 'font-semibold text-danger'}>
-                      {formatCurrency(item.balance)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {item.balance > 0 ? (
-                      <Badge variant="success" dot><TrendingUp className="h-3 w-3" /> Alacakli</Badge>
-                    ) : item.balance < 0 ? (
-                      <Badge variant="danger" dot><TrendingDown className="h-3 w-3" /> Borclu</Badge>
-                    ) : (
-                      <Badge variant="default">Dengeli</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="sm" onClick={() => setHistoryUserId(item.id)}><History className="h-3.5 w-3.5" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => { setPaymentModalUserId(item.id); setPaymentAmount(''); setPaymentNote('') }}><Plus className="h-3.5 w-3.5" /> Odeme</Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr style={{ background: W.cream }}>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Diyetisyen</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Toplam Odeme</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Kit Borcu</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Bakiye</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Durum</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-32" style={{ color: W.textLight }}>Islem</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedCari.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-12 text-center text-[12px]" style={{ color: W.textLight }}>
+                      Filtreye uygun cari kaydi bulunamadi.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedCari.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="transition-colors"
+                      style={{ borderBottom: `1px solid ${W.warmBorder}` }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <Avatar name={item.name} size="sm" />
+                          <div>
+                            <span className="text-[12px] block" style={{ color: W.text }}>{item.name}</span>
+                            <span className="text-[11px]" style={{ color: W.textLight }}>{item.email}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-[12px] font-medium" style={{ color: W.olive }}>{formatCurrency(item.totalPayments)}</span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-[12px]" style={{ color: W.text }}>{formatCurrency(item.totalKitCharge)}</span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className="text-[12px] font-semibold"
+                          style={{ color: item.balance >= 0 ? '#5A6B2A' : '#C0392B' }}
+                        >
+                          {formatCurrency(item.balance)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {item.balance > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: W.oliveLight, color: '#5A6B2A' }}>
+                            <TrendingUp className="h-3 w-3" /> Alacakli
+                          </span>
+                        ) : item.balance < 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: W.orangeLight, color: '#B56B1E' }}>
+                            <TrendingDown className="h-3 w-3" /> Borclu
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: W.creamDark, color: W.text }}>
+                            Dengeli
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex gap-1">
+                          <Button variant="outline" size="sm" onClick={() => setHistoryUserId(item.id)}><History className="h-3.5 w-3.5" /></Button>
+                          <Button variant="outline" size="sm" onClick={() => { setPaymentModalUserId(item.id); setPaymentAmount(''); setPaymentNote('') }}><Plus className="h-3.5 w-3.5" /> Odeme</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
           <TablePagination
             totalItems={filteredCari.length}
             page={page}
@@ -156,8 +197,8 @@ export function CariPage() {
               setPage(1)
             }}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </motion.div>
 
       {/* Ödeme ekle modal */}
       <Modal open={!!paymentModalUserId} onOpenChange={(open) => !open && setPaymentModalUserId(null)}>

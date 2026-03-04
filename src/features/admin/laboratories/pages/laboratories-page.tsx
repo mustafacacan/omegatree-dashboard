@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Card, CardHeader, CardTitle, CardContent, Button, Input, Badge,
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+  Button, Input, Badge,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
@@ -12,12 +11,27 @@ import {
   Search, Plus, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone, Mail,
   Download, X,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import type { Laboratory } from '@/types/laboratory.types'
 import { toast } from 'sonner'
 import { useLaboratoriesStore } from '@/stores/laboratories.store'
 import { useUsersStore } from '@/stores/users.store'
 import { UserRole } from '@/utils/constants'
 import { TablePagination } from '@/components/shared/table-pagination'
+
+const W = {
+  olive: '#8B9A4B',
+  oliveLight: '#EEF2DE',
+  warmBorder: '#E8E4DE',
+  dark: '#2D2A26',
+  text: '#4A4640',
+  textLight: '#9C968D',
+  warmGrayLight: '#B5AFA5',
+  cream: '#F9F7F3',
+  creamDark: '#F0EDE7',
+}
+
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function LaboratoriesPage() {
   const [search, setSearch] = useState('')
@@ -213,38 +227,46 @@ export function LaboratoriesPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Laboratuvarlar</CardTitle>
-            <div className="flex items-center gap-3">
-              <Input
-                placeholder="Laboratuvar ara..."
-                leftIcon={<Search className="h-4 w-4" />}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-64"
-              />
-              <Button variant="outline" size="icon" onClick={handleExportCsv}>
+      <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
+        <div className="panel">
+          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
+            <div>
+              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Laboratuvarlar</h3>
+              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Kayitli laboratuvarlar ({filteredLaboratories.length} adet)</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+                <input
+                  type="text"
+                  placeholder="Laboratuvar ara..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors"
+                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = W.olive }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                />
+              </div>
+              <Button variant="outline" size="sm" onClick={handleExportCsv}>
                 <Download className="h-4 w-4" />
               </Button>
-              <Button variant="primary" onClick={() => setNewLabOpen(true)}>
+              <Button variant="primary" size="sm" onClick={() => setNewLabOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Yeni Laboratuvar
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
           <LaboratoryTable
             laboratories={filteredLaboratories}
             users={users}
             onEdit={openEditLab}
             onDelete={openDeleteLab}
             onAssignDietitian={openAssignDietitian}
+            W={W}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </motion.div>
 
       {/* Create Laboratory Modal */}
       <Modal open={newLabOpen} onOpenChange={setNewLabOpen}>
@@ -467,12 +489,14 @@ function LaboratoryTable({
   onEdit,
   onDelete,
   onAssignDietitian,
+  W,
 }: {
   laboratories: Laboratory[]
   users: any[]
   onEdit: (lab: Laboratory) => void
   onDelete: (lab: Laboratory) => void
   onAssignDietitian: (lab: Laboratory) => void
+  W: typeof W
 }) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -494,119 +518,137 @@ function LaboratoryTable({
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Laboratuvar</TableHead>
-            <TableHead>Adres</TableHead>
-            <TableHead>İletişim</TableHead>
-            <TableHead>Atanan Diyetisyenler</TableHead>
-            <TableHead>Oluşturulma</TableHead>
-            <TableHead className="w-20" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {laboratories.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={6} className="py-10 text-center text-sm text-surface-500">
-                Laboratuvar bulunamadı.
-              </TableCell>
-            </TableRow>
-          )}
-          {paginatedLabs.map((lab) => {
-              const assignedDietitians = lab.assignedDietitians
-                .map((id) => users.find((u) => u.id === id))
-                .filter(Boolean)
-              return (
-                <TableRow key={lab.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-surface-800">{lab.name}</p>
-                      <p className="text-xs text-surface-400">
-                        {lab.city}
-                        {lab.district && `, ${lab.district}`}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-start gap-2">
-                      <MapPin className="h-4 w-4 text-surface-400 mt-0.5 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm text-surface-700">{lab.address}</p>
-                        {lab.postalCode && (
-                          <p className="text-xs text-surface-400">PK: {lab.postalCode}</p>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr style={{ background: W.cream }}>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Laboratuvar</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Adres</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Iletisim</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Atanan Diyetisyenler</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Olusturulma</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20" style={{ color: W.textLight }} />
+            </tr>
+          </thead>
+          <tbody>
+            {laboratories.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-5 py-12 text-center text-[12px]" style={{ color: W.textLight }}>
+                  Laboratuvar bulunamadi.
+                </td>
+              </tr>
+            ) : (
+              paginatedLabs.map((lab) => {
+                const assignedDietitians = lab.assignedDietitians
+                  .map((id) => users.find((u) => u.id === id))
+                  .filter(Boolean)
+                return (
+                  <tr
+                    key={lab.id}
+                    className="transition-colors"
+                    style={{ borderBottom: `1px solid ${W.warmBorder}` }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <td className="px-5 py-3.5">
+                      <div>
+                        <span className="text-[12px] block font-medium" style={{ color: W.text }}>{lab.name}</span>
+                        <span className="text-[11px]" style={{ color: W.textLight }}>
+                          {lab.city}
+                          {lab.district && `, ${lab.district}`}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 mt-0.5 shrink-0" style={{ color: W.warmGrayLight }} />
+                        <div className="min-w-0">
+                          <span className="text-[12px] block" style={{ color: W.text }}>{lab.address}</span>
+                          {lab.postalCode && (
+                            <span className="text-[11px]" style={{ color: W.textLight }}>PK: {lab.postalCode}</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="space-y-1">
+                        {lab.phone && (
+                          <div className="flex items-center gap-1.5 text-[12px]" style={{ color: W.text }}>
+                            <Phone className="h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+                            <span>{lab.phone}</span>
+                          </div>
+                        )}
+                        {lab.email && (
+                          <div className="flex items-center gap-1.5 text-[12px] truncate" style={{ color: W.text }}>
+                            <Mail className="h-3.5 w-3.5 shrink-0" style={{ color: W.warmGrayLight }} />
+                            <span className="truncate">{lab.email}</span>
+                          </div>
+                        )}
+                        {!lab.phone && !lab.email && (
+                          <span className="text-[11px]" style={{ color: W.textLight }}>-</span>
                         )}
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      {lab.phone && (
-                        <div className="flex items-center gap-1.5 text-sm text-surface-600">
-                          <Phone className="h-3.5 w-3.5" />
-                          <span>{lab.phone}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {assignedDietitians.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {assignedDietitians.slice(0, 2).map((dietitian: any) => (
+                            <span
+                              key={dietitian.id}
+                              className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
+                              style={{ background: W.creamDark, color: W.text }}
+                            >
+                              {dietitian.firstName} {dietitian.lastName}
+                            </span>
+                          ))}
+                          {assignedDietitians.length > 2 && (
+                            <span
+                              className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
+                              style={{ background: W.creamDark, color: W.text }}
+                            >
+                              +{assignedDietitians.length - 2}
+                            </span>
+                          )}
                         </div>
+                      ) : (
+                        <span className="text-[11px]" style={{ color: W.textLight }}>Atanmamis</span>
                       )}
-                      {lab.email && (
-                        <div className="flex items-center gap-1.5 text-sm text-surface-600">
-                          <Mail className="h-3.5 w-3.5" />
-                          <span className="truncate">{lab.email}</span>
-                        </div>
-                      )}
-                      {!lab.phone && !lab.email && (
-                        <span className="text-xs text-surface-400">-</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {assignedDietitians.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {assignedDietitians.slice(0, 2).map((dietitian: any) => (
-                          <Badge key={dietitian.id} variant="outline" className="text-xs">
-                            {dietitian.firstName} {dietitian.lastName}
-                          </Badge>
-                        ))}
-                        {assignedDietitians.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{assignedDietitians.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-surface-400">Atanmamış</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm text-surface-500">{formatDate(lab.createdAt)}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon-sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onAssignDietitian(lab)}>
-                          <Users className="h-4 w-4 mr-2" /> Diyetisyen Ata
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => onEdit(lab)}>
-                          <Edit className="h-4 w-4 mr-2" /> Düzenle
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-danger"
-                          onClick={() => onDelete(lab)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" /> Sil
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-        </TableBody>
-      </Table>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-[12px]" style={{ color: W.textLight }}>{formatDate(lab.createdAt)}</span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon-sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onAssignDietitian(lab)}>
+                            <Users className="h-4 w-4 mr-2" /> Diyetisyen Ata
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => onEdit(lab)}>
+                            <Edit className="h-4 w-4 mr-2" /> Duzenle
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-danger"
+                            onClick={() => onDelete(lab)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" /> Sil
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
       <TablePagination
         totalItems={laboratories.length}
         page={page}

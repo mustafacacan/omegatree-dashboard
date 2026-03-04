@@ -31,10 +31,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             className={cn(
               'flex h-9 w-full rounded-xl border bg-white px-3 py-2',
               'text-sm text-surface-800 placeholder:text-surface-400',
-              'transition-colors duration-150',
+              'transition-all duration-200',
               'border-surface-200',
-              'hover:border-surface-300',
-              'focus:outline-none focus:ring-2 focus:ring-primary-500/15 focus:border-primary-500',
+              'hover:border-surface-300 hover:bg-surface-50/50',
+              'focus:outline-none focus:ring-2 focus:ring-primary-500/25 focus:border-primary-500 focus:bg-white',
               'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-50',
               leftIcon && 'pl-9',
               rightIcon && 'pr-9',

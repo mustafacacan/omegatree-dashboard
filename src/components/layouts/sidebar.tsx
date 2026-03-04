@@ -184,6 +184,7 @@ export function Sidebar() {
         style={{
           background: '#FFFFFF',
           borderRight: `1px solid ${W.warmBorder}`,
+          boxShadow: collapsed ? 'none' : '4px 0 24px rgba(45, 42, 38, 0.06)',
         }}
       >
         {/* Logo */}

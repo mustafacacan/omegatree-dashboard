@@ -96,10 +96,11 @@ export function Header() {
     <header
       className="sticky top-0 z-30 h-16"
       style={{
-        background: 'rgba(255,255,255,0.85)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        background: 'rgba(255,255,255,0.88)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
         borderBottom: `1px solid ${W.warmBorder}`,
+        boxShadow: '0 1px 0 0 rgba(255,255,255,0.8) inset, 0 2px 8px rgba(45,42,38,0.04)',
       }}
     >
       <div className="h-full flex items-center justify-between px-4 lg:px-6">

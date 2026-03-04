@@ -19,14 +19,14 @@ export function PageHeader({ title, description, breadcrumbs, actions }: PageHea
   }
 
   return (
-    <div className="mb-4">
+    <div className="mb-6">
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav className="flex items-center gap-1 mb-3 text-description">
+        <nav className="flex items-center gap-1 mb-3 text-description text-sm">
           {breadcrumbs.map((crumb, index) => (
             <span key={index} className="flex items-center gap-1">
               {index > 0 && <ChevronRight className="h-3 w-3 opacity-70" />}
               {crumb.href ? (
-                <Link to={crumb.href} className="transition-colors hover:opacity-80">
+                <Link to={crumb.href} className="transition-colors hover:opacity-80 hover:text-surface-700">
                   {crumb.label}
                 </Link>
               ) : (
@@ -37,11 +37,19 @@ export function PageHeader({ title, description, breadcrumbs, actions }: PageHea
         </nav>
       )}
       {(title || description || actions) && (
-        <div className="flex items-end justify-between gap-4">
+        <div className="flex items-end justify-between gap-4 flex-wrap">
           {(title || description) && (
-            <div>
-              {title && <h1 className="text-page-title">{title}</h1>}
-              {description && <p className="mt-1 text-description">{description}</p>}
+            <div className="min-w-0">
+              {title && (
+                <h1 className="text-page-title tracking-tight text-surface-900">
+                  {title}
+                </h1>
+              )}
+              {description && (
+                <p className="mt-1.5 text-description max-w-2xl">
+                  {description}
+                </p>
+              )}
             </div>
           )}
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}

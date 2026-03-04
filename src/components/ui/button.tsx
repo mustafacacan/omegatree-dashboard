@@ -7,30 +7,31 @@ const buttonVariants = cva(
   [
     'inline-flex items-center justify-center gap-2 whitespace-nowrap',
     'text-sm font-medium rounded-xl',
-    'transition-colors duration-150',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-2',
+    'transition-all duration-200 ease-out',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2',
     'disabled:pointer-events-none disabled:opacity-50',
     'cursor-pointer select-none',
+    'active:scale-[0.98]',
   ].join(' '),
   {
     variants: {
       variant: {
         default:
-          'bg-surface-900 text-white hover:bg-surface-800 shadow-[0_1px_2px_rgba(42,47,39,0.12)]',
+          'bg-surface-900 text-white hover:bg-surface-800 hover:shadow-md shadow-[0_1px_2px_rgba(42,47,39,0.12)]',
         primary:
-          'bg-primary-500 text-white hover:bg-primary-600 shadow-[0_1px_2px_rgba(58,79,27,0.2)]',
+          'bg-primary-500 text-white hover:bg-primary-600 hover:shadow-[0_4px_12px_rgba(139,154,75,0.35)] shadow-[0_1px_2px_rgba(58,79,27,0.2)]',
         gradient:
-          'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-sm hover:from-primary-600 hover:to-primary-700',
+          'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-sm hover:from-primary-600 hover:to-primary-700 hover:shadow-[0_4px_12px_rgba(139,154,75,0.3)]',
         outline:
-          'border border-surface-200 bg-white text-surface-700 hover:bg-surface-100 hover:text-surface-900',
+          'border border-surface-200 bg-white text-surface-700 hover:bg-surface-100 hover:text-surface-900 hover:border-surface-300',
         ghost:
           'text-surface-600 hover:bg-surface-100 hover:text-surface-800',
         destructive:
-          'bg-danger text-white hover:bg-red-600 shadow-sm',
+          'bg-danger text-white hover:bg-red-600 shadow-sm hover:shadow-md',
         link:
-          'text-primary-600 hover:text-primary-700 underline-offset-4 hover:underline p-0 h-auto',
+          'text-primary-600 hover:text-primary-700 underline-offset-4 hover:underline p-0 h-auto active:scale-100',
         success:
-          'bg-success text-white hover:opacity-90 shadow-sm',
+          'bg-success text-white hover:opacity-90 hover:shadow-md shadow-sm',
       },
       size: {
         xs: 'h-7 px-2.5 text-xs rounded-lg gap-1',

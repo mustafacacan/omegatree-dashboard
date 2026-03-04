@@ -187,7 +187,7 @@ export function KitsPage() {
           </span>
         </div>
 
-        <div className="rounded-2xl overflow-hidden border border-surface-200 bg-white">
+        <div className="panel">
           <Table>
             <TableHeader>
               <TableRow>

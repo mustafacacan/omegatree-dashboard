@@ -27,7 +27,9 @@ export function TablePagination({
   const end = Math.min(currentPage * safePageSize, totalItems)
 
   return (
-    <div className={`flex flex-col gap-3 border-t border-surface-100 p-4 sm:flex-row sm:items-center sm:justify-between ${className ?? ''}`}>
+    <div
+      className={`flex flex-col gap-3 border-t border-surface-200 bg-surface-50/50 p-4 sm:flex-row sm:items-center sm:justify-between ${className ?? ''}`}
+    >
       <div className="flex items-center gap-2 text-sm text-surface-600">
         <span>Sayfa basina</span>
         <Select value={String(safePageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>

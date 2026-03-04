@@ -15,7 +15,7 @@ const ModalOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/50',
+      'fixed inset-0 z-50 bg-black/45 backdrop-blur-sm',
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className
@@ -36,8 +36,9 @@ const ModalContent = React.forwardRef<
       className={cn(
         'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2',
         'w-full max-w-lg max-h-[90vh] overflow-y-auto',
-        'rounded-xl bg-white shadow-lg border border-surface-200',
-        'duration-200',
+        'rounded-2xl bg-white border border-surface-200',
+        'shadow-[0_8px_24px_rgba(45,42,38,0.12),0_2px_8px_rgba(45,42,38,0.06)]',
+        'duration-300 ease-out',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -49,7 +50,7 @@ const ModalContent = React.forwardRef<
     >
       {children}
       {!hideCloseButton && (
-        <DialogPrimitive.Close className="absolute right-3.5 top-3.5 rounded-md p-1 text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/30">
+        <DialogPrimitive.Close className="absolute right-3.5 top-3.5 rounded-lg p-2 text-surface-400 hover:text-surface-700 hover:bg-surface-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:ring-offset-2">
           <X className="h-4 w-4" />
           <span className="sr-only">Kapat</span>
         </DialogPrimitive.Close>
@@ -60,7 +61,7 @@ const ModalContent = React.forwardRef<
 ModalContent.displayName = 'ModalContent'
 
 const ModalHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('p-5 pb-2', className)} {...props} />
+  <div className={cn('p-6 pb-2', className)} {...props} />
 )
 
 const ModalTitle = React.forwardRef<
@@ -69,7 +70,7 @@ const ModalTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn('text-base font-semibold text-surface-900', className)}
+    className={cn('text-lg font-semibold tracking-tight text-surface-900', className)}
     {...props}
   />
 ))
@@ -81,19 +82,19 @@ const ModalDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn('text-sm text-surface-500 mt-1', className)}
+    className={cn('text-sm text-surface-500 mt-1.5 leading-relaxed', className)}
     {...props}
   />
 ))
 ModalDescription.displayName = 'ModalDescription'
 
 const ModalBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('px-5 py-3', className)} {...props} />
+  <div className={cn('px-6 py-4', className)} {...props} />
 )
 
 const ModalFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn('flex items-center justify-end gap-2 p-5 pt-3', className)}
+    className={cn('flex items-center justify-end gap-3 p-6 pt-4 border-t border-surface-100 bg-surface-50/50', className)}
     {...props}
   />
 )

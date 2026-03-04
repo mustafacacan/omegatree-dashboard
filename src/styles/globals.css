@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..800;1,300..800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -55,6 +55,19 @@
   --color-border: #E8E4DE;
   --color-border-hover: #D8D3CB;
 
+  /* Soft shadows - depth without heaviness */
+  --shadow-sm: 0 1px 2px rgba(45, 42, 38, 0.04);
+  --shadow-md: 0 4px 12px rgba(45, 42, 38, 0.06);
+  --shadow-lg: 0 8px 24px rgba(45, 42, 38, 0.08);
+  --shadow-xl: 0 12px 40px rgba(45, 42, 38, 0.1);
+  --shadow-card: 0 2px 8px rgba(45, 42, 38, 0.05), 0 1px 2px rgba(45, 42, 38, 0.04);
+  --shadow-card-hover: 0 8px 24px rgba(45, 42, 38, 0.08), 0 2px 6px rgba(45, 42, 38, 0.05);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
   /* Radius - rounded cards like Nutrigo */
   --radius-sm: 0.5rem;
   --radius-md: 0.625rem;
@@ -64,8 +77,8 @@
   --radius-3xl: 1.5rem;
 
   /* Fonts */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Figtree', system-ui, -apple-system, sans-serif;
+  --font-display: 'Figtree', system-ui, -apple-system, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', monospace;
 
   /* Typography scale (semantic) */
@@ -118,6 +131,14 @@
   50% { opacity: 0.6; }
   100% { opacity: 0.3; }
 }
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 
 @layer base {
   * { border-color: var(--color-border); }
@@ -131,10 +152,38 @@
     min-height: 100vh;
     line-height: 1.5;
   }
+  /* Subtle background texture - warm dots */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, rgba(139, 154, 75, 0.06) 1px, transparent 0);
+    background-size: 24px 24px;
+    pointer-events: none;
+    z-index: 0;
+  }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #D8D3CB; border-radius: 999px; }
   ::-webkit-scrollbar-thumb:hover { background: #B5AFA5; }
+
+  /* Selection - warm olive tint */
+  ::selection {
+    background: rgba(139, 154, 75, 0.2);
+    color: var(--color-text-primary);
+  }
+
+  /* Links */
+  a:not([class]) {
+    color: var(--color-primary-600);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+  a:not([class]):hover {
+    color: var(--color-primary-700);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
 }
 
 @layer components {
@@ -178,5 +227,41 @@
     font-weight: var(--text-description-weight);
     color: var(--color-surface-500);
     line-height: var(--text-description-line-height);
+  }
+
+  /* Card / panel - primary surface for tables and content blocks */
+  .panel {
+    background: #fff;
+    border-radius: var(--radius-2xl);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    transition: box-shadow var(--transition-base);
+  }
+  .panel:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-panel {
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Page content entrance */
+  .animate-in-up {
+    animation: fade-in-up 0.4s ease-out forwards;
+  }
+  .animate-in-up-slow {
+    animation: fade-in-up 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Interactive hover lift */
+  .hover-lift {
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+  }
+  .hover-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-card-hover);
   }
 }

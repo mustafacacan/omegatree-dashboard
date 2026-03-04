@@ -267,7 +267,7 @@ export function ProductionCenterPage() {
 
       {/* Kitler tablosu - stok takibi ile aynı yazı tipi / şekil */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
-        <div className="rounded-2xl overflow-hidden" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+        <div className="panel">
           <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
             <div>
               <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kitler</h3>
