@@ -15,11 +15,36 @@ interface StatCardProps {
 }
 
 const colorConfig = {
-  primary: { icon: '#8B9A4B', bg: '#EEF2DE' },
-  sky: { icon: '#E8913A', bg: '#FDF0E2' },
-  amber: { icon: '#F5C842', bg: '#FDF8E8' },
-  rose: { icon: '#D97070', bg: '#FDE8E8' },
-  violet: { icon: '#6ABF69', bg: '#E8F5E8' },
+  primary: {
+    icon: 'text-brand-500',
+    bgFrom: 'from-primary-50',
+    bgTo: 'to-primary-100',
+    accent: 'stat-accent-primary',
+  },
+  sky: {
+    icon: 'text-accent-amber',
+    bgFrom: 'from-orange-50',
+    bgTo: 'to-orange-100',
+    accent: 'stat-accent-sky',
+  },
+  amber: {
+    icon: 'text-warning',
+    bgFrom: 'from-amber-50',
+    bgTo: 'to-amber-100',
+    accent: 'stat-accent-amber',
+  },
+  rose: {
+    icon: 'text-danger',
+    bgFrom: 'from-red-50',
+    bgTo: 'to-red-100',
+    accent: 'stat-accent-rose',
+  },
+  violet: {
+    icon: 'text-success',
+    bgFrom: 'from-green-50',
+    bgTo: 'to-green-100',
+    accent: 'stat-accent-violet',
+  },
 }
 
 export function StatCard({ title, value, change, icon: Icon, color, className }: StatCardProps) {
@@ -28,31 +53,37 @@ export function StatCard({ title, value, change, icon: Icon, color, className }:
   return (
     <div
       className={cn(
-        'rounded-2xl p-6 transition-shadow hover:shadow-md cursor-default',
+        'rounded-2xl bg-white border border-border p-6',
+        'hover-lift cursor-default',
+        cfg.accent,
         className
       )}
-      style={{ background: '#fff', border: '1px solid #E8E4DE' }}
     >
       <div className="flex items-center gap-3.5">
         <div
-          className="flex items-center justify-center h-12 w-12 rounded-full shrink-0"
-          style={{ background: cfg.bg }}
+          className={cn(
+            'flex items-center justify-center h-12 w-12 rounded-full shrink-0',
+            'bg-gradient-to-br',
+            cfg.bgFrom,
+            cfg.bgTo,
+          )}
         >
-          <Icon className="h-5 w-5" style={{ color: cfg.icon }} />
+          <Icon className={cn('h-5 w-5', cfg.icon)} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: '#9C968D' }}>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary">
             {title}
           </p>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xl font-bold" style={{ color: '#2D2A26' }}>{value}</span>
+            <span className="text-xl font-bold text-text-primary">{value}</span>
             {change && (
               <span
-                className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-                style={{
-                  background: change.value >= 0 ? '#E8F5E8' : '#FDE8E8',
-                  color: change.value >= 0 ? '#3D8B3D' : '#C53030',
-                }}
+                className={cn(
+                  'inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md',
+                  change.value >= 0
+                    ? 'bg-green-50 text-green-700'
+                    : 'bg-red-50 text-red-700',
+                )}
               >
                 {change.value >= 0 ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
                 {change.value >= 0 ? '+' : ''}{change.value}%
@@ -63,7 +94,7 @@ export function StatCard({ title, value, change, icon: Icon, color, className }:
       </div>
 
       {change && (
-        <p className="text-[10px] mt-2 pl-[60px]" style={{ color: '#B5AFA5' }}>{change.label}</p>
+        <p className="text-[10px] mt-2.5 pl-[60px] text-text-muted">{change.label}</p>
       )}
     </div>
   )

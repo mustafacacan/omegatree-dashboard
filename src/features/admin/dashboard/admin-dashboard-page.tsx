@@ -132,35 +132,30 @@ export function AdminDashboardPage() {
           </motion.div>
 
           {/* ═══════ STAT CARDS ═══════ */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
             {[
-              { title: 'Toplam Kit', value: '1,332', change: 12.5, icon: Package, iconColor: W.olive, iconBg: W.oliveLight },
-              { title: 'Aktif Diyetisyen', value: '48', change: 8.2, icon: Users, iconColor: W.orange, iconBg: W.orangeLight },
-              { title: 'Bekleyen Siparis', value: '7', change: -3.1, icon: ShoppingCart, iconColor: W.amber, iconBg: W.amberLight },
-              { title: 'Aylik Gelir', value: formatCurrency(83000), change: 16.9, icon: TrendingUp, iconColor: W.green, iconBg: W.greenLight },
+              { title: 'Toplam Kit', value: '1,332', change: 12.5, icon: Package, iconClass: 'text-brand-500', bgClass: 'from-primary-50 to-primary-100', accent: 'stat-accent-primary' },
+              { title: 'Aktif Diyetisyen', value: '48', change: 8.2, icon: Users, iconClass: 'text-accent-amber', bgClass: 'from-orange-50 to-orange-100', accent: 'stat-accent-sky' },
+              { title: 'Bekleyen Siparis', value: '7', change: -3.1, icon: ShoppingCart, iconClass: 'text-warning', bgClass: 'from-amber-50 to-amber-100', accent: 'stat-accent-amber' },
+              { title: 'Aylik Gelir', value: formatCurrency(83000), change: 16.9, icon: TrendingUp, iconClass: 'text-success', bgClass: 'from-green-50 to-green-100', accent: 'stat-accent-violet' },
             ].map((s, i) => {
               const Icon = s.icon
               const up = s.change >= 0
               return (
                 <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.06 }}>
-                  <div
-                    className="rounded-2xl p-5 min-h-[122px] transition-shadow hover:shadow-md cursor-default flex items-center"
-                    style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}
-                  >
+                  <div className={`rounded-2xl bg-white border border-border p-5 min-h-[122px] hover-lift cursor-default flex items-center ${s.accent}`}>
                     <div className="flex items-center gap-3.5">
-                      <div className="h-12 w-12 rounded-full flex items-center justify-center shrink-0" style={{ background: s.iconBg }}>
-                        <Icon className="h-5 w-5" style={{ color: s.iconColor }} />
+                      <div className={`h-12 w-12 rounded-full flex items-center justify-center shrink-0 bg-gradient-to-br ${s.bgClass}`}>
+                        <Icon className={`h-5 w-5 ${s.iconClass}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-medium uppercase tracking-wider leading-tight" style={{ color: W.textLight }}>{s.title}</p>
+                        <p className="text-[11px] font-medium uppercase tracking-wider leading-tight text-text-secondary">{s.title}</p>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <span className="text-xl font-bold" style={{ color: W.dark }}>{s.value}</span>
+                          <span className="text-xl font-bold text-text-primary">{s.value}</span>
                           <span
-                            className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-                            style={{
-                              background: up ? W.greenLight : '#FDE8E8',
-                              color: up ? '#3D8B3D' : '#C53030',
-                            }}
+                            className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
+                              up ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                            }`}
                           >
                             {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
                             {up ? '+' : ''}{s.change}%
@@ -175,15 +170,15 @@ export function AdminDashboardPage() {
           </div>
 
           {/* ═══════ MAIN GRID ═══════ */}
-          <div className="grid grid-cols-12 gap-4">
+          <div className="grid grid-cols-12 gap-5">
 
-            {/* ── Gelir Trendi — BAR CHART (warm orange bars like Nutrigo) ── */}
+            {/* ── Gelir Trendi — BAR CHART ── */}
             <motion.div className="col-span-12 lg:col-span-8" {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
-              <div className="rounded-2xl p-5 h-full flex flex-col" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+              <div className="panel p-5 h-full flex flex-col">
                 <div className="flex items-start justify-between min-h-[54px] mb-5">
                   <div>
-                    <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Gelir Trendi</h3>
-                    <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Aylik gelir ozeti (bin TL)</p>
+                    <h3 className="text-card-title">Gelir Trendi</h3>
+                    <p className="text-[12px] mt-0.5 text-text-secondary">Aylik gelir ozeti (bin TL)</p>
                   </div>
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: W.oliveLight }}>
                     <TrendingUp className="h-3.5 w-3.5" style={{ color: W.olive }} />
@@ -214,15 +209,15 @@ export function AdminDashboardPage() {
               </div>
             </motion.div>
 
-            {/* ── Kit Dagilimi — DONUT (Nutrigo Expense Breakdown style) ── */}
+            {/* ── Kit Dagilimi — DONUT ── */}
             <motion.div className="col-span-12 lg:col-span-4" {...fadeUp} transition={{ duration: 0.35, delay: 0.15 }}>
-              <div className="rounded-2xl p-5 h-full flex flex-col" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+              <div className="panel p-5 h-full flex flex-col">
                 <div className="flex items-start justify-between min-h-[54px] mb-4">
                   <div>
-                    <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kit Dagilimi</h3>
-                    <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Durumlara gore dagilim</p>
+                    <h3 className="text-card-title">Kit Dagilimi</h3>
+                    <p className="text-[12px] mt-0.5 text-text-secondary">Durumlara gore dagilim</p>
                   </div>
-                  <span className="text-2xl font-black" style={{ color: W.dark }}>1,332</span>
+                  <span className="text-2xl font-black text-text-primary">1,332</span>
                 </div>
 
                 <div className="relative h-[180px] flex items-center justify-center">
@@ -270,15 +265,15 @@ export function AdminDashboardPage() {
 
             {/* ── Haftalik Kit Aktivitesi — mini bar chart ── */}
             <motion.div className="col-span-12 lg:col-span-4" {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
-              <div className="rounded-2xl p-5 h-full flex flex-col" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+              <div className="panel p-5 h-full flex flex-col">
                 <div className="flex items-start justify-between min-h-[54px] mb-4">
                   <div>
-                    <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Haftalik Kit</h3>
-                    <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Bu haftaki kit hareketleri</p>
+                    <h3 className="text-card-title">Haftalik Kit</h3>
+                    <p className="text-[12px] mt-0.5 text-text-secondary">Bu haftaki kit hareketleri</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold" style={{ color: W.dark }}>56</p>
-                    <p className="text-[10px]" style={{ color: W.textLight }}>toplam</p>
+                    <p className="text-lg font-bold text-text-primary">56</p>
+                    <p className="text-[10px] text-text-secondary">toplam</p>
                   </div>
                 </div>
                 <div className="h-[160px] flex-1 min-h-[140px]">
@@ -300,11 +295,11 @@ export function AdminDashboardPage() {
               </div>
             </motion.div>
 
-            {/* ── Canli Aktivite — Timeline with warm lines ── */}
+            {/* ── Canli Aktivite — Timeline ── */}
             <motion.div className="col-span-12 lg:col-span-5" {...fadeUp} transition={{ duration: 0.35, delay: 0.25 }}>
-              <div className="rounded-2xl p-5 h-full flex flex-col" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+              <div className="panel p-5 h-full flex flex-col">
                 <div className="flex items-center justify-between min-h-[54px] mb-4">
-                  <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Canli Aktivite</h3>
+                  <h3 className="text-card-title">Canli Aktivite</h3>
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: W.greenLight }}>
                     <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: W.green }} />
                     <span className="text-[10px] font-semibold" style={{ color: '#3D8B3D' }}>Canli</span>
@@ -343,9 +338,9 @@ export function AdminDashboardPage() {
 
             {/* ── Kit Kategorileri — colored progress bars ── */}
             <motion.div className="col-span-12 lg:col-span-3" {...fadeUp} transition={{ duration: 0.35, delay: 0.3 }}>
-              <div className="rounded-2xl p-5 h-full flex flex-col" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-                <h3 className="text-[15px] font-semibold mb-1" style={{ color: W.dark }}>Kit Kategorileri</h3>
-                <p className="text-[12px] mb-5" style={{ color: W.textLight }}>Kategorilere gore dagilim</p>
+              <div className="panel p-5 h-full flex flex-col">
+                <h3 className="text-card-title mb-1">Kit Kategorileri</h3>
+                <p className="text-[12px] mb-5 text-text-secondary">Kategorilere gore dagilim</p>
 
                 <div className="space-y-5 flex-1">
                   {kitCategories.map((cat, i) => {
@@ -382,9 +377,9 @@ export function AdminDashboardPage() {
 
             {/* ── Son Kit Hareketleri ── */}
             <motion.div className="col-span-12 lg:col-span-6" {...fadeUp} transition={{ duration: 0.35, delay: 0.35 }}>
-              <div className="rounded-2xl p-5 h-full flex flex-col" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+              <div className="panel p-5 h-full flex flex-col">
                 <div className="flex items-center justify-between min-h-[54px] mb-4">
-                  <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Son Kit Hareketleri</h3>
+                  <h3 className="text-card-title">Son Kit Hareketleri</h3>
                   <button
                     type="button"
                     onClick={() => navigate(ROUTES.YONETICI_STOK)}
@@ -426,9 +421,9 @@ export function AdminDashboardPage() {
 
             {/* ── Top Diyetisyenler ── */}
             <motion.div className="col-span-12 lg:col-span-6" {...fadeUp} transition={{ duration: 0.35, delay: 0.4 }}>
-              <div className="rounded-2xl p-5 h-full flex flex-col" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+              <div className="panel p-5 h-full flex flex-col">
                 <div className="flex items-center justify-between min-h-[54px] mb-4">
-                  <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>En Iyi Diyetisyenler</h3>
+                  <h3 className="text-card-title">En Iyi Diyetisyenler</h3>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: W.oliveLight, color: W.olive }}>Bu Ay</span>
                 </div>
 

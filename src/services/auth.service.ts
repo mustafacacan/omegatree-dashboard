@@ -123,3 +123,11 @@ export async function forgotPassword(phone: string): Promise<void> {
 export async function resetPassword(phone: string, code: string, newPassword: string, rePassword: string): Promise<void> {
   await api.post('/auth/reset-password', { phone, code, newPassword, rePassword })
 }
+
+/**
+ * Giriş yapmış kullanıcının şifresini değiştirir.
+ * API: POST /auth/change-password body: { oldPassword, newPassword, rePassword }
+ */
+export async function changePassword(oldPassword: string, newPassword: string, rePassword: string): Promise<void> {
+  await api.post('/auth/change-password', { oldPassword, newPassword, rePassword })
+}

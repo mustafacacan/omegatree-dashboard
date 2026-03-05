@@ -7,9 +7,22 @@ export interface Laboratory {
   postalCode?: string
   phone?: string
   email?: string
-  assignedDietitians: string[] // User IDs
+  assignedDietitians: string[]
   createdAt: string
   updatedAt: string
+  cargofirm?: string
+  cargoNumber?: string
+  isActive?: boolean
+  userId?: number
+  street?: string
+  neighborhood?: string
+  no?: string
+  fullAddress?: string
+  country?: string
+  addressTitle?: string
+  firstName?: string
+  lastName?: string
+  gender?: string
 }
 
 export interface CreateLaboratoryRequest {
@@ -32,4 +45,3 @@ export interface UpdateLaboratoryRequest {
   email?: string
   assignedDietitians?: string[]
 }
-

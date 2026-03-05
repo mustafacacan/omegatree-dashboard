@@ -264,4 +264,52 @@
     transform: translateY(-1px);
     box-shadow: var(--shadow-card-hover);
   }
+
+  /* Panel section divider */
+  .panel-section {
+    border-top: 1px solid var(--color-surface-100);
+    padding-top: 1rem;
+    margin-top: 1rem;
+  }
+
+  /* Form section title - consistent across all forms/modals */
+  .form-section-title {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-secondary);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--color-surface-100);
+  }
+
+  /* Table wrapper with scroll support */
+  .table-container {
+    position: relative;
+    overflow: auto;
+    border-radius: var(--radius-2xl);
+  }
+
+  /* Stat card accent borders */
+  .stat-accent-primary { border-left: 3px solid var(--color-brand-500); }
+  .stat-accent-sky     { border-left: 3px solid var(--color-accent-amber); }
+  .stat-accent-amber   { border-left: 3px solid var(--color-warning); }
+  .stat-accent-rose    { border-left: 3px solid var(--color-danger); }
+  .stat-accent-violet  { border-left: 3px solid var(--color-success); }
+
+  /* Dashboard section header */
+  .dash-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .dash-section-header::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+  }
 }

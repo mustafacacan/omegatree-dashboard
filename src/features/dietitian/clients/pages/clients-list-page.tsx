@@ -12,46 +12,17 @@ import { formatDate, formatDateTime } from '@/lib/utils'
 import { 
   Search, Plus, MoreHorizontal, Eye, FlaskConical, FileText, Phone, 
   Mail, Calendar, Package, X, Edit3, Boxes, Download, Share2,
-  Truck, User,
+  Truck, User, Loader2,
 } from 'lucide-react'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { useClientsStore } from '@/stores/clients.store'
 import type { ClientRecord } from '@/stores/clients.store'
+import { useCurrentUser } from '@/stores/auth.store'
 import { KitStatus } from '@/utils/constants'
 import { ROUTES, danisanDetayPath, danisanDuzenlePath } from '@/utils/routes'
 import { toast } from 'sonner'
-
-// Demo data for modal
-const demoKits = [
-  {
-    id: 'KIT-2025001', barcode: 'OT-250601-001', status: KitStatus.IN_ANALYSIS,
-    assignedDate: '2025-05-20', deliveredDate: '2025-05-22', sampleSentDate: '2025-05-25',
-    type: 'Omega-3 Index', deliveryType: 'office' as const,
-  },
-  {
-    id: 'KIT-2024089', barcode: 'OT-240915-089', status: KitStatus.COMPLETED,
-    assignedDate: '2024-09-10', deliveredDate: '2024-09-12', sampleSentDate: '2024-09-14',
-    completedDate: '2024-10-01', type: 'Omega-3 Index', deliveryType: 'home' as const,
-  },
-]
-
-const demoReports = [
-  {
-    id: 'RPT-2024089', kitBarcode: 'OT-240915-089', date: '2024-10-01',
-    specialist: 'Dr. Elif Aydin', status: 'approved' as const,
-    summary: 'Omega-3 seviyesi normal araliklarin altinda. EPA/DHA oranlari duzeltilmeli.',
-    sharedAt: '2024-10-02',
-  },
-]
-
-const demoActivities = [
-  { type: 'kit', message: 'Kit OT-250601-001 analiz surecine alindi', date: '2025-05-28T14:30:00', icon: FlaskConical },
-  { type: 'kit', message: 'Numune laboratuvara gonderildi', date: '2025-05-25T09:15:00', icon: Truck },
-  { type: 'kit', message: 'Kit teslim edildi ve numune alindi', date: '2025-05-22T11:00:00', icon: Package },
-  { type: 'report', message: 'Rapor RPT-2024089 danisana paylsildi', date: '2024-10-02T10:30:00', icon: Share2 },
-  { type: 'system', message: 'Danisan kaydi olusturuldu', date: '2025-03-10T14:00:00', icon: User },
-]
+import { getDieticianClientKits, type DieticianClientKit } from '@/services/dietician-client-kits.service'
 
 export function ClientsListPage() {
   const [search, setSearch] = useState('')
@@ -59,8 +30,21 @@ export function ClientsListPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [clientKits, setClientKits] = useState<DieticianClientKit[]>([])
   const navigate = useNavigate()
-  const { clients } = useClientsStore()
+  const currentUser = useCurrentUser()
+  const { clients, loading, fetchClients, fetchDieticianClients } = useClientsStore()
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      fetchDieticianClients(currentUser.id).catch(() => {
+        fetchClients().catch(() => {})
+      })
+    } else {
+      fetchClients().catch(() => {})
+    }
+    getDieticianClientKits().then(setClientKits).catch(() => {})
+  }, [currentUser?.id])
 
   const filtered = useMemo(
     () =>
@@ -88,6 +72,20 @@ export function ClientsListPage() {
   const openClientModal = (client: ClientRecord) => {
     setSelectedClient(client)
     setModalOpen(true)
+  }
+
+  const selectedClientKits = useMemo(
+    () => selectedClient ? clientKits.filter((k) => String(k.clientId) === selectedClient.id) : [],
+    [selectedClient, clientKits]
+  )
+
+  if (loading && clients.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
+        <span className="ml-2 text-sm text-surface-500">Danışanlar yükleniyor...</span>
+      </div>
+    )
   }
 
   return (
@@ -324,97 +322,63 @@ export function ClientsListPage() {
 
                   {/* ═══ KITLER ═══ */}
                   <TabsContent value="kits" className="space-y-4 mt-4">
-                    {demoKits.map((kit) => (
-                      <Card key={kit.id}>
-                        <CardContent className="p-5">
-                          <div className="flex items-start justify-between mb-4">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="text-sm font-semibold text-surface-900">{kit.type}</h3>
-                                <StatusBadge status={kit.status} size="sm" />
-                              </div>
-                              <code className="text-xs font-mono bg-surface-50 px-2 py-0.5 rounded">{kit.barcode}</code>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-4 text-xs">
-                            <div>
-                              <p className="text-surface-500">Atanma</p>
-                              <p className="font-medium text-surface-900">{formatDate(kit.assignedDate)}</p>
-                            </div>
-                            <div>
-                              <p className="text-surface-500">Teslim</p>
-                              <p className="font-medium text-surface-900">{formatDate(kit.deliveredDate)}</p>
-                            </div>
-                            <div>
-                              <p className="text-surface-500">Numune Gonderim</p>
-                              <p className="font-medium text-surface-900">{formatDate(kit.sampleSentDate)}</p>
-                            </div>
-                          </div>
+                    {selectedClientKits.length === 0 ? (
+                      <Card>
+                        <CardContent className="p-8 text-center">
+                          <Package className="h-10 w-10 text-surface-300 mx-auto mb-3" />
+                          <p className="text-sm font-medium text-surface-600 mb-1">Kit bulunamadi</p>
+                          <p className="text-xs text-surface-400">Bu danisana henuz kit atanmamis</p>
                         </CardContent>
                       </Card>
-                    ))}
+                    ) : (
+                      selectedClientKits.map((kit) => (
+                        <Card key={kit.id}>
+                          <CardContent className="p-5">
+                            <div className="flex items-start justify-between mb-4">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="text-sm font-semibold text-surface-900">{kit.kitName || 'Kit'}</h3>
+                                  <Badge variant={kit.status === 'completed' ? 'success' : kit.status === 'cancelled' ? 'destructive' : 'primary'} size="sm">
+                                    {kit.status ?? 'Bilinmiyor'}
+                                  </Badge>
+                                </div>
+                                <code className="text-xs font-mono bg-surface-50 px-2 py-0.5 rounded">{kit.kitBarcode || `#${kit.kitId}`}</code>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-xs">
+                              <div>
+                                <p className="text-surface-500">Atanma</p>
+                                <p className="font-medium text-surface-900">{kit.createdAt ? formatDate(kit.createdAt) : '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-surface-500">Guncelleme</p>
+                                <p className="font-medium text-surface-900">{kit.updatedAt ? formatDate(kit.updatedAt) : '—'}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
                   </TabsContent>
 
                   {/* ═══ RAPORLAR ═══ */}
                   <TabsContent value="reports" className="space-y-4 mt-4">
-                    {demoReports.map((report) => (
-                      <Card key={report.id}>
-                        <CardContent className="p-5">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="text-sm font-semibold text-surface-900">Omega-3 Index Raporu</h3>
-                                <Badge variant="success" size="sm">Onaylandi</Badge>
-                              </div>
-                              <div className="flex items-center gap-3 text-xs text-surface-500">
-                                <code className="font-mono bg-surface-50 px-1.5 py-0.5 rounded">{report.id}</code>
-                                <span>{formatDate(report.date)}</span>
-                                <span>{report.specialist}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <p className="text-sm text-surface-600 mb-3">{report.summary}</p>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="xs" onClick={() => toast.success('PDF aciliyor...')}>
-                              <Eye className="h-3 w-3" /> Goruntule
-                            </Button>
-                            <Button variant="outline" size="xs" onClick={() => toast.success('Rapor indiriliyor...')}>
-                              <Download className="h-3 w-3" /> Indir
-                            </Button>
-                            <Button variant="primary" size="xs" onClick={() => toast.success('Paylas modali acildi')}>
-                              <Share2 className="h-3 w-3" /> Paylas
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    <Card>
+                      <CardContent className="p-8 text-center">
+                        <FileText className="h-10 w-10 text-surface-300 mx-auto mb-3" />
+                        <p className="text-sm font-medium text-surface-600 mb-1">Raporlar API'den yuklenecek</p>
+                        <p className="text-xs text-surface-400">Analiz tamamlandiginda raporlar burada gorunecek</p>
+                      </CardContent>
+                    </Card>
                   </TabsContent>
 
                   {/* ═══ AKTIVITELER ═══ */}
                   <TabsContent value="activity" className="mt-4">
                     <Card>
-                      <CardContent className="p-0">
-                        <div className="divide-y divide-surface-100">
-                          {demoActivities.map((activity, idx) => {
-                            const Icon = activity.icon
-                            const colors: Record<string, string> = {
-                              kit: 'bg-primary-50 text-primary-600',
-                              report: 'bg-orange-50 text-orange-600',
-                              system: 'bg-surface-100 text-surface-500',
-                            }
-                            return (
-                              <div key={idx} className="flex gap-4 p-4 hover:bg-surface-50 transition-colors">
-                                <div className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${colors[activity.type]}`}>
-                                  <Icon className="h-5 w-5" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm text-surface-900">{activity.message}</p>
-                                  <p className="text-xs text-surface-400 mt-0.5">{formatDateTime(activity.date)}</p>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
+                      <CardContent className="p-8 text-center">
+                        <Calendar className="h-10 w-10 text-surface-300 mx-auto mb-3" />
+                        <p className="text-sm font-medium text-surface-600 mb-1">Aktivite gecmisi</p>
+                        <p className="text-xs text-surface-400">Aktivite verileri API'den yuklenecek</p>
                       </CardContent>
                     </Card>
                   </TabsContent>

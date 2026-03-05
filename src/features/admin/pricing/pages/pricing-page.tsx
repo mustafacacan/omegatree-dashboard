@@ -2,16 +2,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Card, CardHeader, CardTitle, CardContent,
-  Button, Input, Badge,
+  Button, Input,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Switch,
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { Plus, Pencil, Search, ImageIcon, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Search, ImageIcon, Trash2, MoreHorizontal, Download, Loader2, Package } from 'lucide-react'
 import { toast } from 'sonner'
+import { motion } from 'framer-motion'
 import {
   getSalesKits,
   createSalesKit,
@@ -22,12 +23,29 @@ import {
 } from '@/services/sales-kits.service'
 import { SalesKitImage } from '@/components/shared/sales-kit-image'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { TablePagination } from '@/components/shared/table-pagination'
 
 const SALES_KITS_QUERY_KEY = ['sales-kits'] as const
+
+const W = {
+  olive: '#8B9A4B',
+  oliveLight: '#EEF2DE',
+  warmBorder: '#E8E4DE',
+  dark: '#2D2A26',
+  text: '#4A4640',
+  textLight: '#9C968D',
+  warmGrayLight: '#B5AFA5',
+  cream: '#F9F7F3',
+  creamDark: '#F0EDE7',
+}
+
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function PricingPage() {
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editKit, setEditKit] = useState<SalesKit | null>(null)
@@ -106,6 +124,40 @@ export function PricingPage() {
         String(k.id).includes(q)
     )
   }, [apiList, searchQuery])
+
+  const paginatedList = useMemo(
+    () => filteredList.slice((page - 1) * pageSize, page * pageSize),
+    [filteredList, page, pageSize]
+  )
+
+  useEffect(() => {
+    setPage(1)
+  }, [filteredList.length])
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filteredList.length / pageSize))
+    if (page > totalPages) setPage(totalPages)
+  }, [filteredList.length, page, pageSize])
+
+  const handleExportCsv = () => {
+    const headers = ['Kit Adı', 'Açıklama', 'Miktar', 'Fiyat (₺)', 'Durum']
+    const rows = filteredList.map((k) => [
+      k.name,
+      k.description ?? '-',
+      k.quantity,
+      k.price,
+      k.isActive ?? true ? 'Aktif' : 'Pasif',
+    ])
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `fiyatlandirma-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success('Fiyat listesi indirildi')
+  }
 
   function resetForm() {
     setFormName('')
@@ -208,122 +260,209 @@ export function PricingPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle>Fiyatlandırma — Satış kitleri</CardTitle>
-            <div className="flex items-center gap-3">
-              <Input
-                placeholder="Ad veya açıklama ara..."
-                leftIcon={<Search className="h-4 w-4" />}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-64"
-              />
-              <Button variant="primary" onClick={openCreate}>
+      <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
+        <div className="panel">
+          <div
+            className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+            style={{ borderBottom: `1px solid ${W.warmBorder}` }}
+          >
+            <div>
+              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>
+                Fiyatlandırma — Satış kitleri
+              </h3>
+              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
+                Kayıtlı satış kitleri ({filteredList.length} adet)
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <div className="relative">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5"
+                  style={{ color: W.warmGrayLight }}
+                />
+                <input
+                  type="text"
+                  placeholder="Ad veya açıklama ara..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors"
+                  style={{
+                    background: W.cream,
+                    border: `1px solid ${W.warmBorder}`,
+                    color: W.dark,
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = W.olive
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = W.warmBorder
+                  }}
+                />
+              </div>
+              <Button variant="outline" size="sm" onClick={handleExportCsv}>
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button variant="primary" size="sm" onClick={openCreate}>
                 <Plus className="h-4 w-4" />
                 Yeni satış kiti
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading && (
-            <div className="py-16 text-center text-sm text-surface-500">
-              Yükleniyor...
-            </div>
-          )}
-          {!isLoading && filteredList.length === 0 && (
-            <div className="py-16 text-center text-sm text-surface-500 rounded-xl border border-dashed border-surface-200 bg-surface-50/50">
-              {apiList.length === 0
-                ? 'Henüz satış kiti yok. "Yeni satış kiti" ile ekleyin.'
-                : 'Arama kriterine uygun kayıt yok.'}
-            </div>
-          )}
-          {!isLoading && filteredList.length > 0 && (
-            <div className="rounded-xl border border-surface-200 overflow-hidden">
-              <Table>
-                <TableHeader>
+
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Kit</TableHead>
+                  <TableHead className="hidden md:table-cell">Miktar</TableHead>
+                  <TableHead>Fiyat</TableHead>
+                  <TableHead>Durum</TableHead>
+                  <TableHead className="w-20" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
                   <TableRow>
-                    <TableHead>Kit</TableHead>
-                    <TableHead className="hidden md:table-cell">Miktar</TableHead>
-                    <TableHead>Fiyat</TableHead>
-                    <TableHead>Durum</TableHead>
-                    <TableHead className="text-right">İşlem</TableHead>
+                    <TableCell colSpan={5} className="px-5 py-12 text-center">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
+                      <p className="text-[12px]" style={{ color: W.textLight }}>
+                        Satış kitleri yükleniyor...
+                      </p>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredList.map((k) => {
+                ) : filteredList.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="px-5 py-12 text-center text-[12px]"
+                      style={{ color: W.textLight }}
+                    >
+                      {apiList.length === 0
+                        ? 'Henüz satış kiti yok. "Yeni satış kiti" ile ekleyin.'
+                        : 'Arama kriterine uygun kayıt bulunamadı.'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedList.map((k) => {
                     const imageUrl = getSalesKitImageUrl(k.imageData?.url)
                     const showImg = imageUrl && !failedImageIds.has(k.id)
                     const isActive = k.isActive ?? true
-
                     return (
                       <TableRow key={k.id}>
                         <TableCell>
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-12 w-12 rounded-lg bg-surface-100 border border-surface-200 overflow-hidden shrink-0 relative">
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <ImageIcon className="h-6 w-6 text-surface-300" />
-                              </div>
-                              {showImg && imageUrl ? (
+                            {showImg && imageUrl ? (
+                              <div className="h-10 w-10 rounded-lg bg-surface-100 border border-surface-200 overflow-hidden shrink-0 relative">
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <ImageIcon className="h-5 w-5 text-surface-300" />
+                                </div>
                                 <SalesKitImage
                                   url={imageUrl}
                                   alt={k.name}
-                                  className="h-full w-full object-cover"
-                                  onError={() => setFailedImageIds((prev) => new Set(prev).add(k.id))}
+                                  className="relative h-full w-full object-cover"
+                                  onError={() =>
+                                    setFailedImageIds((prev) => new Set(prev).add(k.id))
+                                  }
                                 />
-                              ) : null}
-                            </div>
+                              </div>
+                            ) : (
+                              <div
+                                className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0"
+                                style={{ background: W.oliveLight }}
+                              >
+                                <Package className="h-4.5 w-4.5" style={{ color: W.olive }} />
+                              </div>
+                            )}
                             <div className="min-w-0">
-                              <p className="font-semibold text-surface-800 truncate" title={k.name}>
+                              <p
+                                className="text-[12px] font-medium truncate"
+                                style={{ color: W.text }}
+                                title={k.name}
+                              >
                                 {k.name}
                               </p>
-                              <p className="text-xs text-surface-500 truncate" title={k.description || ''}>
+                              <p
+                                className="text-[11px] truncate"
+                                style={{ color: W.textLight }}
+                                title={k.description || ''}
+                              >
                                 {k.description || 'Açıklama yok'}
                               </p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          <Badge variant="outline">{k.quantity} adet</Badge>
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
+                            style={{ background: W.creamDark, color: W.text }}
+                          >
+                            {k.quantity} adet
+                          </span>
                         </TableCell>
                         <TableCell>
-                          <span className="font-semibold text-surface-800 tabular-nums">
+                          <span
+                            className="text-[12px] font-semibold tabular-nums"
+                            style={{ color: W.dark }}
+                          >
                             {formatCurrency(k.price)}
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={isActive ? 'success' : 'danger'} dot>
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
+                            style={{
+                              background: isActive ? W.oliveLight : '#FDE8E8',
+                              color: isActive ? '#5A6B2A' : '#C53030',
+                            }}
+                          >
                             {isActive ? 'Aktif' : 'Pasif'}
-                          </Badge>
+                          </span>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="inline-flex items-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => openEdit(k)}>
-                              <Pencil className="h-4 w-4" />
-                              Düzenle
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-danger hover:text-danger"
-                              onClick={() => openDelete(k)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Sil
-                            </Button>
-                          </div>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon-sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEdit(k)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Düzenle
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-danger"
+                                onClick={() => openDelete(k)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Sil
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {!isLoading && filteredList.length > 0 && (
+            <TablePagination
+              totalItems={filteredList.length}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(next) => {
+                setPageSize(next)
+                setPage(1)
+              }}
+            />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </motion.div>
 
       {/* Create Modal */}
       <Modal open={createOpen} onOpenChange={setCreateOpen}>

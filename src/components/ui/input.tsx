@@ -15,7 +15,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={cn('space-y-1.5', wrapperClassName)}>
         {label && (
-          <label className="block text-[13px] font-medium text-surface-700">
+          <label className="block text-sm font-medium text-surface-700">
             {label}
           </label>
         )}
@@ -29,16 +29,16 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             type={type}
             ref={ref}
             className={cn(
-              'flex h-9 w-full rounded-xl border bg-white px-3 py-2',
+              'flex h-10 w-full rounded-xl border bg-white px-3.5 py-2',
               'text-sm text-surface-800 placeholder:text-surface-400',
-              'transition-all duration-200',
+              'transition-[border-color,box-shadow,background-color] duration-250 ease-out',
               'border-surface-200',
-              'hover:border-surface-300 hover:bg-surface-50/50',
-              'focus:outline-none focus:ring-2 focus:ring-primary-500/25 focus:border-primary-500 focus:bg-white',
+              'hover:border-surface-300 hover:bg-surface-50/30',
+              'focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white',
               'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-50',
-              leftIcon && 'pl-9',
-              rightIcon && 'pr-9',
-              error && 'border-danger focus:ring-danger/20 focus:border-danger',
+              leftIcon && 'pl-10',
+              rightIcon && 'pr-10',
+              error && 'border-danger border-l-2 focus:ring-danger/15 focus:border-danger',
               className
             )}
             {...props}
@@ -50,7 +50,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {error && (
-          <p className="text-xs text-danger font-medium">{error}</p>
+          <p className="text-xs text-danger font-medium flex items-center gap-1">
+            <span className="inline-block h-1 w-1 rounded-full bg-danger shrink-0" />
+            {error}
+          </p>
         )}
         {hint && !error && (
           <p className="text-xs text-surface-400">{hint}</p>

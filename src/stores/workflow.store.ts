@@ -158,6 +158,8 @@ interface WorkflowState {
   adminRejectReturn: (barcode: string, actor: string, ip?: string) => { ok: boolean; message: string }
   /** Hasarlı kit onaylandıktan sonra telafi kiti atandığında, hasarlı kitin diyetisyen bilgisini temizler */
   markDamagedCompensationAssigned: (damagedBarcode: string, actor: string, ip?: string) => void
+  /** API'den gelen kit verisini store'a yazar (seed data'yı override eder) */
+  setKitsFromApi: (kits: WorkflowKit[]) => void
 }
 
 const nowIso = () => new Date().toISOString()
@@ -941,6 +943,9 @@ export const useWorkflowStore = create<WorkflowState>()(
             ip: defaultIp(ip),
           }),
         })),
+
+      setKitsFromApi: (apiKits) =>
+        set({ kits: apiKits }),
     }),
     {
       name: 'omegatree-workflow',

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Button, Input, Badge,
+  Button, Input,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
@@ -9,15 +10,22 @@ import {
 import { formatDate } from '@/lib/utils'
 import {
   Search, Plus, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone, Mail,
-  Download, X,
+  Download, Loader2,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Laboratory } from '@/types/laboratory.types'
 import { toast } from 'sonner'
-import { useLaboratoriesStore } from '@/stores/laboratories.store'
-import { useUsersStore } from '@/stores/users.store'
-import { UserRole } from '@/utils/constants'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
+import {
+  getLaboratories,
+  createLaboratory,
+  updateLaboratory,
+  deleteLaboratory,
+  getLabDietitianAssignments,
+  assignDietitianToLab,
+} from '@/services/laboratories.service'
+import { getDieticians } from '@/services/kits.service'
 
 const W = {
   olive: '#8B9A4B',
@@ -33,41 +41,77 @@ const W = {
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
+const LABS_QUERY_KEY = ['laboratories'] as const
+const LAB_DIETITIANS_KEY = ['laboratory-dietitians'] as const
+const DIETICIANS_KEY = ['dieticians'] as const
+
 export function LaboratoriesPage() {
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [newLabOpen, setNewLabOpen] = useState(false)
   const [editLabOpen, setEditLabOpen] = useState(false)
   const [assignDietitianOpen, setAssignDietitianOpen] = useState(false)
   const [deleteLabOpen, setDeleteLabOpen] = useState(false)
   const [selectedLab, setSelectedLab] = useState<Laboratory | null>(null)
+  const [selectedDietitianId, setSelectedDietitianId] = useState<string>('')
+
   const [newLabForm, setNewLabForm] = useState({
-    name: '',
-    address: '',
-    city: '',
-    district: '',
-    postalCode: '',
+    firstName: '',
+    lastName: '',
     phone: '',
     email: '',
+    gender: 'male' as 'male' | 'female',
+    cargofirm: '',
+    cargoNumber: '',
+    city: '',
+    district: '',
+    street: '',
+    neighborhood: '',
+    no: '',
+    fullAddress: '',
+    postalCode: '',
+    country: 'Turkiye',
+    addressTitle: 'work' as string,
   })
-  const [selectedDietitianId, setSelectedDietitianId] = useState<string>('')
-  const {
-    laboratories,
-    createLaboratory,
-    updateLaboratory,
-    deleteLaboratory,
-    assignDietitian,
-    unassignDietitian,
-  } = useLaboratoriesStore()
-  const { users } = useUsersStore()
 
-  const dietitians = useMemo(
-    () => users.filter((u) => u.role === UserRole.DIETITIAN),
-    [users]
-  )
+  const { data: laboratories = [], isLoading, isError: labsError } = useQuery({
+    queryKey: LABS_QUERY_KEY,
+    queryFn: () => getLaboratories(),
+    retry: 1,
+  })
+
+  const { data: labDietitianAssignments = [] } = useQuery({
+    queryKey: LAB_DIETITIANS_KEY,
+    queryFn: getLabDietitianAssignments,
+    retry: 1,
+  })
+
+  const { data: dieticians = [] } = useQuery({
+    queryKey: DIETICIANS_KEY,
+    queryFn: getDieticians,
+  })
+
+  const labsWithDietitians = useMemo(() => {
+    const assignmentsByLabId = new Map<string, { dieticianId: number; name: string }[]>()
+    for (const assignment of labDietitianAssignments) {
+      const labId = String(assignment.laboratory?.id ?? '')
+      if (!labId) continue
+      const dietician = assignment.dietician
+      const dieticianUser = dietician?.user
+      const name = [dieticianUser?.firstName, dieticianUser?.lastName].filter(Boolean).join(' ') || `Diyetisyen #${dietician?.id ?? ''}`
+      const list = assignmentsByLabId.get(labId) ?? []
+      list.push({ dieticianId: dietician?.id ?? 0, name })
+      assignmentsByLabId.set(labId, list)
+    }
+    return laboratories.map((lab) => ({
+      ...lab,
+      assignedDietitianDetails: assignmentsByLabId.get(lab.id) ?? [],
+    }))
+  }, [laboratories, labDietitianAssignments])
 
   const filteredLaboratories = useMemo(
     () =>
-      laboratories.filter((lab) => {
+      labsWithDietitians.filter((lab) => {
         const q = search.toLowerCase()
         return (
           lab.name.toLowerCase().includes(q) ||
@@ -76,27 +120,218 @@ export function LaboratoriesPage() {
           lab.district?.toLowerCase().includes(q)
         )
       }),
-    [laboratories, search]
+    [labsWithDietitians, search]
   )
 
-  const handleExportCsv = () => {
-    const headers = ['Ad', 'Adres', 'Şehir', 'İlçe', 'Posta Kodu', 'Telefon', 'E-posta', 'Atanan Diyetisyenler', 'Oluşturulma Tarihi']
-    const rows = filteredLaboratories.map((lab) => {
-      const assignedNames = lab.assignedDietitians
-        .map((id) => {
-          const user = users.find((u) => u.id === id)
-          return user ? `${user.firstName} ${user.lastName}` : ''
-        })
+  const createMutation = useMutation({
+    mutationFn: createLaboratory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LABS_QUERY_KEY })
+      toast.success('Laboratuvar başarıyla oluşturuldu')
+      setNewLabOpen(false)
+      resetNewLabForm()
+    },
+    onError: (err: unknown) => {
+      console.error('[createLaboratory] error:', err)
+      const axErr = err as { response?: { status?: number; data?: unknown }; message?: string }
+      if (axErr.response) {
+        console.error('[createLaboratory] status:', axErr.response.status, 'data:', axErr.response.data)
+      }
+      toast.error(getApiErrorMessage(err, { fallback: 'Laboratuvar oluşturulamadı' }))
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: { cargofirm?: string; cargoNumber?: string } }) =>
+      updateLaboratory(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LABS_QUERY_KEY })
+      toast.success('Laboratuvar güncellendi')
+      setEditLabOpen(false)
+      setSelectedLab(null)
+      resetNewLabForm()
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Laboratuvar güncellenemedi' }))
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteLaboratory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LABS_QUERY_KEY })
+      toast.success('Laboratuvar silindi')
+      setDeleteLabOpen(false)
+      setSelectedLab(null)
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Laboratuvar silinemedi' }))
+    },
+  })
+
+  const assignDietitianMutation = useMutation({
+    mutationFn: ({ laboratoryId, dieticianId }: { laboratoryId: number; dieticianId: number }) =>
+      assignDietitianToLab(laboratoryId, dieticianId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: LAB_DIETITIANS_KEY })
+      toast.success('Diyetisyen laboratuvara atandı')
+      setAssignDietitianOpen(false)
+      setSelectedLab(null)
+      setSelectedDietitianId('')
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Diyetisyen ataması başarısız' }))
+    },
+  })
+
+  const resetNewLabForm = () => {
+    setNewLabForm({
+      firstName: '',
+      lastName: '',
+      phone: '',
+      email: '',
+      gender: 'male',
+      cargofirm: '',
+      cargoNumber: '',
+      city: '',
+      district: '',
+      street: '',
+      neighborhood: '',
+      no: '',
+      fullAddress: '',
+      postalCode: '',
+      country: 'Turkiye',
+      addressTitle: 'work',
+    })
+  }
+
+  const submitNewLab = () => {
+    if (!newLabForm.firstName.trim() || !newLabForm.lastName.trim()) {
+      toast.error('Lab sorumlusu adı ve soyadı zorunludur')
+      return
+    }
+    const phoneDigits = newLabForm.phone.replace(/\D/g, '')
+    if (!phoneDigits) {
+      toast.error('Telefon numarası zorunludur')
+      return
+    }
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      toast.error('Telefon numarası 10 veya 11 haneli olmalıdır (örn: 05551234567)')
+      return
+    }
+    if (!newLabForm.city.trim() || !newLabForm.district.trim()) {
+      toast.error('Şehir ve ilçe zorunludur')
+      return
+    }
+    if (!newLabForm.cargofirm.trim() || !newLabForm.cargoNumber.trim()) {
+      toast.error('Kargo firması ve kargo numarası zorunludur')
+      return
+    }
+
+    const streetVal = newLabForm.street.trim() || '-'
+    const neighborhoodVal = newLabForm.neighborhood.trim() || '-'
+    const noVal = newLabForm.no.trim()
+    const cityVal = newLabForm.city.trim()
+    const districtVal = newLabForm.district.trim()
+    const countryVal = newLabForm.country.trim() || 'Turkiye'
+    const autoFull = newLabForm.fullAddress.trim() ||
+      [streetVal !== '-' ? streetVal : null, noVal ? `No:${noVal}` : null, neighborhoodVal !== '-' ? neighborhoodVal : null, districtVal, cityVal, countryVal]
         .filter(Boolean)
-        .join('; ')
+        .join(', ')
+
+    createMutation.mutate({
+      firstName: newLabForm.firstName.trim(),
+      lastName: newLabForm.lastName.trim(),
+      phone: phoneDigits,
+      gender: newLabForm.gender,
+      email: newLabForm.email.trim() || undefined,
+      cargofirm: newLabForm.cargofirm.trim(),
+      cargoNumber: newLabForm.cargoNumber.trim(),
+      address: {
+        title: newLabForm.addressTitle || 'work',
+        country: countryVal,
+        city: cityVal,
+        district: districtVal,
+        street: streetVal,
+        neighborhood: neighborhoodVal,
+        no: noVal || undefined,
+        fullAddress: autoFull || undefined,
+        postalCode: newLabForm.postalCode.trim() || '00000',
+      },
+    })
+  }
+
+  const openEditLab = (lab: Laboratory) => {
+    setSelectedLab(lab)
+    setNewLabForm((prev) => ({
+      ...prev,
+      cargofirm: lab.cargofirm ?? '',
+      cargoNumber: lab.cargoNumber ?? '',
+    }))
+    setEditLabOpen(true)
+  }
+
+  const submitEditLab = () => {
+    if (!selectedLab) return
+    updateMutation.mutate({
+      id: selectedLab.id,
+      payload: {
+        cargofirm: newLabForm.cargofirm.trim() || undefined,
+        cargoNumber: newLabForm.cargoNumber.trim() || undefined,
+      },
+    })
+  }
+
+  const openAssignDietitian = (lab: Laboratory) => {
+    setSelectedLab(lab)
+    setSelectedDietitianId('')
+    setAssignDietitianOpen(true)
+  }
+
+  const submitAssignDietitian = () => {
+    if (!selectedLab || !selectedDietitianId) {
+      toast.error('Lütfen bir diyetisyen seçin')
+      return
+    }
+    assignDietitianMutation.mutate({
+      laboratoryId: Number(selectedLab.id),
+      dieticianId: Number(selectedDietitianId),
+    })
+  }
+
+  const openDeleteLab = (lab: Laboratory) => {
+    setSelectedLab(lab)
+    setDeleteLabOpen(true)
+  }
+
+  const submitDeleteLab = () => {
+    if (!selectedLab) return
+    deleteMutation.mutate(selectedLab.id)
+  }
+
+  const selectedLabDietitians = useMemo(() => {
+    if (!selectedLab) return []
+    const labData = labsWithDietitians.find((l) => l.id === selectedLab.id)
+    return labData?.assignedDietitianDetails ?? []
+  }, [selectedLab, labsWithDietitians])
+
+  const availableDietitians = useMemo(() => {
+    const assignedIds = new Set(selectedLabDietitians.map((d) => d.dieticianId))
+    return dieticians.filter((d) => !assignedIds.has(d.id))
+  }, [dieticians, selectedLabDietitians])
+
+  const handleExportCsv = () => {
+    const headers = ['Ad', 'Adres', 'Şehir', 'İlçe', 'Telefon', 'E-posta', 'Kargo Firması', 'Atanan Diyetisyenler', 'Oluşturulma Tarihi']
+    const rows = filteredLaboratories.map((lab) => {
+      const assignedNames = lab.assignedDietitianDetails.map((d) => d.name).join('; ')
       return [
         lab.name,
         lab.address,
         lab.city,
         lab.district || '-',
-        lab.postalCode || '-',
         lab.phone || '-',
         lab.email || '-',
+        lab.cargofirm || '-',
         assignedNames || '-',
         formatDate(lab.createdAt),
       ]
@@ -112,117 +347,6 @@ export function LaboratoriesPage() {
     toast.success('Laboratuvar listesi indirildi')
   }
 
-  const resetNewLabForm = () => {
-    setNewLabForm({
-      name: '',
-      address: '',
-      city: '',
-      district: '',
-      postalCode: '',
-      phone: '',
-      email: '',
-    })
-  }
-
-  const submitNewLab = () => {
-    if (!newLabForm.name || !newLabForm.address || !newLabForm.city) {
-      toast.error('Laboratuvar adı, adres ve şehir zorunludur.')
-      return
-    }
-    const result = createLaboratory(newLabForm)
-    if (!result.ok) {
-      toast.error(result.message)
-      return
-    }
-    toast.success(result.message)
-    setNewLabOpen(false)
-    resetNewLabForm()
-  }
-
-  const openEditLab = (lab: Laboratory) => {
-    setSelectedLab(lab)
-    setNewLabForm({
-      name: lab.name,
-      address: lab.address,
-      city: lab.city,
-      district: lab.district || '',
-      postalCode: lab.postalCode || '',
-      phone: lab.phone || '',
-      email: lab.email || '',
-    })
-    setEditLabOpen(true)
-  }
-
-  const submitEditLab = () => {
-    if (!selectedLab) return
-    if (!newLabForm.name || !newLabForm.address || !newLabForm.city) {
-      toast.error('Laboratuvar adı, adres ve şehir zorunludur.')
-      return
-    }
-    const result = updateLaboratory(selectedLab.id, newLabForm)
-    if (!result.ok) {
-      toast.error(result.message)
-      return
-    }
-    toast.success(result.message)
-    setEditLabOpen(false)
-    setSelectedLab(null)
-    resetNewLabForm()
-  }
-
-  const openAssignDietitian = (lab: Laboratory) => {
-    setSelectedLab(lab)
-    setSelectedDietitianId('')
-    setAssignDietitianOpen(true)
-  }
-
-  const submitAssignDietitian = () => {
-    if (!selectedLab || !selectedDietitianId) {
-      toast.error('Lütfen bir diyetisyen seçin.')
-      return
-    }
-    const result = assignDietitian(selectedLab.id, selectedDietitianId)
-    if (!result.ok) {
-      toast.error(result.message)
-      return
-    }
-    toast.success(result.message)
-    setAssignDietitianOpen(false)
-    setSelectedLab(null)
-    setSelectedDietitianId('')
-  }
-
-  const handleUnassignDietitian = (labId: string, dietitianId: string) => {
-    const result = unassignDietitian(labId, dietitianId)
-    if (!result.ok) {
-      toast.error(result.message)
-      return
-    }
-    toast.success(result.message)
-  }
-
-  const openDeleteLab = (lab: Laboratory) => {
-    setSelectedLab(lab)
-    setDeleteLabOpen(true)
-  }
-
-  const submitDeleteLab = () => {
-    if (!selectedLab) return
-    const result = deleteLaboratory(selectedLab.id)
-    if (!result.ok) {
-      toast.error(result.message)
-      return
-    }
-    toast.success(result.message)
-    setDeleteLabOpen(false)
-    setSelectedLab(null)
-  }
-
-  const availableDietitians = useMemo(() => {
-    if (!selectedLab) return dietitians
-    return dietitians.filter((d) => !selectedLab.assignedDietitians.includes(d.id))
-  }, [dietitians, selectedLab])
-
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
@@ -232,7 +356,9 @@ export function LaboratoriesPage() {
           <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
             <div>
               <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Laboratuvarlar</h3>
-              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Kayitli laboratuvarlar ({filteredLaboratories.length} adet)</p>
+              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
+                {isLoading ? 'Yükleniyor...' : `Kayıtlı laboratuvarlar (${filteredLaboratories.length} adet)`}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -257,143 +383,208 @@ export function LaboratoriesPage() {
               </Button>
             </div>
           </div>
-          <LaboratoryTable
-            laboratories={filteredLaboratories}
-            users={users}
-            onEdit={openEditLab}
-            onDelete={openDeleteLab}
-            onAssignDietitian={openAssignDietitian}
-            W={W}
-          />
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin" style={{ color: W.olive }} />
+            </div>
+          ) : labsError ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <p className="text-sm" style={{ color: W.text }}>Laboratuvarlar yüklenirken sunucu hatası oluştu (500).</p>
+              <p className="text-xs" style={{ color: W.textLight }}>Backend servisi kontrol edin. Veritabanı bağlantısı veya tablo şeması sorunu olabilir.</p>
+              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: LABS_QUERY_KEY })}>
+                Tekrar Dene
+              </Button>
+            </div>
+          ) : (
+            <LaboratoryTable
+              laboratories={filteredLaboratories}
+              onEdit={openEditLab}
+              onDelete={openDeleteLab}
+              onAssignDietitian={openAssignDietitian}
+              W={W}
+            />
+          )}
         </div>
       </motion.div>
 
-      {/* Create Laboratory Modal */}
+      {/* ── Create Laboratory Modal ── */}
       <Modal open={newLabOpen} onOpenChange={setNewLabOpen}>
         <ModalContent className="max-w-2xl">
           <ModalHeader>
             <ModalTitle>Yeni Laboratuvar Ekle</ModalTitle>
-            <ModalDescription>Yeni laboratuvar bilgilerini girin. Adres bilgisi çok önemlidir.</ModalDescription>
+            <ModalDescription>Laboratuvar bilgilerini girin.</ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-3">
-            <Input
-              label="Laboratuvar Adı *"
-              value={newLabForm.name}
-              onChange={(e) => setNewLabForm((s) => ({ ...s, name: e.target.value }))}
-              placeholder="Örn: OmegaTree Merkez Laboratuvar"
-            />
+          <ModalBody className="space-y-4 max-h-[60vh] overflow-y-auto">
+            <p className="form-section-title">Lab Sorumlusu</p>
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Şehir *"
-                value={newLabForm.city}
-                onChange={(e) => setNewLabForm((s) => ({ ...s, city: e.target.value }))}
-                placeholder="Örn: Ankara"
+                label="Ad *"
+                value={newLabForm.firstName}
+                onChange={(e) => setNewLabForm((s) => ({ ...s, firstName: e.target.value }))}
+                placeholder="Lab sorumlusu adı"
               />
               <Input
-                label="İlçe"
-                value={newLabForm.district}
-                onChange={(e) => setNewLabForm((s) => ({ ...s, district: e.target.value }))}
-                placeholder="Örn: Çankaya"
+                label="Soyad *"
+                value={newLabForm.lastName}
+                onChange={(e) => setNewLabForm((s) => ({ ...s, lastName: e.target.value }))}
+                placeholder="Lab sorumlusu soyadı"
               />
             </div>
-            <Input
-              label="Adres *"
-              value={newLabForm.address}
-              onChange={(e) => setNewLabForm((s) => ({ ...s, address: e.target.value }))}
-              placeholder="Örn: Atatürk Bulvarı No:123"
-              className="font-medium"
-            />
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Posta Kodu"
-                value={newLabForm.postalCode}
-                onChange={(e) => setNewLabForm((s) => ({ ...s, postalCode: e.target.value }))}
-                placeholder="Örn: 06100"
-              />
-              <Input
-                label="Telefon"
+                label="Telefon *"
                 value={newLabForm.phone}
                 onChange={(e) => setNewLabForm((s) => ({ ...s, phone: e.target.value }))}
-                placeholder="Örn: 03121234567"
+                placeholder="05xxxxxxxxx"
+              />
+              <Input
+                label="E-posta"
+                type="email"
+                value={newLabForm.email}
+                onChange={(e) => setNewLabForm((s) => ({ ...s, email: e.target.value }))}
+                placeholder="lab@ornek.com"
               />
             </div>
-            <Input
-              label="E-posta"
-              type="email"
-              value={newLabForm.email}
-              onChange={(e) => setNewLabForm((s) => ({ ...s, email: e.target.value }))}
-              placeholder="Örn: lab@omegatree.com"
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block text-surface-700">Cinsiyet *</label>
+                <Select value={newLabForm.gender} onValueChange={(v) => setNewLabForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Erkek</SelectItem>
+                    <SelectItem value="female">Kadın</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <p className="form-section-title">Kargo Bilgileri</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Kargo Firması *"
+                  value={newLabForm.cargofirm}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, cargofirm: e.target.value }))}
+                  placeholder="Örn: Yurtiçi Kargo"
+                />
+                <Input
+                  label="Kargo Numarası *"
+                  value={newLabForm.cargoNumber}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, cargoNumber: e.target.value }))}
+                  placeholder="Anlaşma numarası"
+                />
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <p className="form-section-title">Adres Bilgileri</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Şehir *"
+                  value={newLabForm.city}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, city: e.target.value }))}
+                  placeholder="Örn: İstanbul"
+                />
+                <Input
+                  label="İlçe *"
+                  value={newLabForm.district}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, district: e.target.value }))}
+                  placeholder="Örn: Kadıköy"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <Input
+                  label="Sokak"
+                  value={newLabForm.street}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, street: e.target.value }))}
+                  placeholder="Sokak adı"
+                />
+                <Input
+                  label="Mahalle"
+                  value={newLabForm.neighborhood}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, neighborhood: e.target.value }))}
+                  placeholder="Mahalle"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                <Input
+                  label="Kapı No"
+                  value={newLabForm.no}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, no: e.target.value }))}
+                  placeholder="Örn: 10"
+                />
+                <Input
+                  label="Posta Kodu"
+                  value={newLabForm.postalCode}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, postalCode: e.target.value }))}
+                  placeholder="Örn: 34710"
+                />
+                <Input
+                  label="Ülke"
+                  value={newLabForm.country}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, country: e.target.value }))}
+                  placeholder="Turkiye"
+                />
+              </div>
+              <div className="mt-3">
+                <Input
+                  label="Açık Adres"
+                  value={newLabForm.fullAddress}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, fullAddress: e.target.value }))}
+                  placeholder="Örn: Atatürk Sokak No:10, Moda, Kadıköy, İstanbul, Türkiye"
+                />
+              </div>
+            </div>
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" onClick={() => { setNewLabOpen(false); resetNewLabForm() }}>
               İptal
             </Button>
-            <Button onClick={submitNewLab}>Laboratuvar Oluştur</Button>
+            <Button onClick={submitNewLab} disabled={createMutation.isPending}>
+              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Laboratuvar Oluştur
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
-      {/* Edit Laboratory Modal */}
+      {/* ── Edit Laboratory Modal ── */}
       <Modal open={editLabOpen} onOpenChange={setEditLabOpen}>
-        <ModalContent className="max-w-2xl">
+        <ModalContent>
           <ModalHeader>
             <ModalTitle>Laboratuvar Düzenle</ModalTitle>
-            <ModalDescription>Laboratuvar bilgilerini güncelleyin. Adres bilgisi çok önemlidir.</ModalDescription>
+            <ModalDescription>
+              {selectedLab && `${selectedLab.name} — kargo bilgilerini güncelleyin.`}
+            </ModalDescription>
           </ModalHeader>
           <ModalBody className="space-y-3">
             <Input
-              label="Laboratuvar Adı *"
-              value={newLabForm.name}
-              onChange={(e) => setNewLabForm((s) => ({ ...s, name: e.target.value }))}
+              label="Kargo Firması"
+              value={newLabForm.cargofirm}
+              onChange={(e) => setNewLabForm((s) => ({ ...s, cargofirm: e.target.value }))}
+              placeholder="Kargo firması"
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Şehir *"
-                value={newLabForm.city}
-                onChange={(e) => setNewLabForm((s) => ({ ...s, city: e.target.value }))}
-              />
-              <Input
-                label="İlçe"
-                value={newLabForm.district}
-                onChange={(e) => setNewLabForm((s) => ({ ...s, district: e.target.value }))}
-              />
-            </div>
             <Input
-              label="Adres *"
-              value={newLabForm.address}
-              onChange={(e) => setNewLabForm((s) => ({ ...s, address: e.target.value }))}
-              className="font-medium"
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Posta Kodu"
-                value={newLabForm.postalCode}
-                onChange={(e) => setNewLabForm((s) => ({ ...s, postalCode: e.target.value }))}
-              />
-              <Input
-                label="Telefon"
-                value={newLabForm.phone}
-                onChange={(e) => setNewLabForm((s) => ({ ...s, phone: e.target.value }))}
-              />
-            </div>
-            <Input
-              label="E-posta"
-              type="email"
-              value={newLabForm.email}
-              onChange={(e) => setNewLabForm((s) => ({ ...s, email: e.target.value }))}
+              label="Kargo Numarası"
+              value={newLabForm.cargoNumber}
+              onChange={(e) => setNewLabForm((s) => ({ ...s, cargoNumber: e.target.value }))}
+              placeholder="Kargo anlaşma numarası"
             />
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" onClick={() => { setEditLabOpen(false); setSelectedLab(null); resetNewLabForm() }}>
               İptal
             </Button>
-            <Button onClick={submitEditLab}>Kaydet</Button>
+            <Button onClick={submitEditLab} disabled={updateMutation.isPending}>
+              {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Kaydet
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
-      {/* Assign Dietitian Modal */}
+      {/* ── Assign Dietitian Modal ── */}
       <Modal open={assignDietitianOpen} onOpenChange={setAssignDietitianOpen}>
         <ModalContent>
           <ModalHeader>
@@ -409,41 +600,28 @@ export function LaboratoriesPage() {
               </SelectTrigger>
               <SelectContent>
                 {availableDietitians.length === 0 ? (
-                  <div className="p-2 text-sm text-surface-500">Tüm diyetisyenler atanmış</div>
+                  <div className="p-2 text-sm text-surface-500">Atanabilecek diyetisyen yok</div>
                 ) : (
                   availableDietitians.map((dietitian) => (
-                    <SelectItem key={dietitian.id} value={dietitian.id}>
-                      {dietitian.firstName} {dietitian.lastName} ({dietitian.email})
+                    <SelectItem key={dietitian.id} value={String(dietitian.id)}>
+                      {dietitian.label}
                     </SelectItem>
                   ))
                 )}
               </SelectContent>
             </Select>
-            {selectedLab && selectedLab.assignedDietitians.length > 0 && (
+            {selectedLabDietitians.length > 0 && (
               <div className="mt-4">
                 <p className="text-sm font-medium text-surface-700 mb-2">Atanan Diyetisyenler:</p>
                 <div className="space-y-2">
-                  {selectedLab.assignedDietitians.map((dietitianId) => {
-                    const dietitian = users.find((u) => u.id === dietitianId)
-                    if (!dietitian) return null
-                    return (
-                      <div
-                        key={dietitianId}
-                        className="flex items-center justify-between p-2 rounded-lg bg-surface-50"
-                      >
-                        <span className="text-sm">
-                          {dietitian.firstName} {dietitian.lastName}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => handleUnassignDietitian(selectedLab.id, dietitianId)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )
-                  })}
+                  {selectedLabDietitians.map((d) => (
+                    <div
+                      key={d.dieticianId}
+                      className="flex items-center justify-between p-2 rounded-lg bg-surface-50"
+                    >
+                      <span className="text-sm">{d.name}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -452,14 +630,15 @@ export function LaboratoriesPage() {
             <Button variant="outline" onClick={() => { setAssignDietitianOpen(false); setSelectedLab(null); setSelectedDietitianId('') }}>
               İptal
             </Button>
-            <Button onClick={submitAssignDietitian} disabled={!selectedDietitianId || availableDietitians.length === 0}>
+            <Button onClick={submitAssignDietitian} disabled={!selectedDietitianId || assignDietitianMutation.isPending}>
+              {assignDietitianMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Ata
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
-      {/* Delete Laboratory Modal */}
+      {/* ── Delete Laboratory Modal ── */}
       <Modal open={deleteLabOpen} onOpenChange={setDeleteLabOpen}>
         <ModalContent>
           <ModalHeader>
@@ -472,7 +651,8 @@ export function LaboratoriesPage() {
             <Button variant="outline" onClick={() => { setDeleteLabOpen(false); setSelectedLab(null) }}>
               İptal
             </Button>
-            <Button variant="destructive" onClick={submitDeleteLab}>
+            <Button variant="destructive" onClick={submitDeleteLab} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               <Trash2 className="h-4 w-4 mr-2" />
               Sil
             </Button>
@@ -483,16 +663,16 @@ export function LaboratoriesPage() {
   )
 }
 
+type LabWithDietitians = Laboratory & { assignedDietitianDetails: { dieticianId: number; name: string }[] }
+
 function LaboratoryTable({
   laboratories,
-  users,
   onEdit,
   onDelete,
   onAssignDietitian,
-  W,
+  W: colors,
 }: {
-  laboratories: Laboratory[]
-  users: any[]
+  laboratories: LabWithDietitians[]
   onEdit: (lab: Laboratory) => void
   onDelete: (lab: Laboratory) => void
   onAssignDietitian: (lab: Laboratory) => void
@@ -521,130 +701,139 @@ function LaboratoryTable({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr style={{ background: W.cream }}>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Laboratuvar</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Adres</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Iletisim</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Atanan Diyetisyenler</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Olusturulma</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20" style={{ color: W.textLight }} />
+            <tr style={{ background: colors.cream }}>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>Laboratuvar</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>Adres</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>İletişim</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>Kargo</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>Diyetisyenler</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>Oluşturulma</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20" style={{ color: colors.textLight }} />
             </tr>
           </thead>
           <tbody>
             {laboratories.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-12 text-center text-[12px]" style={{ color: W.textLight }}>
-                  Laboratuvar bulunamadi.
+                <td colSpan={7} className="px-5 py-12 text-center text-[12px]" style={{ color: colors.textLight }}>
+                  Laboratuvar bulunamadı.
                 </td>
               </tr>
             ) : (
-              paginatedLabs.map((lab) => {
-                const assignedDietitians = lab.assignedDietitians
-                  .map((id) => users.find((u) => u.id === id))
-                  .filter(Boolean)
-                return (
-                  <tr
-                    key={lab.id}
-                    className="transition-colors"
-                    style={{ borderBottom: `1px solid ${W.warmBorder}` }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                  >
-                    <td className="px-5 py-3.5">
-                      <div>
-                        <span className="text-[12px] block font-medium" style={{ color: W.text }}>{lab.name}</span>
-                        <span className="text-[11px]" style={{ color: W.textLight }}>
-                          {lab.city}
-                          {lab.district && `, ${lab.district}`}
-                        </span>
+              paginatedLabs.map((lab) => (
+                <tr
+                  key={lab.id}
+                  className="transition-colors"
+                  style={{ borderBottom: `1px solid ${colors.warmBorder}` }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = colors.cream }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  <td className="px-5 py-3.5">
+                    <div>
+                      <span className="text-[12px] block font-medium" style={{ color: colors.text }}>{lab.name}</span>
+                      <span className="text-[11px]" style={{ color: colors.textLight }}>
+                        {lab.city}{lab.district && `, ${lab.district}`}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 mt-0.5 shrink-0" style={{ color: colors.warmGrayLight }} />
+                      <div className="min-w-0">
+                        <span className="text-[12px] block" style={{ color: colors.text }}>{lab.address || '-'}</span>
+                        {lab.postalCode && (
+                          <span className="text-[11px]" style={{ color: colors.textLight }}>PK: {lab.postalCode}</span>
+                        )}
                       </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 mt-0.5 shrink-0" style={{ color: W.warmGrayLight }} />
-                        <div className="min-w-0">
-                          <span className="text-[12px] block" style={{ color: W.text }}>{lab.address}</span>
-                          {lab.postalCode && (
-                            <span className="text-[11px]" style={{ color: W.textLight }}>PK: {lab.postalCode}</span>
-                          )}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="space-y-1">
+                      {lab.phone && (
+                        <div className="flex items-center gap-1.5 text-[12px]" style={{ color: colors.text }}>
+                          <Phone className="h-3.5 w-3.5" style={{ color: colors.warmGrayLight }} />
+                          <span>{lab.phone}</span>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="space-y-1">
-                        {lab.phone && (
-                          <div className="flex items-center gap-1.5 text-[12px]" style={{ color: W.text }}>
-                            <Phone className="h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
-                            <span>{lab.phone}</span>
-                          </div>
-                        )}
-                        {lab.email && (
-                          <div className="flex items-center gap-1.5 text-[12px] truncate" style={{ color: W.text }}>
-                            <Mail className="h-3.5 w-3.5 shrink-0" style={{ color: W.warmGrayLight }} />
-                            <span className="truncate">{lab.email}</span>
-                          </div>
-                        )}
-                        {!lab.phone && !lab.email && (
-                          <span className="text-[11px]" style={{ color: W.textLight }}>-</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {assignedDietitians.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {assignedDietitians.slice(0, 2).map((dietitian: any) => (
-                            <span
-                              key={dietitian.id}
-                              className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                              style={{ background: W.creamDark, color: W.text }}
-                            >
-                              {dietitian.firstName} {dietitian.lastName}
-                            </span>
-                          ))}
-                          {assignedDietitians.length > 2 && (
-                            <span
-                              className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                              style={{ background: W.creamDark, color: W.text }}
-                            >
-                              +{assignedDietitians.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-[11px]" style={{ color: W.textLight }}>Atanmamis</span>
                       )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="text-[12px]" style={{ color: W.textLight }}>{formatDate(lab.createdAt)}</span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onAssignDietitian(lab)}>
-                            <Users className="h-4 w-4 mr-2" /> Diyetisyen Ata
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => onEdit(lab)}>
-                            <Edit className="h-4 w-4 mr-2" /> Duzenle
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-danger"
-                            onClick={() => onDelete(lab)}
+                      {lab.email && (
+                        <div className="flex items-center gap-1.5 text-[12px] truncate" style={{ color: colors.text }}>
+                          <Mail className="h-3.5 w-3.5 shrink-0" style={{ color: colors.warmGrayLight }} />
+                          <span className="truncate">{lab.email}</span>
+                        </div>
+                      )}
+                      {!lab.phone && !lab.email && (
+                        <span className="text-[11px]" style={{ color: colors.textLight }}>-</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="space-y-0.5">
+                      {lab.cargofirm ? (
+                        <>
+                          <span className="text-[12px] block" style={{ color: colors.text }}>{lab.cargofirm}</span>
+                          {lab.cargoNumber && (
+                            <span className="text-[11px]" style={{ color: colors.textLight }}>{lab.cargoNumber}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[11px]" style={{ color: colors.textLight }}>-</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    {lab.assignedDietitianDetails.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {lab.assignedDietitianDetails.slice(0, 2).map((d) => (
+                          <span
+                            key={d.dieticianId}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
+                            style={{ background: colors.creamDark, color: colors.text }}
                           >
-                            <Trash2 className="h-4 w-4 mr-2" /> Sil
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                )
-              })
+                            {d.name}
+                          </span>
+                        ))}
+                        {lab.assignedDietitianDetails.length > 2 && (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
+                            style={{ background: colors.creamDark, color: colors.text }}
+                          >
+                            +{lab.assignedDietitianDetails.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[11px]" style={{ color: colors.textLight }}>Atanmamış</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="text-[12px]" style={{ color: colors.textLight }}>{formatDate(lab.createdAt)}</span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon-sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onAssignDietitian(lab)}>
+                          <Users className="h-4 w-4 mr-2" /> Diyetisyen Ata
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => onEdit(lab)}>
+                          <Edit className="h-4 w-4 mr-2" /> Düzenle
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-danger"
+                          onClick={() => onDelete(lab)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" /> Sil
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
@@ -662,4 +851,3 @@ function LaboratoryTable({
     </>
   )
 }
-

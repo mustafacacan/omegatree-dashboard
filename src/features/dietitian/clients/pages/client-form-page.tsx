@@ -13,6 +13,7 @@ import {
 import { toast } from 'sonner'
 import { ROUTES, danisanDetayPath } from '@/utils/routes'
 import { useClientsStore } from '@/stores/clients.store'
+import { useCurrentUser } from '@/stores/auth.store'
 
 /* ──────────── Schema ──────────── */
 const clientSchema = z.object({
@@ -42,6 +43,7 @@ export function ClientFormPage() {
   const navigate = useNavigate()
   const { clientId } = useParams()
   const { addClient } = useClientsStore()
+  const currentUser = useCurrentUser()
   const isEdit = Boolean(clientId)
 
   const autoIdExample = useMemo(() => {
@@ -83,23 +85,25 @@ export function ClientFormPage() {
   const lastName = watch('lastName')
 
   const onSubmit = async (data: ClientFormData) => {
-    await new Promise((resolve) => setTimeout(resolve, 600))
     if (isEdit) {
       toast.success('Danisan bilgileri guncellendi')
       navigate(ROUTES.DIYETISYEN_DANISANLAR)
     } else {
-      const { id } = addClient({
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone: data.phone,
-        email: data.email || undefined,
-        address: data.address,
-        birthDate: data.birthDate,
-      })
-      toast.success(`Danisan eklendi — ID: ${id}`)
-      // Wait a bit for store to persist before navigating
-      await new Promise((resolve) => setTimeout(resolve, 200))
-      navigate(danisanDetayPath(id))
+      try {
+        const { id } = await addClient({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          email: data.email || undefined,
+          gender: (data.gender?.toLowerCase() === 'kadin' || data.gender?.toLowerCase() === 'female') ? 'female' : 'male',
+          dieticianId: currentUser?.id ? Number(currentUser.id) : undefined,
+        })
+        toast.success(`Danisan eklendi — ID: ${id}`)
+        navigate(danisanDetayPath(id))
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Danışan oluşturulamadı'
+        toast.error(msg)
+      }
     }
   }
 
