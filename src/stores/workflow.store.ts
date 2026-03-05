@@ -69,6 +69,8 @@ export interface DietitianOrder {
   paidAt?: string
   createdAt: string
   assignedBarcodes: string[]
+  /** Admin panelde sipariş onaylandı (dekont/ödeme kontrolü); tamamlamadan önce bu adım gerekir */
+  approvedByAdmin?: boolean
 }
 
 export interface CariPayment {
@@ -120,8 +122,10 @@ interface WorkflowState {
   markKitPrinted: (barcode: string, actor: string, ip?: string) => { ok: boolean; message: string }
   markKitsPrinted: (barcodes: string[], actor: string, ip?: string) => { ok: boolean; message: string; printedCount: number }
   createDietitianOrder: (dietitianId: string, dietitianName: string, qty: number, actor: string, ip?: string, options?: { total?: number }) => void
-  /** Sync orders from API into store; preserves assignedBarcodes for existing order ids */
+  /** Sync orders from API into store; preserves assignedBarcodes and approvedByAdmin for existing order ids */
   setOrdersFromApi: (apiOrders: Array<{ id: number; user?: { id?: number; firstName?: string; lastName?: string }; quantity: number; totalPrice?: string | number; paymenStatus?: string; createdAt?: string }>) => void
+  /** Admin: Siparişi onayla (dekont/ödeme kontrolü yapıldı); API'de status hâlâ pending, tamamlama ayrı yapılır */
+  approveOrderByAdmin: (orderId: string) => void
   assignKitsToDietitian: (dietitianId: string, dietitianName: string, barcodes: string[], actor: string, ip?: string, orderId?: string) => void
   receiveKitByBarcode: (
     barcode: string,
@@ -183,6 +187,7 @@ const seedOrders: DietitianOrder[] = [
     paid: true,
     createdAt: '2025-06-10T09:00:00.000Z',
     assignedBarcodes: ['OT-2025-00156', 'OT-2025-00155'],
+    approvedByAdmin: false,
   },
 ]
 
@@ -418,6 +423,7 @@ export const useWorkflowStore = create<WorkflowState>()(
             paid: false,
             createdAt: nowIso(),
             assignedBarcodes: [],
+            approvedByAdmin: false,
           }
           return {
             orders: [order, ...state.orders],
@@ -449,10 +455,18 @@ export const useWorkflowStore = create<WorkflowState>()(
               paid: o.paymenStatus === 'paid',
               createdAt: o.createdAt ?? nowIso(),
               assignedBarcodes: existing?.assignedBarcodes ?? [],
+              approvedByAdmin: existing?.approvedByAdmin ?? false,
             }
           })
           return { orders: merged }
         }),
+
+      approveOrderByAdmin: (orderId) =>
+        set((state) => ({
+          orders: state.orders.map((o) =>
+            o.id === orderId ? { ...o, approvedByAdmin: true } : o
+          ),
+        })),
 
       markOrderPaid: (orderId, actor, ip) => {
         const order = get().orders.find((o) => o.id === orderId)

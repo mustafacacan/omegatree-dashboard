@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Badge, Button, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
+  Button, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Checkbox,
 } from '@/components/ui'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { motion } from 'framer-motion'
-import { Search, Eye, Truck, Package, ShoppingBag, Clock, CheckCircle, Loader2 } from 'lucide-react'
+import { Search, ListOrdered, Truck, Package, ShoppingBag, Clock, CheckCircle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { PdfViewer } from '@/components/shared/pdf-viewer'
@@ -31,7 +31,7 @@ const W = {
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function OrdersPage() {
-  const { orders, kits, assignKitsToDietitian, setOrdersFromApi } = useWorkflowStore()
+  const { orders, kits, assignKitsToDietitian, setOrdersFromApi, approveOrderByAdmin } = useWorkflowStore()
   const queryClient = useQueryClient()
 
   const { data: apiOrdersData, isLoading: ordersLoading } = useQuery<OrderItem[]>({
@@ -51,6 +51,8 @@ export function OrdersPage() {
   const [pageSize, setPageSize] = useState(10)
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null)
   const [selectedBarcodes, setSelectedBarcodes] = useState<string[]>([])
+  /** Modal içi adım: 1 = Onayla, 2 = Kit atama, 3 = Tamamla */
+  const [modalStep, setModalStep] = useState<1 | 2 | 3>(1)
 
   const filteredOrders = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -192,21 +194,30 @@ export function OrdersPage() {
 
   const remainingQty = currentOrder ? currentOrder.qty - currentOrder.assignedBarcodes.length : 0
 
-  const approveOrderMutation = useMutation({
+  /** Adım 1: Siparişi onayla (dekont/ödeme kontrolü) — sadece store, API'ye gitmez */
+  const handleApproveOrder = () => {
+    if (!selectedOrder) return
+    approveOrderByAdmin(selectedOrder)
+    setModalStep(remainingQty > 0 ? 2 : 3)
+    toast.success('Sipariş onaylandı. Sıradaki adıma geçebilirsiniz.')
+  }
+
+  /** Adım 2: Siparişi tamamla — API'de status = completed */
+  const completeOrderMutation = useMutation({
     mutationFn: async () => {
       const id = Number(selectedOrder)
       if (!Number.isFinite(id)) throw new Error('Geçersiz sipariş id')
       return updateOrderStatus(id, 'completed')
     },
     onSuccess: async () => {
-      toast.success('Sipariş onaylandı')
+      toast.success('Sipariş tamamlandı')
       await queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
       if (selectedOrder) {
         await queryClient.invalidateQueries({ queryKey: ['orders', 'detail', selectedOrder] })
       }
     },
     onError: () => {
-      toast.error('Sipariş onaylanamadı')
+      toast.error('Sipariş tamamlanamadı')
     },
   })
 
@@ -222,6 +233,15 @@ export function OrdersPage() {
   useEffect(() => {
     setPage(1)
   }, [search])
+
+  /** Modal açıldığında başlangıç adımını belirle */
+  useEffect(() => {
+    if (!selectedOrder || !currentOrder) return
+    if (orderDetailForUi?.status === 'completed') return
+    if (!currentOrder.approvedByAdmin) setModalStep(1)
+    else if (remainingQty > 0) setModalStep(2)
+    else setModalStep(3)
+  }, [selectedOrder])
 
   useEffect(() => {
     const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize))
@@ -277,11 +297,11 @@ export function OrdersPage() {
     const newAssignedCount = currentOrder.assignedBarcodes.length + selectedBarcodes.length
     if (newAssignedCount >= currentOrder.qty) {
       toast.success(`Siparis tamamlandi. ${selectedBarcodes.length} kit kargoya verildi.`)
+      setModalStep(3)
     } else {
       toast.success(`${selectedBarcodes.length} kit kargoya verildi. Kalan: ${currentOrder.qty - newAssignedCount} adet`)
     }
 
-    setSelectedOrder(null)
     setSelectedBarcodes([])
   }
 
@@ -359,7 +379,7 @@ export function OrdersPage() {
                   <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Durum</th>
                   <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Ödeme</th>
                   <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Tarih</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20" style={{ color: W.textLight }} />
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>İşlem</th>
                 </tr>
               </thead>
               <tbody>
@@ -436,15 +456,35 @@ export function OrdersPage() {
                           <span className="text-[12px]" style={{ color: W.textLight }}>{order.createdAt ? formatDate(order.createdAt) : '—'}</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => handleOpenOrder(String(order.id))}
-                            aria-label="Sipariş detayı"
-                            title="Detay ve kargolama"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            {order.status !== 'completed' && !storeOrder?.approvedByAdmin && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-[11px] h-7 px-2"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  approveOrderByAdmin(String(order.id))
+                                  toast.success('Sipariş onaylandı')
+                                }}
+                                title="Dekont/ödeme kontrolü yapıldı, siparişi onayla"
+                              >
+                                <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                Onayla
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-[11px] h-7 px-2"
+                              onClick={() => handleOpenOrder(String(order.id))}
+                              aria-label="Sipariş detayı"
+                              title="Sipariş detayı — onay, kit atama, tamamlama"
+                            >
+                              <ListOrdered className="h-3.5 w-3.5 mr-1" />
+                              Detay
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -466,7 +506,7 @@ export function OrdersPage() {
         </div>
       </motion.div>
 
-      {/* Sipariş detay ve kargolama modal — API'deki tüm alanlar + kargolama */}
+      {/* Sipariş detay modal — adım adım: 1 Onayla, 2 Kit atama, 3 Tamamla */}
       <Modal open={selectedOrder !== null} onOpenChange={(open) => !open && setSelectedOrder(null)}>
         <ModalContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <ModalHeader>
@@ -481,21 +521,48 @@ export function OrdersPage() {
               )}
             </ModalDescription>
           </ModalHeader>
-          {(orderDetailForUi || currentOrder || selectedOrderDetailLoading) && (
-            <ModalBody className="space-y-5 overflow-y-auto flex-1">
-              {selectedOrderDetailLoading && (
-                <div className="py-10 text-center">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
-                  <p className="text-sm" style={{ color: W.textLight }}>Sipariş detayı yükleniyor...</p>
-                </div>
-              )}
 
-              {/* API'den gelen sipariş detayı (GET /orders/{id}) */}
-              {orderDetailForUi && (
-                <>
-                  <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-4">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Sipariş bilgileri</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+          {(orderDetailForUi || currentOrder || selectedOrderDetailLoading) && orderDetailForUi?.status !== 'completed' && (
+            <>
+              {/* Stepper: 1 — 2 — 3 */}
+              <div className="px-6 pt-1 pb-2 border-b border-surface-200">
+                <div className="flex items-center gap-2">
+                  {[
+                    { step: 1 as const, label: 'Onayla' },
+                    { step: 2 as const, label: 'Kit atama' },
+                    { step: 3 as const, label: 'Tamamla' },
+                  ].map(({ step, label }, i) => {
+                    const isActive = modalStep === step
+                    const isDone = (step === 1 && currentOrder?.approvedByAdmin) || (step === 2 && modalStep === 3) || (step === 2 && remainingQty === 0 && currentOrder?.approvedByAdmin)
+                    return (
+                      <div key={step} className="flex items-center gap-2 flex-1">
+                        <div
+                          className={isActive ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-bold text-sm text-white' : isDone ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-bold text-sm text-white bg-green-600' : 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium border-2 border-surface-300 text-surface-500'}
+                          style={isActive ? { background: W.olive } : {}}
+                        >
+                          {isDone && !isActive ? <CheckCircle className="h-4 w-4" /> : step}
+                        </div>
+                        <span className={`text-xs font-medium ${isActive ? '' : 'text-surface-500'}`} style={isActive ? { color: W.dark } : {}}>{label}</span>
+                        {i < 2 && <div className="flex-1 h-0.5 min-w-[12px] rounded" style={{ background: isDone ? W.olive : W.warmBorder }} />}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <ModalBody className="space-y-5 overflow-y-auto flex-1">
+                {selectedOrderDetailLoading && (
+                  <div className="py-10 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
+                    <p className="text-sm" style={{ color: W.textLight }}>Sipariş detayı yükleniyor...</p>
+                  </div>
+                )}
+
+                {/* Adım 1: Onayla — özet + dekont */}
+                {!selectedOrderDetailLoading && orderDetailForUi && modalStep === 1 && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-surface-600">Dekont ve ödemeyi kontrol edin, ardından siparişi onaylayın.</p>
+                    <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                       <div>
                         <p className="text-surface-500 text-xs">Sipariş no</p>
                         <p className="font-semibold font-mono">{orderDetailForUi.orderNumber ?? orderDetailForUi.id}</p>
@@ -505,170 +572,147 @@ export function OrdersPage() {
                         <p className="font-semibold">{[orderDetailForUi.user?.firstName, orderDetailForUi.user?.lastName].filter(Boolean).join(' ')}</p>
                       </div>
                       <div>
-                        <p className="text-surface-500 text-xs">Telefon</p>
-                        <p className="font-semibold">{orderDetailForUi.user?.phone ?? '—'}</p>
+                        <p className="text-surface-500 text-xs">Ödeme</p>
+                        <p className="font-semibold">{orderDetailForUi.paymenStatus === 'paid' ? 'Ödendi' : 'Beklemede'}</p>
                       </div>
                       <div>
-                        <p className="text-surface-500 text-xs">Paket</p>
-                        <p className="font-semibold">{orderDetailForUi.salesKit?.name ?? '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-surface-500 text-xs">Kit adedi</p>
-                        <p className="font-semibold">{orderDetailForUi.salesKit?.quantity ?? '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-surface-500 text-xs">Adet</p>
-                        <p className="font-semibold">{orderDetailForUi.quantity}</p>
-                      </div>
-                      <div>
-                        <p className="text-surface-500 text-xs">Birim fiyat</p>
-                        <p className="font-semibold">{formatCurrency(Number(orderDetailForUi.unitPrice) || 0)}</p>
-                      </div>
-                      <div>
-                        <p className="text-surface-500 text-xs">Toplam tutar</p>
+                        <p className="text-surface-500 text-xs">Toplam</p>
                         <p className="font-semibold">{formatCurrency(Number(orderDetailForUi.totalPrice) || 0)}</p>
                       </div>
-                      <div>
-                        <p className="text-surface-500 text-xs">Durum</p>
-                        <p className="font-semibold">{orderDetailForUi.status === 'pending' ? 'Beklemede' : orderDetailForUi.status === 'completed' ? 'Tamamlandı' : orderDetailForUi.status ?? '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-surface-500 text-xs">Ödeme durumu</p>
-                        <p className="font-semibold">{orderDetailForUi.paymenStatus === 'paid' ? 'Ödendi' : orderDetailForUi.paymenStatus === 'pending' ? 'Beklemede' : orderDetailForUi.paymenStatus ?? '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-surface-500 text-xs">Ödeme yöntemi</p>
-                        <p className="font-semibold">{paymentMethodLabel(orderDetailForUi.paymentMethod)}</p>
-                      </div>
-                      <div>
-                        <p className="text-surface-500 text-xs">Oluşturulma</p>
-                        <p className="font-semibold">{orderDetailForUi.createdAt ? formatDate(orderDetailForUi.createdAt) : '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-surface-500 text-xs">Son güncelleme</p>
-                        <p className="font-semibold">{orderDetailForUi.updatedAt ? formatDate(orderDetailForUi.updatedAt) : '—'}</p>
-                      </div>
                     </div>
-                  </div>
-
-                  {/* Teslimat adresi */}
-                  {orderDetailForUi.address && (
+                    {orderDetailForUi.address && (
+                      <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-3">
+                        <p className="text-surface-500 text-xs mb-1">Teslimat</p>
+                        <p className="text-sm">{orderDetailForUi.address.fullAddress || [orderDetailForUi.address.city, orderDetailForUi.address.district].filter(Boolean).join(', ') || '—'}</p>
+                      </div>
+                    )}
                     <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-4">
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-2">Teslimat adresi</h4>
-                      <p className="text-sm text-surface-800">
-                        {orderDetailForUi.address.fullAddress || [orderDetailForUi.address.city, orderDetailForUi.address.district].filter(Boolean).join(', ') || '—'}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Dekont */}
-                  <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-4">
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500">Dekont</h4>
-                      {dekontUrl && (
-                        <Button
-                          variant="outline"
-                          onClick={() => window.open(dekontUrl, '_blank', 'noopener,noreferrer')}
-                        >
-                          Dosyayı aç
-                        </Button>
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500">Dekont</h4>
+                        {dekontUrl && (
+                          <Button variant="outline" size="sm" onClick={() => window.open(dekontUrl!, '_blank', 'noopener,noreferrer')}>Dosyayı aç</Button>
+                        )}
+                      </div>
+                      {!dekontUrl ? (
+                        <p className="text-sm text-surface-600">Dekont yüklenmemiş.</p>
+                      ) : dekontIsPdf ? (
+                        <PdfViewer file={dekontUrl} maxHeight="40vh" />
+                      ) : (
+                        <img src={dekontUrl} alt="Dekont" className="w-full max-h-[40vh] object-contain rounded-lg border border-surface-200" loading="lazy" />
                       )}
                     </div>
-                    {!dekontUrl ? (
-                      <p className="text-sm text-surface-600">Dekont yüklenmemiş.</p>
-                    ) : dekontIsPdf ? (
-                      <PdfViewer file={dekontUrl} maxHeight="50vh" />
-                    ) : (
-                      <div className="overflow-hidden rounded-lg border border-surface-200 bg-white">
-                        <img
-                          src={dekontUrl}
-                          alt="Dekont"
-                          className="w-full max-h-[50vh] object-contain"
-                          loading="lazy"
-                        />
-                      </div>
-                    )}
                   </div>
-                </>
-              )}
+                )}
 
-              {/* Kargoya verilecek kitler */}
-              {remainingQty > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-surface-800">
-                    Stokta atanmamış kitler — {remainingQty} adet seçin
-                  </h4>
-                  <p className="text-xs text-surface-500">
-                    Aşağıdan stoktaki (henüz atanmamış) kitleri işaretleyin ve &quot;Diyetisyene ver&quot; butonuna tıklayın.
-                  </p>
-                  <div className="max-h-52 overflow-y-auto rounded-lg border border-surface-200 bg-white">
-                    {availableKits.length === 0 ? (
-                      <div className="p-8 text-center text-surface-500">
-                        <Package className="h-10 w-10 mx-auto mb-2 text-surface-300" />
-                        <p className="text-sm font-medium">Stokta atanmamış kit yok</p>
-                        <p className="text-xs mt-1">Üretim merkezinden barkod üretin veya Stok sayfasından stok durumunu kontrol edin.</p>
-                      </div>
-                    ) : (
-                      <ul className="divide-y divide-surface-100">
-                        {availableKits.slice(0, 50).map((kit) => (
-                          <li key={kit.barcode}>
-                            <label className="flex items-center gap-3 p-3 hover:bg-surface-50 cursor-pointer">
-                              <Checkbox
-                                checked={selectedBarcodes.includes(kit.barcode)}
-                                onCheckedChange={() => toggleBarcode(kit.barcode)}
-                                disabled={
-                                  !selectedBarcodes.includes(kit.barcode) && selectedBarcodes.length >= remainingQty
-                                }
-                              />
-                              <span className="font-mono text-sm font-semibold">{kit.barcode}</span>
-                              {kit.name && <span className="text-xs text-surface-500 truncate max-w-[120px]">{kit.name}</span>}
-                              <span className="text-xs text-surface-500 ml-auto">
-                                {kit.price != null && kit.price > 0 ? formatCurrency(kit.price) : '—'}
-                              </span>
-                            </label>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                {/* Adım 2: Kit atama */}
+                {!selectedOrderDetailLoading && orderDetailForUi && modalStep === 2 && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-surface-600">Stoktan <strong>{remainingQty}</strong> adet kit seçip diyetisyene atayın. İsterseniz bu adımı atlayıp &quot;Tamamla&apos;ya geç&quot; ile siparişi kapatabilirsiniz.</p>
+                    <div className="max-h-64 overflow-y-auto rounded-lg border border-surface-200 bg-white">
+                      {availableKits.length === 0 ? (
+                        <div className="p-8 text-center text-surface-500">
+                          <Package className="h-10 w-10 mx-auto mb-2 text-surface-300" />
+                          <p className="text-sm font-medium">Stokta atanmamış kit yok</p>
+                          <p className="text-xs mt-1">Kit atamadan &quot;Tamamla&apos;ya geç&quot; ile devam edebilirsiniz.</p>
+                        </div>
+                      ) : (
+                        <ul className="divide-y divide-surface-100">
+                          {availableKits.slice(0, 50).map((kit) => (
+                            <li key={kit.barcode}>
+                              <label className="flex items-center gap-3 p-3 hover:bg-surface-50 cursor-pointer">
+                                <Checkbox
+                                  checked={selectedBarcodes.includes(kit.barcode)}
+                                  onCheckedChange={() => toggleBarcode(kit.barcode)}
+                                  disabled={!selectedBarcodes.includes(kit.barcode) && selectedBarcodes.length >= remainingQty}
+                                />
+                                <span className="font-mono text-sm font-semibold">{kit.barcode}</span>
+                                {kit.name && <span className="text-xs text-surface-500 truncate max-w-[120px]">{kit.name}</span>}
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </ModalBody>
-          )}
-          <ModalFooter className="gap-2">
-            <Button variant="outline" onClick={() => setSelectedOrder(null)}>
-              Kapat
-            </Button>
-            {orderDetailForUi && orderDetailForUi.status !== 'completed' && (
-              <Button
-                variant="primary"
-                onClick={() => approveOrderMutation.mutate()}
-                disabled={approveOrderMutation.isPending}
-              >
-                {approveOrderMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Onaylanıyor
-                  </>
-                ) : (
-                  <>
+                )}
+
+                {/* Adım 3: Tamamla */}
+                {!selectedOrderDetailLoading && orderDetailForUi && modalStep === 3 && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-surface-600">Siparişi sistemde tamamlandı olarak işaretleyeceksiniz. Bu işlemden sonra sipariş &quot;Tamamlandı&quot; görünecektir.</p>
+                    <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-4 text-sm">
+                      <p><strong>{orderDetailForUi.orderNumber ?? orderDetailForUi.id}</strong> · {[orderDetailForUi.user?.firstName, orderDetailForUi.user?.lastName].filter(Boolean).join(' ')} · {formatCurrency(Number(orderDetailForUi.totalPrice) || 0)}</p>
+                      {currentOrder && currentOrder.assignedBarcodes.length > 0 && (
+                        <p className="text-surface-600 mt-1">{currentOrder.assignedBarcodes.length} kit diyetisyene atandı.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {orderDetailForUi?.status === 'completed' && (
+                  <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center text-green-800">
+                    <CheckCircle className="h-10 w-10 mx-auto mb-2" />
+                    <p className="font-medium">Bu sipariş tamamlandı.</p>
+                  </div>
+                )}
+              </ModalBody>
+
+              <ModalFooter className="gap-2 flex-wrap">
+                <Button variant="outline" onClick={() => setSelectedOrder(null)}>Kapat</Button>
+
+                {modalStep === 1 && orderDetailForUi && !currentOrder?.approvedByAdmin && (
+                  <Button variant="primary" onClick={handleApproveOrder}>
                     <CheckCircle className="h-4 w-4" />
                     Siparişi onayla
+                  </Button>
+                )}
+
+                {modalStep === 2 && (
+                  <>
+                    {remainingQty > 0 && (
+                      <Button variant="primary" onClick={handleShipOrder} disabled={selectedBarcodes.length === 0}>
+                        <Truck className="h-4 w-4" />
+                        Diyetisyene ver {selectedBarcodes.length > 0 && `(${selectedBarcodes.length})`}
+                      </Button>
+                    )}
+                    <Button variant="outline" onClick={() => setModalStep(3)}>
+                      Tamamla&apos;ya geç
+                    </Button>
                   </>
                 )}
-              </Button>
-            )}
-            {currentOrder && remainingQty > 0 && (
-              <Button
-                variant="primary"
-                onClick={handleShipOrder}
-                disabled={selectedBarcodes.length === 0}
-              >
-                <Truck className="h-4 w-4" />
-                Diyetisyene ver {selectedBarcodes.length > 0 && `(${selectedBarcodes.length} adet)`}
-              </Button>
-            )}
-          </ModalFooter>
+
+                {modalStep === 3 && orderDetailForUi && currentOrder?.approvedByAdmin && (
+                  <Button
+                    variant="primary"
+                    onClick={() => completeOrderMutation.mutate()}
+                    disabled={completeOrderMutation.isPending}
+                  >
+                    {completeOrderMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Tamamlanıyor</>
+                    ) : (
+                      <><CheckCircle className="h-4 w-4" /> Siparişi tamamla</>
+                    )}
+                  </Button>
+                )}
+              </ModalFooter>
+            </>
+          )}
+
+          {/* Sipariş zaten tamamlandıysa sadece bilgi + Kapat */}
+          {orderDetailForUi?.status === 'completed' && (
+            <>
+              <ModalBody>
+                <div className="rounded-xl border border-green-200 bg-green-50 p-6 text-center text-green-800">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-3" />
+                  <p className="font-medium">Bu sipariş tamamlandı.</p>
+                  <p className="text-sm mt-1">{orderDetailForUi.orderNumber ?? orderDetailForUi.id}</p>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="outline" onClick={() => setSelectedOrder(null)}>Kapat</Button>
+              </ModalFooter>
+            </>
+          )}
         </ModalContent>
       </Modal>
     </div>
