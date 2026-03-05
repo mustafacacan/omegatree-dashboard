@@ -589,27 +589,6 @@ export function OrdersPage() {
                       </div>
                     )}
                   </div>
-
-                  {/* Kargolama özeti (store) */}
-                  {currentOrder && (
-                    <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-4">
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Kargolama</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                        <div>
-                          <p className="text-surface-500 text-xs">Toplam adet</p>
-                          <p className="font-semibold">{currentOrder.qty} kit</p>
-                        </div>
-                        <div>
-                          <p className="text-surface-500 text-xs">Kargoya verilen</p>
-                          <p className="font-semibold text-primary-600">{currentOrder.assignedBarcodes.length} kit</p>
-                        </div>
-                        <div>
-                          <p className="text-surface-500 text-xs">Kalan</p>
-                          <p className="font-semibold">{remainingQty} kit</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </>
               )}
 
@@ -651,22 +630,6 @@ export function OrdersPage() {
                         ))}
                       </ul>
                     )}
-                  </div>
-                </div>
-              )}
-
-              {/* Zaten kargoya verilen kitler */}
-              {currentOrder && currentOrder.assignedBarcodes.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-surface-800">
-                    Bu siparişte kargoya verilen kitler
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {currentOrder.assignedBarcodes.map((barcode) => (
-                      <Badge key={barcode} variant="primary" className="font-mono text-xs">
-                        {barcode}
-                      </Badge>
-                    ))}
                   </div>
                 </div>
               )}
