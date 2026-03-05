@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Badge, Button, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
@@ -10,9 +10,10 @@ import { motion } from 'framer-motion'
 import { Search, Eye, Truck, Package, ShoppingBag, Clock, CheckCircle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { TablePagination } from '@/components/shared/table-pagination'
+import { PdfViewer } from '@/components/shared/pdf-viewer'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { KitStatus } from '@/utils/constants'
-import { getOrders, type OrderItem } from '@/services/orders.service'
+import { getOrderById, getOrders, updateOrderStatus, type OrderItem } from '@/services/orders.service'
 import { getStocks, type Stock } from '@/services/stocks.service'
 
 const ORDERS_QUERY_KEY = ['orders'] as const
@@ -31,6 +32,7 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function OrdersPage() {
   const { orders, kits, assignKitsToDietitian, setOrdersFromApi } = useWorkflowStore()
+  const queryClient = useQueryClient()
 
   const { data: apiOrdersData, isLoading: ordersLoading } = useQuery<OrderItem[]>({
     queryKey: ORDERS_QUERY_KEY,
@@ -112,7 +114,101 @@ export function OrdersPage() {
     return apiOrders.find((o) => String(o.id) === selectedOrder) ?? null
   }, [selectedOrder, apiOrders])
 
+  const {
+    data: selectedOrderDetail,
+    isLoading: selectedOrderDetailLoading,
+    isError: selectedOrderDetailError,
+  } = useQuery({
+    queryKey: ['orders', 'detail', selectedOrder],
+    queryFn: async () => {
+      const id = Number(selectedOrder)
+      if (!Number.isFinite(id)) throw new Error('Geçersiz sipariş id')
+      return getOrderById(id)
+    },
+    enabled: selectedOrder !== null,
+  })
+
+  useEffect(() => {
+    if (selectedOrderDetailError) {
+      toast.error('Sipariş detayı alınamadı')
+    }
+  }, [selectedOrderDetailError])
+
+  const orderDetailForUi = useMemo((): OrderItem | null => {
+    if (!selectedOrderDetail) return selectedOrderItem
+    const raw = selectedOrderDetail as unknown
+    const rawObj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null
+    const d =
+      rawObj && typeof rawObj.data === 'object' && rawObj.data !== null
+        ? (rawObj.data as Record<string, unknown>)
+        : (rawObj ?? {})
+
+    const idNum = Number(d.id)
+    const unitPriceNum = Number(d.unitPrice)
+    const totalPriceNum = Number(d.totalPrice)
+
+    return {
+      ...(selectedOrderItem ?? { id: Number.isFinite(idNum) ? idNum : 0, quantity: 0 }),
+      id: Number.isFinite(idNum) ? idNum : (selectedOrderItem?.id ?? 0),
+      quantity: Number(d.quantity) || (selectedOrderItem?.quantity ?? 0),
+      unitPrice: Number.isFinite(unitPriceNum) ? unitPriceNum : (selectedOrderItem?.unitPrice ?? undefined),
+      totalPrice: Number.isFinite(totalPriceNum) ? totalPriceNum : (selectedOrderItem?.totalPrice ?? undefined),
+      status: (d.status as string | undefined) ?? selectedOrderItem?.status,
+      paymentMethod: (d.paymentMethod as string | undefined) ?? selectedOrderItem?.paymentMethod,
+      paymenStatus: (d.paymenStatus as string | undefined) ?? selectedOrderItem?.paymenStatus,
+      createdAt: (d.createdAt as string | undefined) ?? selectedOrderItem?.createdAt,
+      updatedAt: (d.updatedAt as string | undefined) ?? selectedOrderItem?.updatedAt,
+      user: (d.user as OrderItem['user'] | undefined) ?? selectedOrderItem?.user,
+      salesKit: (d.salesKit as OrderItem['salesKit'] | undefined) ?? selectedOrderItem?.salesKit,
+      address: (d.address as OrderItem['address'] | undefined) ?? selectedOrderItem?.address,
+      orderNumber: (d.orderNumber as string | undefined) ?? selectedOrderItem?.orderNumber,
+      dekontMediaId: (d.dekontMediaId as number | null | undefined) ?? selectedOrderItem?.dekontMediaId,
+    }
+  }, [selectedOrderDetail, selectedOrderItem])
+
+  const dekontUrl = useMemo((): string | null => {
+    if (!selectedOrderDetail) return null
+    const raw = selectedOrderDetail as unknown
+    const rawObj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null
+    const data =
+      rawObj && typeof rawObj.data === 'object' && rawObj.data !== null
+        ? (rawObj.data as Record<string, unknown>)
+        : (rawObj ?? {})
+
+    const url =
+      (data.dekontMedia && typeof data.dekontMedia === 'object'
+        ? (data.dekontMedia as Record<string, unknown>).url
+        : undefined) ??
+      data.dekontMediaUrl ??
+      data.dekontUrl
+
+    return typeof url === 'string' && url.trim().length > 0 ? url : null
+  }, [selectedOrderDetail])
+
+  const dekontIsPdf = useMemo(() => {
+    if (!dekontUrl) return false
+    return /\.pdf($|\?|#)/i.test(dekontUrl)
+  }, [dekontUrl])
+
   const remainingQty = currentOrder ? currentOrder.qty - currentOrder.assignedBarcodes.length : 0
+
+  const approveOrderMutation = useMutation({
+    mutationFn: async () => {
+      const id = Number(selectedOrder)
+      if (!Number.isFinite(id)) throw new Error('Geçersiz sipariş id')
+      return updateOrderStatus(id, 'completed')
+    },
+    onSuccess: async () => {
+      toast.success('Sipariş onaylandı')
+      await queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
+      if (selectedOrder) {
+        await queryClient.invalidateQueries({ queryKey: ['orders', 'detail', selectedOrder] })
+      }
+    },
+    onError: () => {
+      toast.error('Sipariş onaylanamadı')
+    },
+  })
 
   const paymentMethodLabel = (method: string | undefined) => {
     if (!method) return '—'
@@ -143,15 +239,13 @@ export function OrdersPage() {
   }
 
   const toggleBarcode = (barcode: string) => {
-    if (selectedBarcodes.includes(barcode)) {
-      setSelectedBarcodes(selectedBarcodes.filter((b) => b !== barcode))
-    } else {
-      if (selectedBarcodes.length < remainingQty) {
-        setSelectedBarcodes([...selectedBarcodes, barcode])
-      } else {
-        toast.error(`En fazla ${remainingQty} adet secebilirsiniz`)
+    setSelectedBarcodes((prev) => {
+      if (prev.includes(barcode)) {
+        return prev.filter((b) => b !== barcode)
       }
-    }
+      if (prev.length >= remainingQty) return prev
+      return [...prev, barcode]
+    })
   }
 
   const handleShipOrder = () => {
@@ -377,84 +471,124 @@ export function OrdersPage() {
         <ModalContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <ModalHeader>
             <ModalTitle>
-              {selectedOrderItem ? `Sipariş ${selectedOrderItem.orderNumber ?? selectedOrderItem.id}` : 'Sipariş detayı'}
+              {orderDetailForUi ? `Sipariş ${orderDetailForUi.orderNumber ?? orderDetailForUi.id}` : 'Sipariş detayı'}
             </ModalTitle>
             <ModalDescription>
-              {selectedOrderItem && (
+              {orderDetailForUi && (
                 <>
-                  {[selectedOrderItem.user?.firstName, selectedOrderItem.user?.lastName].filter(Boolean).join(' ')} · {selectedOrderItem.quantity} adet · {formatCurrency(Number(selectedOrderItem.totalPrice) || 0)}
+                  {[orderDetailForUi.user?.firstName, orderDetailForUi.user?.lastName].filter(Boolean).join(' ')} · {orderDetailForUi.quantity} adet · {formatCurrency(Number(orderDetailForUi.totalPrice) || 0)}
                 </>
               )}
             </ModalDescription>
           </ModalHeader>
-          {(selectedOrderItem || currentOrder) && (
+          {(orderDetailForUi || currentOrder || selectedOrderDetailLoading) && (
             <ModalBody className="space-y-5 overflow-y-auto flex-1">
-              {/* API'den gelen sipariş detayı */}
-              {selectedOrderItem && (
+              {selectedOrderDetailLoading && (
+                <div className="py-10 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
+                  <p className="text-sm" style={{ color: W.textLight }}>Sipariş detayı yükleniyor...</p>
+                </div>
+              )}
+
+              {/* API'den gelen sipariş detayı (GET /orders/{id}) */}
+              {orderDetailForUi && (
                 <>
                   <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-4">
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Sipariş bilgileri</h4>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                       <div>
                         <p className="text-surface-500 text-xs">Sipariş no</p>
-                        <p className="font-semibold font-mono">{selectedOrderItem.orderNumber ?? selectedOrderItem.id}</p>
+                        <p className="font-semibold font-mono">{orderDetailForUi.orderNumber ?? orderDetailForUi.id}</p>
                       </div>
                       <div>
                         <p className="text-surface-500 text-xs">Müşteri</p>
-                        <p className="font-semibold">{[selectedOrderItem.user?.firstName, selectedOrderItem.user?.lastName].filter(Boolean).join(' ')}</p>
+                        <p className="font-semibold">{[orderDetailForUi.user?.firstName, orderDetailForUi.user?.lastName].filter(Boolean).join(' ')}</p>
                       </div>
                       <div>
                         <p className="text-surface-500 text-xs">Telefon</p>
-                        <p className="font-semibold">{selectedOrderItem.user?.phone ?? '—'}</p>
+                        <p className="font-semibold">{orderDetailForUi.user?.phone ?? '—'}</p>
                       </div>
                       <div>
                         <p className="text-surface-500 text-xs">Paket</p>
-                        <p className="font-semibold">{selectedOrderItem.salesKit?.name ?? '—'}</p>
+                        <p className="font-semibold">{orderDetailForUi.salesKit?.name ?? '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-surface-500 text-xs">Kit adedi</p>
+                        <p className="font-semibold">{orderDetailForUi.salesKit?.quantity ?? '—'}</p>
                       </div>
                       <div>
                         <p className="text-surface-500 text-xs">Adet</p>
-                        <p className="font-semibold">{selectedOrderItem.quantity}</p>
+                        <p className="font-semibold">{orderDetailForUi.quantity}</p>
                       </div>
                       <div>
                         <p className="text-surface-500 text-xs">Birim fiyat</p>
-                        <p className="font-semibold">{formatCurrency(Number(selectedOrderItem.unitPrice) || 0)}</p>
+                        <p className="font-semibold">{formatCurrency(Number(orderDetailForUi.unitPrice) || 0)}</p>
                       </div>
                       <div>
                         <p className="text-surface-500 text-xs">Toplam tutar</p>
-                        <p className="font-semibold">{formatCurrency(Number(selectedOrderItem.totalPrice) || 0)}</p>
+                        <p className="font-semibold">{formatCurrency(Number(orderDetailForUi.totalPrice) || 0)}</p>
                       </div>
                       <div>
                         <p className="text-surface-500 text-xs">Durum</p>
-                        <p className="font-semibold">{selectedOrderItem.status === 'pending' ? 'Beklemede' : selectedOrderItem.status === 'completed' ? 'Tamamlandı' : selectedOrderItem.status ?? '—'}</p>
+                        <p className="font-semibold">{orderDetailForUi.status === 'pending' ? 'Beklemede' : orderDetailForUi.status === 'completed' ? 'Tamamlandı' : orderDetailForUi.status ?? '—'}</p>
                       </div>
                       <div>
                         <p className="text-surface-500 text-xs">Ödeme durumu</p>
-                        <p className="font-semibold">{selectedOrderItem.paymenStatus === 'paid' ? 'Ödendi' : selectedOrderItem.paymenStatus === 'pending' ? 'Beklemede' : selectedOrderItem.paymenStatus ?? '—'}</p>
+                        <p className="font-semibold">{orderDetailForUi.paymenStatus === 'paid' ? 'Ödendi' : orderDetailForUi.paymenStatus === 'pending' ? 'Beklemede' : orderDetailForUi.paymenStatus ?? '—'}</p>
                       </div>
                       <div>
                         <p className="text-surface-500 text-xs">Ödeme yöntemi</p>
-                        <p className="font-semibold">{paymentMethodLabel(selectedOrderItem.paymentMethod)}</p>
+                        <p className="font-semibold">{paymentMethodLabel(orderDetailForUi.paymentMethod)}</p>
                       </div>
                       <div>
                         <p className="text-surface-500 text-xs">Oluşturulma</p>
-                        <p className="font-semibold">{selectedOrderItem.createdAt ? formatDate(selectedOrderItem.createdAt) : '—'}</p>
+                        <p className="font-semibold">{orderDetailForUi.createdAt ? formatDate(orderDetailForUi.createdAt) : '—'}</p>
                       </div>
                       <div>
                         <p className="text-surface-500 text-xs">Son güncelleme</p>
-                        <p className="font-semibold">{selectedOrderItem.updatedAt ? formatDate(selectedOrderItem.updatedAt) : '—'}</p>
+                        <p className="font-semibold">{orderDetailForUi.updatedAt ? formatDate(orderDetailForUi.updatedAt) : '—'}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Teslimat adresi */}
-                  {selectedOrderItem.address && (
+                  {orderDetailForUi.address && (
                     <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-4">
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-2">Teslimat adresi</h4>
                       <p className="text-sm text-surface-800">
-                        {selectedOrderItem.address.fullAddress || [selectedOrderItem.address.city, selectedOrderItem.address.district].filter(Boolean).join(', ') || '—'}
+                        {orderDetailForUi.address.fullAddress || [orderDetailForUi.address.city, orderDetailForUi.address.district].filter(Boolean).join(', ') || '—'}
                       </p>
                     </div>
                   )}
+
+                  {/* Dekont */}
+                  <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-4">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500">Dekont</h4>
+                      {dekontUrl && (
+                        <Button
+                          variant="outline"
+                          onClick={() => window.open(dekontUrl, '_blank', 'noopener,noreferrer')}
+                        >
+                          Dosyayı aç
+                        </Button>
+                      )}
+                    </div>
+                    {!dekontUrl ? (
+                      <p className="text-sm text-surface-600">Dekont yüklenmemiş.</p>
+                    ) : dekontIsPdf ? (
+                      <PdfViewer file={dekontUrl} maxHeight="50vh" />
+                    ) : (
+                      <div className="overflow-hidden rounded-lg border border-surface-200 bg-white">
+                        <img
+                          src={dekontUrl}
+                          alt="Dekont"
+                          className="w-full max-h-[50vh] object-contain"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   {/* Kargolama özeti (store) */}
                   {currentOrder && (
@@ -542,6 +676,25 @@ export function OrdersPage() {
             <Button variant="outline" onClick={() => setSelectedOrder(null)}>
               Kapat
             </Button>
+            {orderDetailForUi && orderDetailForUi.status !== 'completed' && (
+              <Button
+                variant="primary"
+                onClick={() => approveOrderMutation.mutate()}
+                disabled={approveOrderMutation.isPending}
+              >
+                {approveOrderMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Onaylanıyor
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Siparişi onayla
+                  </>
+                )}
+              </Button>
+            )}
             {currentOrder && remainingQty > 0 && (
               <Button
                 variant="primary"

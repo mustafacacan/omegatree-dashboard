@@ -158,7 +158,7 @@ export async function uploadOrderDekont(params: UploadOrderDekontParams): Promis
   const form = new FormData()
   form.append('dekontMediaId', params.file)
 
-  const { data } = await api.put<unknown>(`/add-dekont/${params.orderId}`, form, {
+  const { data } = await api.put<unknown>(`/orders/add-dekont/${params.orderId}`, form, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

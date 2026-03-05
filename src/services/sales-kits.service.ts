@@ -9,6 +9,8 @@ export interface SalesKit {
   description?: string
   quantity: number
   price: number
+  /** Backend may expose this as isActive/is_active; if undefined, assume active on UI */
+  isActive?: boolean
   imageData?: {
     id: number
     url: string
@@ -36,31 +38,47 @@ function getImageUrlFromApiKit(raw: Record<string, unknown>): string | undefined
 
 function mapApiKit(apiKit: SalesKitResponse | Record<string, unknown>): SalesKit {
   const raw = apiKit as Record<string, unknown>
+  const isActiveRaw = raw.isActive ?? raw.is_active ?? raw.active
+  const isActive = typeof isActiveRaw === 'boolean'
+    ? isActiveRaw
+    : typeof isActiveRaw === 'number'
+      ? isActiveRaw === 1
+      : typeof isActiveRaw === 'string'
+        ? ['true', '1', 'active', 'yes'].includes(isActiveRaw.trim().toLowerCase())
+        : undefined
   const imageDataObj = raw.imageData ?? raw.image_data
   const imageUrl = getImageUrlFromApiKit(raw)
-  const id = typeof imageDataObj === 'object' && imageDataObj !== null && 'id' in imageDataObj
-    ? Number((imageDataObj as { id?: unknown }).id) ?? 0
-    : 0
+  const imageDataIdRaw =
+    typeof imageDataObj === 'object' && imageDataObj !== null && 'id' in imageDataObj
+      ? (imageDataObj as { id?: unknown }).id
+      : undefined
+  const imageDataIdNum = Number(imageDataIdRaw)
+  const id = Number.isFinite(imageDataIdNum) ? imageDataIdNum : 0
   const file = typeof imageDataObj === 'object' && imageDataObj !== null
     ? String(
-        (imageDataObj as { file?: unknown; filename?: unknown }).file ??
-        (imageDataObj as { file?: unknown; filename?: unknown }).filename ??
-        ''
-      )
+      (imageDataObj as { file?: unknown; filename?: unknown }).file ??
+      (imageDataObj as { file?: unknown; filename?: unknown }).filename ??
+      ''
+    )
     : ''
   const mimeType = typeof imageDataObj === 'object' && imageDataObj !== null
     ? String(
-        (imageDataObj as { mimeType?: unknown; mimetype?: unknown }).mimeType ??
-        (imageDataObj as { mimeType?: unknown; mimetype?: unknown }).mimetype ??
-        ''
-      )
+      (imageDataObj as { mimeType?: unknown; mimetype?: unknown }).mimeType ??
+      (imageDataObj as { mimeType?: unknown; mimetype?: unknown }).mimetype ??
+      ''
+    )
     : ''
+
+  const kitIdNum = Number(raw.id)
+  const quantityNum = Number(raw.quantity)
+  const priceNum = Number(raw.price)
   return {
-    id: Number(raw.id) ?? 0,
+    id: Number.isFinite(kitIdNum) ? kitIdNum : 0,
     name: (raw.name as string) ?? '',
     description: raw.description as string | undefined,
-    quantity: Number(raw.quantity) ?? 0,
-    price: Number(raw.price) ?? 0,
+    quantity: Number.isFinite(quantityNum) ? quantityNum : 0,
+    price: Number.isFinite(priceNum) ? priceNum : 0,
+    isActive,
     imageData: imageUrl
       ? { id, url: imageUrl, file, mimeType }
       : undefined,
@@ -126,6 +144,7 @@ export async function updateSalesKit(
     description?: string
     quantity?: number
     price?: number
+    isActive?: boolean
     file?: File
   }
 ): Promise<SalesKit> {
@@ -134,6 +153,7 @@ export async function updateSalesKit(
   if (payload.description != null) form.append('description', payload.description)
   if (payload.quantity != null) form.append('quantity', String(payload.quantity))
   if (payload.price != null) form.append('price', String(payload.price))
+  if (payload.isActive != null) form.append('isActive', String(payload.isActive))
   if (payload.file) form.append('file', payload.file)
 
   const { data } = await api.put<SalesKitResponse | { success?: boolean; message?: string; data?: SalesKitResponse }>(`/sales-kits/${id}`, form, {
@@ -141,4 +161,9 @@ export async function updateSalesKit(
   })
   const body = (data && typeof data === 'object' && 'data' in data ? (data as { data?: SalesKitResponse }).data : null) ?? data
   return mapApiKit(body as SalesKitResponse)
+}
+
+/** DELETE /sales-kits/{id} — remove a sales kit */
+export async function deleteSalesKit(id: number): Promise<void> {
+  await api.delete(`/sales-kits/${id}`)
 }

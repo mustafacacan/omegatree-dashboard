@@ -5,19 +5,23 @@ import {
   Card, CardHeader, CardTitle, CardContent,
   Button, Input, Badge,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
+  Switch,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { Plus, Pencil, Search, ImageIcon } from 'lucide-react'
+import { Plus, Pencil, Search, ImageIcon, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getSalesKits,
   createSalesKit,
   updateSalesKit,
+  deleteSalesKit,
   getSalesKitImageUrl,
   type SalesKit,
 } from '@/services/sales-kits.service'
 import { SalesKitImage } from '@/components/shared/sales-kit-image'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 
 const SALES_KITS_QUERY_KEY = ['sales-kits'] as const
 
@@ -31,9 +35,13 @@ export function PricingPage() {
   const [formDescription, setFormDescription] = useState('')
   const [formQuantity, setFormQuantity] = useState('')
   const [formPrice, setFormPrice] = useState('')
+  const [formIsActive, setFormIsActive] = useState(true)
   const [formFile, setFormFile] = useState<File | null>(null)
   const [formFilePreview, setFormFilePreview] = useState<string | null>(null)
   const [failedImageIds, setFailedImageIds] = useState<Set<number>>(new Set())
+
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteKit, setDeleteKit] = useState<SalesKit | null>(null)
 
   const { data: apiList = [], isLoading } = useQuery<SalesKit[]>({
     queryKey: SALES_KITS_QUERY_KEY,
@@ -71,6 +79,19 @@ export function PricingPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deleteSalesKit(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SALES_KITS_QUERY_KEY })
+      setDeleteOpen(false)
+      setDeleteKit(null)
+      toast.success('Satış kiti silindi')
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Silinemedi' }))
+    },
+  })
+
   useEffect(() => {
     setFailedImageIds(new Set())
   }, [apiList])
@@ -91,6 +112,7 @@ export function PricingPage() {
     setFormDescription('')
     setFormQuantity('')
     setFormPrice('')
+    setFormIsActive(true)
     setFormFile(null)
     setFormFilePreview(null)
   }
@@ -106,8 +128,14 @@ export function PricingPage() {
     setFormDescription(kit.description ?? '')
     setFormQuantity(String(kit.quantity))
     setFormPrice(String(kit.price))
+    setFormIsActive(kit.isActive ?? true)
     setFormFile(null)
     setFormFilePreview(getSalesKitImageUrl(kit.imageData?.url) ?? null)
+  }
+
+  const openDelete = (kit: SalesKit) => {
+    setDeleteKit(kit)
+    setDeleteOpen(true)
   }
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,6 +198,7 @@ export function PricingPage() {
         description: formDescription.trim() || undefined,
         quantity,
         price,
+        isActive: formIsActive,
         file: formFile ?? undefined,
       },
     })
@@ -212,55 +241,85 @@ export function PricingPage() {
             </div>
           )}
           {!isLoading && filteredList.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {filteredList.map((k) => {
-                const imageUrl = getSalesKitImageUrl(k.imageData?.url)
-                const showImg = imageUrl && !failedImageIds.has(k.id)
-                return (
-                  <div
-                    key={k.id}
-                    className="rounded-xl border border-surface-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col"
-                  >
-                    <div className="aspect-[4/3] bg-surface-100 relative overflow-hidden">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <ImageIcon className="h-14 w-14 text-surface-300" />
-                      </div>
-                      {showImg && imageUrl ? (
-                        <div className="absolute inset-0">
-                          <SalesKitImage
-                            url={imageUrl}
-                            alt={k.name}
-                            className="w-full h-full object-cover"
-                            onError={() => setFailedImageIds((prev) => new Set(prev).add(k.id))}
-                          />
-                        </div>
-                      ) : null}
-                      <div className="absolute top-2 right-2">
-                        <Badge variant="outline" className="bg-white/90 backdrop-blur">
-                          {k.quantity} adet
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="p-4 flex flex-col flex-1">
-                      <h3 className="font-semibold text-surface-800 truncate" title={k.name}>
-                        {k.name}
-                      </h3>
-                      <p className="text-sm text-surface-500 mt-1 line-clamp-2 min-h-[2.5rem]" title={k.description || ''}>
-                        {k.description || 'Açıklama yok'}
-                      </p>
-                      <div className="mt-3 pt-3 border-t border-surface-100 flex items-center justify-between gap-2">
-                        <span className="font-bold text-lg text-surface-800 tabular-nums">
-                          {formatCurrency(k.price)}
-                        </span>
-                        <Button variant="outline" size="sm" onClick={() => openEdit(k)}>
-                          <Pencil className="h-4 w-4 mr-1" />
-                          Düzenle
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="rounded-xl border border-surface-200 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Kit</TableHead>
+                    <TableHead className="hidden md:table-cell">Miktar</TableHead>
+                    <TableHead>Fiyat</TableHead>
+                    <TableHead>Durum</TableHead>
+                    <TableHead className="text-right">İşlem</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredList.map((k) => {
+                    const imageUrl = getSalesKitImageUrl(k.imageData?.url)
+                    const showImg = imageUrl && !failedImageIds.has(k.id)
+                    const isActive = k.isActive ?? true
+
+                    return (
+                      <TableRow key={k.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-12 w-12 rounded-lg bg-surface-100 border border-surface-200 overflow-hidden shrink-0 relative">
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <ImageIcon className="h-6 w-6 text-surface-300" />
+                              </div>
+                              {showImg && imageUrl ? (
+                                <SalesKitImage
+                                  url={imageUrl}
+                                  alt={k.name}
+                                  className="h-full w-full object-cover"
+                                  onError={() => setFailedImageIds((prev) => new Set(prev).add(k.id))}
+                                />
+                              ) : null}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-surface-800 truncate" title={k.name}>
+                                {k.name}
+                              </p>
+                              <p className="text-xs text-surface-500 truncate" title={k.description || ''}>
+                                {k.description || 'Açıklama yok'}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant="outline">{k.quantity} adet</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-semibold text-surface-800 tabular-nums">
+                            {formatCurrency(k.price)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={isActive ? 'success' : 'danger'} dot>
+                            {isActive ? 'Aktif' : 'Pasif'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="inline-flex items-center gap-2">
+                            <Button variant="outline" size="sm" onClick={() => openEdit(k)}>
+                              <Pencil className="h-4 w-4" />
+                              Düzenle
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-danger hover:text-danger"
+                              onClick={() => openDelete(k)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Sil
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
@@ -331,6 +390,28 @@ export function PricingPage() {
         </ModalContent>
       </Modal>
 
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open)
+          if (!open) setDeleteKit(null)
+        }}
+        title="Satış kitini sil"
+        description={
+          deleteKit
+            ? `"${deleteKit.name}" satış kitini silmek istiyor musunuz? Bu işlem geri alınamaz.`
+            : 'Bu satış kitini silmek istiyor musunuz?'
+        }
+        confirmLabel="Sil"
+        cancelLabel="İptal"
+        variant="danger"
+        loading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (!deleteKit) return
+          deleteMutation.mutate(deleteKit.id)
+        }}
+      />
+
       {/* Edit Modal */}
       <Modal open={!!editKit} onOpenChange={(open) => !open && setEditKit(null)}>
         <ModalContent>
@@ -351,6 +432,13 @@ export function PricingPage() {
               onChange={(e) => setFormDescription(e.target.value)}
               placeholder="Kısa açıklama (isteğe bağlı)"
             />
+            <div className="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-50/50 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-surface-800">Aktif</p>
+                <p className="text-xs text-surface-500">Pasif kitler listelerde gösterilmeyebilir.</p>
+              </div>
+              <Switch checked={formIsActive} onCheckedChange={setFormIsActive} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Miktar (stok adedi)"

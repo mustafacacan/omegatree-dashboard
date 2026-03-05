@@ -66,6 +66,8 @@ export function DietitianOrderPage() {
   const [failedImageIds, setFailedImageIds] = useState<Set<number>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dekontTargetOrderId, setDekontTargetOrderId] = useState<number | null>(null)
+  const [dekontModalOpen, setDekontModalOpen] = useState(false)
+  const [dekontModalOrder, setDekontModalOrder] = useState<Pick<Order, 'id' | 'orderNumber' | 'totalPrice'> | null>(null)
   const [confirmOrderModalOpen, setConfirmOrderModalOpen] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('havale')
   const [transferRef, setTransferRef] = useState<string>('')
@@ -118,6 +120,8 @@ export function DietitianOrderPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
       toast.success('Dekont yüklendi.')
+      setDekontModalOpen(false)
+      setDekontModalOrder(null)
     },
     onError: (err: { response?: { data?: { message?: string; errors?: string[] } } }) => {
       toast.error(getApiErrorMessage(err, { fallback: 'Dekont yüklenemedi. Lütfen tekrar deneyin.' }))
@@ -177,11 +181,24 @@ export function DietitianOrderPage() {
         paymentMethod,
       },
       {
-        onSuccess: () => {
+        onSuccess: (created) => {
           setConfirmOrderModalOpen(false)
           setSelectedKit(null)
           setOrderQty(1)
           setSelectedAddressId(null)
+
+          if ((paymentMethod === 'havale' || paymentMethod === 'eft') && created?.id != null) {
+            const createdId = Number(created.id)
+            if (Number.isFinite(createdId) && createdId > 0) {
+              setDekontTargetOrderId(createdId)
+              setDekontModalOrder({
+                id: createdId,
+                orderNumber: (created as unknown as { orderNumber?: string }).orderNumber,
+                totalPrice: (created as unknown as { totalPrice?: unknown }).totalPrice as Order['totalPrice'],
+              })
+              setDekontModalOpen(true)
+            }
+          }
         },
       }
     )
@@ -544,6 +561,80 @@ export function DietitianOrderPage() {
               style={{ background: W.olive }}
             >
               {createOrderMutation.isPending ? 'Gönderiliyor...' : 'Siparişi onayla'}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Dekont Yukleme Modal (EFT/Havale) */}
+      <Modal
+        open={dekontModalOpen}
+        onOpenChange={(open) => {
+          setDekontModalOpen(open)
+          if (!open) {
+            setDekontModalOrder(null)
+            setDekontTargetOrderId(null)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+          }
+        }}
+      >
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle>Dekont yükle</ModalTitle>
+            <ModalDescription>
+              Sipariş oluşturuldu. EFT/Havale ödemesi için dekontu şimdi yükleyin.
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-4">
+            {dekontModalOrder && (
+              <div
+                className="rounded-xl border p-4"
+                style={{ background: W.cream, borderColor: W.warmBorder }}
+              >
+                <p className="text-[12px]" style={{ color: W.textLight }}>
+                  Sipariş
+                </p>
+                <p className="text-[13px] font-semibold" style={{ color: W.dark }}>
+                  {dekontModalOrder.orderNumber ?? `#${dekontModalOrder.id}`}
+                </p>
+                {dekontModalOrder.totalPrice != null && (
+                  <p className="text-[12px] mt-1" style={{ color: W.text }}>
+                    Tutar: {formatCurrency(Number(dekontModalOrder.totalPrice) || 0)}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div
+              className="rounded-xl border p-4 flex items-center justify-between gap-3"
+              style={{ background: '#fff', borderColor: W.warmBorder }}
+            >
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium truncate" style={{ color: W.dark }}>
+                  Dosya seçin (PDF veya görsel)
+                </p>
+                <p className="text-[11px] mt-0.5" style={{ color: W.textLight }}>
+                  Seçimden sonra yükleme otomatik başlar.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (dekontModalOrder?.id != null) handlePickDekont(dekontModalOrder.id)
+                }}
+                disabled={uploadDekontMutation.isPending || dekontModalOrder?.id == null}
+                className="h-8"
+                style={{ borderColor: W.warmBorder, color: W.dark }}
+              >
+                <Upload className="h-3.5 w-3.5" />
+                {uploadDekontMutation.isPending ? 'Yükleniyor...' : 'Dekont seç'}
+              </Button>
+            </div>
+          </ModalBody>
+          <ModalFooter className="flex-shrink-0 border-t border-surface-200">
+            <Button variant="outline" onClick={() => setDekontModalOpen(false)}>
+              Daha sonra
             </Button>
           </ModalFooter>
         </ModalContent>

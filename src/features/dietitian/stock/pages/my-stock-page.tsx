@@ -1,18 +1,36 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/page-header'
-import { Badge, Button, Modal, ModalContent, ModalHeader, ModalTitle, ModalBody } from '@/components/ui'
+import {
+  Badge,
+  Button,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalBody,
+  ModalFooter,
+  ModalDescription,
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+  Input,
+  Textarea,
+} from '@/components/ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Package, Boxes, ShoppingCart, AlertTriangle, ScanLine, RotateCcw,
   TrendingUp, TrendingDown, Search, CheckCircle, ArrowRight, Loader2,
 } from 'lucide-react'
 import { ROUTES } from '@/utils/routes'
-import { useCurrentUser } from '@/stores/auth.store'
 import { useDietitianSettingsStore } from '@/stores/dietitian-settings.store'
 import { formatDate } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { getMyStockList, approveToStock } from '@/services/stocks.service'
+import { getMyStockList, approveToStock, type StockStatus } from '@/services/stocks.service'
+import { createDamagedKit } from '@/services/damaged-kits.service'
+import { toast } from 'sonner'
 
 type BarcodeState = 'idle' | 'checking' | 'success' | 'error'
 
@@ -30,7 +48,6 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function MyStockPage() {
   const navigate = useNavigate()
-  const user = useCurrentUser()
   const { minStockAlert, setMinStockAlert } = useDietitianSettingsStore()
   const [stockList, setStockList] = useState<Awaited<ReturnType<typeof getMyStockList>>>([])
   const [loading, setLoading] = useState(true)
@@ -41,6 +58,12 @@ export function MyStockPage() {
   const [barcodeState, setBarcodeState] = useState<BarcodeState>('idle')
   const [errorMessage, setErrorMessage] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const [returnRequestModalOpen, setReturnRequestModalOpen] = useState(false)
+  const [selectedReturnKitId, setSelectedReturnKitId] = useState<string>('')
+  const [returnReason, setReturnReason] = useState('')
+  const [returnFile, setReturnFile] = useState<File | null>(null)
+  const [returnSubmitting, setReturnSubmitting] = useState(false)
 
   const fetchMyStock = () => {
     setLoading(true)
@@ -93,20 +116,98 @@ export function MyStockPage() {
     return stockList.map((s) => ({
       barcode: s.kitId?.barcode ?? '',
       receivedAt: s.createdAt,
-      status: s.status === 'used' ? ('assigned' as const) : ('available' as const),
+      uiStatus:
+        s.status === 'used'
+          ? ('assigned' as const)
+          : typeof s.status === 'string' && s.status.startsWith('damaged-')
+            ? ('damaged' as const)
+            : ('available' as const),
       client: '',
       kitStatus: s.status,
     }))
   }, [stockList])
 
-  const availableKits = useMemo(() => myKits.filter((k) => k.status === 'available'), [myKits])
-  const assignedKits = useMemo(() => myKits.filter((k) => k.status === 'assigned'), [myKits])
+  const returnableKits = useMemo(() => {
+    return stockList
+      .map((s) => ({
+        id: s.kitId?.id,
+        barcode: s.kitId?.barcode ?? '',
+        stockStatus: s.status,
+      }))
+      .filter((k): k is { id: number; barcode: string; stockStatus: StockStatus | undefined } =>
+        k.id != null && k.barcode !== ''
+      )
+  }, [stockList])
+
+  const openReturnModal = () => {
+    setReturnRequestModalOpen(true)
+    setSelectedReturnKitId(returnableKits[0]?.id != null ? String(returnableKits[0].id) : '')
+    setReturnReason('')
+    setReturnFile(null)
+  }
+
+  const closeReturnModal = () => {
+    setReturnRequestModalOpen(false)
+    setSelectedReturnKitId('')
+    setReturnReason('')
+    setReturnFile(null)
+    setReturnSubmitting(false)
+  }
+
+  const submitReturnRequest = async () => {
+    if (!selectedReturnKitId) {
+      toast.error('Kit seçin')
+      return
+    }
+    if (!returnFile) {
+      toast.error('Kanit dosyasi secin')
+      return
+    }
+    if (!returnReason.trim()) {
+      toast.error('Aciklama girin')
+      return
+    }
+
+    setReturnSubmitting(true)
+    try {
+      await createDamagedKit(selectedReturnKitId, {
+        reason: returnReason.trim(),
+        imageFile: returnFile,
+      })
+      toast.success('Iade talebiniz alindi')
+      closeReturnModal()
+      fetchMyStock()
+    } catch (err) {
+      toast.error(getApiErrorMessage(err as { response?: { data?: { message?: string } }; message?: string }, { fallback: 'Iade talebi olusturulamadi.' }))
+      setReturnSubmitting(false)
+    }
+  }
+
+  const availableKits = useMemo(() => myKits.filter((k) => k.uiStatus === 'available'), [myKits])
+  const assignedKits = useMemo(() => myKits.filter((k) => k.uiStatus === 'assigned'), [myKits])
+  const damagedPendingKits = useMemo(
+    () => myKits.filter((k) => k.uiStatus === 'damaged' && k.kitStatus === 'damaged-pending'),
+    [myKits]
+  )
 
   const filtered = useMemo(() => {
     return myKits.filter(
       (k) => !searchQuery || k.barcode.toLowerCase().includes(searchQuery.toLowerCase())
     )
   }, [myKits, searchQuery])
+
+  const badgeForKit = (kit: { uiStatus: 'available' | 'assigned' | 'damaged'; kitStatus?: unknown }) => {
+    if (kit.uiStatus === 'assigned') {
+      return <Badge variant="warning" dot>Atanmis</Badge>
+    }
+    if (kit.uiStatus === 'damaged') {
+      if (kit.kitStatus === 'damaged-pending') {
+        return <Badge variant="danger" dot>Hasarli · Bekliyor</Badge>
+      }
+      return <Badge variant="danger" dot>Hasarli</Badge>
+    }
+    return <Badge variant="success" dot>Hazir</Badge>
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -211,7 +312,7 @@ export function MyStockPage() {
               >
                 <ScanLine className="h-3.5 w-3.5" /> Kit Teslim Al
               </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_KITLER)}>
+              <Button variant="outline" size="sm" onClick={openReturnModal}>
                 <RotateCcw className="h-3.5 w-3.5" /> Iade Talebi
               </Button>
               <Button variant="primary" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)}>
@@ -239,7 +340,7 @@ export function MyStockPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filtered.filter(k => k.status === 'available').map((kit) => (
+                {filtered.filter(k => k.uiStatus === 'available').map((kit) => (
                 <div
                   key={kit.barcode}
                   className="flex items-center justify-between p-4 rounded-xl transition-all cursor-pointer"
@@ -251,10 +352,43 @@ export function MyStockPage() {
                     <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
                     <p className="text-[10px] mt-0.5" style={{ color: W.textLight }}>Teslim: {formatDate(kit.receivedAt)}</p>
                   </div>
-                  <Badge variant="success" dot>Hazir</Badge>
+                  {badgeForKit(kit)}
                 </div>
               ))}
               </div>
+            )}
+
+            {/* Damaged pending kits */}
+            {damagedPendingKits.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 mt-6 mb-3">
+                  <div className="h-2 w-2 rounded-full" style={{ background: '#E87070' }} />
+                  <span className="text-[12px] font-semibold" style={{ color: W.dark }}>Hasarli (Bekliyor)</span>
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded-md font-bold"
+                    style={{ background: '#FDE8E8', color: '#C53030' }}
+                  >
+                    {damagedPendingKits.length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filtered
+                    .filter((k) => k.uiStatus === 'damaged' && k.kitStatus === 'damaged-pending')
+                    .map((kit) => (
+                      <div
+                        key={kit.barcode}
+                        className="flex items-center justify-between p-4 rounded-xl"
+                        style={{ background: '#FDE8E8', border: '1.5px solid transparent' }}
+                      >
+                        <div>
+                          <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
+                          <p className="text-[10px] mt-0.5" style={{ color: '#C53030' }}>Teslim: {formatDate(kit.receivedAt)}</p>
+                        </div>
+                        {badgeForKit(kit)}
+                      </div>
+                    ))}
+                </div>
+              </>
             )}
 
             {/* Assigned kits */}
@@ -266,7 +400,7 @@ export function MyStockPage() {
                   <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: W.orangeLight, color: W.orange }}>{assignedKits.length}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {filtered.filter(k => k.status === 'assigned').map((kit) => (
+                  {filtered.filter(k => k.uiStatus === 'assigned').map((kit) => (
                     <div
                       key={kit.barcode}
                       className="flex items-center justify-between p-4 rounded-xl"
@@ -276,7 +410,7 @@ export function MyStockPage() {
                         <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
                         <p className="text-[10px] mt-0.5" style={{ color: W.orange }}>{kit.client}</p>
                       </div>
-                      <Badge variant="warning" dot>Atanmis</Badge>
+                      {badgeForKit(kit)}
                     </div>
                   ))}
                 </div>
@@ -291,12 +425,79 @@ export function MyStockPage() {
               <p className="text-[11px]" style={{ color: '#5A6B2A' }}>
                 Bu stok, barkod numarasi ile teslim aldiginiz kitleri gosterir. Yeni kit eklemek icin yukaridaki
                 <button type="button" onClick={() => setReceiveKitModalOpen(true)} className="font-semibold underline ml-1" style={{ color: '#5A6B2A' }}>Kit Teslim Al</button> butonunu kullanin.
-                Iade talebi icin <button type="button" onClick={() => navigate(ROUTES.DIYETISYEN_KITLER)} className="font-semibold underline" style={{ color: '#5A6B2A' }}>Kitlerim</button> sayfasindaki surec takibinden olusturabilirsiniz.
+                Iade talebi icin yukaridaki <span className="font-semibold">Iade Talebi</span> butonunu kullanin.
               </p>
             </div>
           </div>
         </div>
       </motion.div>
+
+      {/* Iade Talebi modali */}
+      <Modal open={returnRequestModalOpen} onOpenChange={(open) => !open && closeReturnModal()}>
+        <ModalContent className="max-w-lg">
+          <ModalHeader>
+            <ModalTitle>Iade Talebi</ModalTitle>
+            <ModalDescription>
+              Stogunuzdan bir kit secip kanit dosyasi ve aciklama ekleyin.
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-3">
+            <Select
+              value={selectedReturnKitId || '_empty'}
+              onValueChange={(v) => setSelectedReturnKitId(v === '_empty' ? '' : v)}
+            >
+              <SelectTrigger label="Kit" className="w-full">
+                <SelectValue placeholder={returnableKits.length > 0 ? 'Secin...' : 'Stokta kit yok'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_empty">Secin...</SelectItem>
+                {returnableKits.map((k) => (
+                  <SelectItem key={k.id} value={String(k.id)}>
+                    {k.barcode}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Input
+              type="file"
+              label="Kanit dosyasi (fotoğraf veya PDF)"
+              accept="image/*,application/pdf"
+              onChange={(e) => {
+                const file = e.target.files && e.target.files[0] ? e.target.files[0] : null
+                setReturnFile(file)
+              }}
+            />
+
+            <Textarea
+              label="Neden"
+              placeholder="Hasar / iade nedeni..."
+              value={returnReason}
+              onChange={(e) => setReturnReason(e.target.value)}
+            />
+          </ModalBody>
+          <ModalFooter className="gap-2">
+            <Button variant="outline" onClick={closeReturnModal}>
+              Iptal
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => void submitReturnRequest()}
+              disabled={returnSubmitting || returnableKits.length === 0}
+              style={{ background: W.olive }}
+            >
+              {returnSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Gonderiliyor
+                </>
+              ) : (
+                'Iade talebi olustur'
+              )}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* Kit Teslim Al modali */}
       <Modal open={receiveKitModalOpen} onOpenChange={(open) => !open && closeReceiveKitModal()}>

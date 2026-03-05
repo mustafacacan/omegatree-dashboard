@@ -46,8 +46,8 @@ export function KitsPage() {
   const [detailModalBarcode, setDetailModalBarcode] = useState<string | null>(null)
 
   const createDamagedMutation = useMutation({
-    mutationFn: ({ kitId, description, imageFile }: { kitId: string; description: string; imageFile: File }) =>
-      createDamagedKit(kitId, { description, imageFile }),
+      mutationFn: ({ kitId, reason, imageFile }: { kitId: string; reason: string; imageFile: File }) =>
+        createDamagedKit(kitId, { reason, imageFile }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['damaged-kits'] })
     },
@@ -123,7 +123,7 @@ export function KitsPage() {
     }
     const actorName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Diyetisyen'
     createDamagedMutation.mutate(
-      { kitId: barcode, description: returnReason, imageFile: returnPhotoFile },
+        { kitId: barcode, reason: returnReason, imageFile: returnPhotoFile },
       {
         onSuccess: () => {
           requestKitReturn(barcode, user.id, returnReason, actorName, { photoUrl: returnPhotoUrl })

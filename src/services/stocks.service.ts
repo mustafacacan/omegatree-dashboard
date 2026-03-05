@@ -3,8 +3,13 @@ import type { components } from '@/types/openapi'
 
 type StockResponse = components['schemas']['StockResponse']
 
-/** Stok durumu: available | used | expired | approval_pending */
-export type StockStatus = 'available' | 'used' | 'expired' | 'approval_pending'
+/** Stok durumu: backend yeni status'lar döndürebilir (örn: damaged-pending) */
+export type StockStatus =
+  | 'available'
+  | 'used'
+  | 'expired'
+  | 'approval_pending'
+  | `damaged-${string}`
 
 export interface StockKit {
   id: number
@@ -72,22 +77,22 @@ function mapStockApiItem(item: StockApiItem | null | undefined): Stock {
     id: Number(item.id) ?? 0,
     kitId: kit
       ? {
-          id: Number(kit.id) ?? 0,
-          barcode: kit.barcode ?? '',
-          name: kit.name ?? '',
-          isActive: kit.isActive ?? true,
-          createdAt: kit.createdAt ?? '',
-          updatedAt: kit.updatedAt ?? '',
-        }
+        id: Number(kit.id) ?? 0,
+        barcode: kit.barcode ?? '',
+        name: kit.name ?? '',
+        isActive: kit.isActive ?? true,
+        createdAt: kit.createdAt ?? '',
+        updatedAt: kit.updatedAt ?? '',
+      }
       : undefined,
     userId: user
       ? {
-          id: Number(user.id) ?? 0,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phone: user.phone,
-          email: user.email,
-        }
+        id: Number(user.id) ?? 0,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        email: user.email,
+      }
       : undefined,
     status: item.status,
     createdAt: item.createdAt ?? '',
@@ -111,22 +116,22 @@ function mapStockResponse(res: StockResponse | null | undefined): Stock {
     id: Number(res.id) ?? 0,
     kitId: kitObj
       ? {
-          id: Number(kitObj.id) ?? 0,
-          barcode: (kitObj as StockApiItem['kit'])?.barcode ?? '',
-          name: (kitObj as StockApiItem['kit'])?.name ?? '',
-          isActive: (kitObj as StockApiItem['kit'])?.isActive ?? true,
-          createdAt: (kitObj as StockApiItem['kit'])?.createdAt ?? '',
-          updatedAt: (kitObj as StockApiItem['kit'])?.updatedAt ?? '',
-        }
+        id: Number(kitObj.id) ?? 0,
+        barcode: (kitObj as StockApiItem['kit'])?.barcode ?? '',
+        name: (kitObj as StockApiItem['kit'])?.name ?? '',
+        isActive: (kitObj as StockApiItem['kit'])?.isActive ?? true,
+        createdAt: (kitObj as StockApiItem['kit'])?.createdAt ?? '',
+        updatedAt: (kitObj as StockApiItem['kit'])?.updatedAt ?? '',
+      }
       : undefined,
     userId: userObj
       ? {
-          id: Number(userObj.id) ?? 0,
-          firstName: (userObj as StockApiItem['user'])?.firstName,
-          lastName: (userObj as StockApiItem['user'])?.lastName,
-          phone: (userObj as StockApiItem['user'])?.phone,
-          email: (userObj as StockApiItem['user'])?.email,
-        }
+        id: Number(userObj.id) ?? 0,
+        firstName: (userObj as StockApiItem['user'])?.firstName,
+        lastName: (userObj as StockApiItem['user'])?.lastName,
+        phone: (userObj as StockApiItem['user'])?.phone,
+        email: (userObj as StockApiItem['user'])?.email,
+      }
       : undefined,
     status: res.status,
     createdAt: res.createdAt ?? '',
@@ -201,12 +206,12 @@ export async function getStocks(params?: GetStocksParams): Promise<GetStocksResu
   const { data } = await api.get<GetStocksApiResponse>('/stocks', {
     params: params
       ? {
-          page: params.page ?? 1,
-          limit: params.limit ?? 10,
-          ...(params.search != null && params.search !== '' && { search: params.search }),
-          ...(params.sort != null && { sort: params.sort }),
-          ...(params.user != null && params.user !== undefined && { user: params.user }),
-        }
+        page: params.page ?? 1,
+        limit: params.limit ?? 10,
+        ...(params.search != null && params.search !== '' && { search: params.search }),
+        ...(params.sort != null && { sort: params.sort }),
+        ...(params.user != null && params.user !== undefined && { user: params.user }),
+      }
       : undefined,
   })
   const payload = data?.data
@@ -215,16 +220,16 @@ export async function getStocks(params?: GetStocksParams): Promise<GetStocksResu
   const rawItems = Array.isArray(payload)
     ? payload
     : (payload && typeof payload === 'object' && 'items' in payload
-        ? (payload as { items?: StockApiItem[] }).items
-        : top?.items) ?? []
+      ? (payload as { items?: StockApiItem[] }).items
+      : top?.items) ?? []
   const items = Array.isArray(rawItems) ? rawItems : []
   const totalItems = Array.isArray(payload)
     ? payload.length
     : Number(
-        (payload && typeof payload === 'object' && 'totalItems' in payload
-          ? (payload as { totalItems?: number }).totalItems
-          : top?.totalItems) ?? 0
-      ) || 0
+      (payload && typeof payload === 'object' && 'totalItems' in payload
+        ? (payload as { totalItems?: number }).totalItems
+        : top?.totalItems) ?? 0
+    ) || 0
   const totalPages = Number(
     (payload && typeof payload === 'object' && 'totalPages' in payload
       ? (payload as { totalPages?: number }).totalPages
