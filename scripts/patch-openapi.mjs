@@ -3,58 +3,107 @@
  * - components.responses ekler (backend bunlara referans veriyor ama tanımlamıyor)
  * - Eksik şema isimlerine işaret eden ref'ler için alias ekler
  */
-import { readFileSync, writeFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { readFileSync, writeFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const specPath = join(__dirname, '..', 'openapi', 'swagger.json');
-const spec = JSON.parse(readFileSync(specPath, 'utf8'));
+const specPath = join(__dirname, "..", "openapi", "swagger.json");
+const spec = JSON.parse(readFileSync(specPath, "utf8"));
 
 // Hem local hem ngrok sunucusunun listede olması için
 const servers = spec.servers || [];
-if (!servers.some((s) => s.url && s.url.includes('ngrok'))) {
+if (!servers.some((s) => s.url && s.url.includes("ngrok"))) {
   servers.push({
-    url: 'https://unbenignantly-tinkliest-diego.ngrok-free.dev/api',
-    description: 'Ngrok tüneli (gerekirse Ngrok-Skip-Browser-Warning: true header ekle)',
+    url: `${process.env.VITE_API_URL || "https://your-ngrok-url.ngrok-free.app"}/api`,
+    description:
+      "Ngrok tüneli (gerekirse Ngrok-Skip-Browser-Warning: true header ekle)",
   });
   spec.servers = servers;
 }
 
 const { components } = spec;
-if (!components) throw new Error('Spec içinde components yok');
+if (!components) throw new Error("Spec içinde components yok");
 
 // "#/components/responses/X" ref'lerinin çözülmesi için responses ekle
 const schemaRef = (name) => ({ $ref: `#/components/schemas/${name}` });
 components.responses = {
   UnauthorizedResponse: {
-    description: 'Yetkisiz',
-    content: { 'application/json': { schema: schemaRef('UnauthorizedResponse') } },
+    description: "Yetkisiz",
+    content: {
+      "application/json": { schema: schemaRef("UnauthorizedResponse") },
+    },
   },
   NotFoundResponse: {
-    description: 'Bulunamadı',
-    content: { 'application/json': { schema: schemaRef('NotFoundResponse') } },
+    description: "Bulunamadı",
+    content: { "application/json": { schema: schemaRef("NotFoundResponse") } },
   },
   ErrorResponse: {
-    description: 'Hata',
-    content: { 'application/json': { schema: schemaRef('ErrorResponse') } },
+    description: "Hata",
+    content: { "application/json": { schema: schemaRef("ErrorResponse") } },
   },
   BadRequestResponse: {
-    description: 'Hatalı istek',
-    content: { 'application/json': { schema: schemaRef('ErrorResponse') } },
+    description: "Hatalı istek",
+    content: { "application/json": { schema: schemaRef("ErrorResponse") } },
   },
 };
 
 // Var olmayan şema isimlerine giden ref'ler için alias'lar
-if (!components.schemas.CreateClientRequest && components.schemas.CreateClient) {
-  components.schemas.CreateClientRequest = { $ref: '#/components/schemas/CreateClient' };
+if (
+  !components.schemas.CreateClientRequest &&
+  components.schemas.CreateClient
+) {
+  components.schemas.CreateClientRequest = {
+    $ref: "#/components/schemas/CreateClient",
+  };
 }
 if (!components.schemas.DamagedKit && components.schemas.DamageKitResponse) {
-  components.schemas.DamagedKit = { $ref: '#/components/schemas/DamageKitResponse' };
+  components.schemas.DamagedKit = {
+    $ref: "#/components/schemas/DamageKitResponse",
+  };
 }
-if (!components.schemas.BadRequestResponse && components.schemas.ErrorResponse) {
-  components.schemas.BadRequestResponse = { $ref: '#/components/schemas/ErrorResponse' };
+if (
+  !components.schemas.BadRequestResponse &&
+  components.schemas.ErrorResponse
+) {
+  components.schemas.BadRequestResponse = {
+    $ref: "#/components/schemas/ErrorResponse",
+  };
 }
 
-writeFileSync(specPath, JSON.stringify(spec, null, 4), 'utf8');
-console.log('openapi/swagger.json yamalandı.');
+// /audit-logs endpointi AuditLog şemasına referans veriyor ama backend spec'inde tanım eksik gelebiliyor.
+// openapi-typescript $ref çözümleyebilmek için bu şemayı bekliyor.
+if (!components.schemas.AuditLog) {
+  components.schemas.AuditLog = {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      userId: { type: "string" },
+      userName: { type: "string" },
+      userRole: { type: "string" },
+      action: { type: "string" },
+      entity: { type: "string" },
+      entityId: { type: "string" },
+      details: { type: "string" },
+      ipAddress: { type: "string" },
+      userAgent: { type: "string", nullable: true },
+      timestamp: { type: "string" },
+    },
+    required: [
+      "id",
+      "userId",
+      "userName",
+      "userRole",
+      "action",
+      "entity",
+      "entityId",
+      "details",
+      "ipAddress",
+      "timestamp",
+    ],
+    additionalProperties: false,
+  };
+}
+
+writeFileSync(specPath, JSON.stringify(spec, null, 4), "utf8");
+console.log("openapi/swagger.json yamalandı.");

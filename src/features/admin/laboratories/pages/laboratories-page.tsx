@@ -10,7 +10,7 @@ import {
 import { formatDate } from '@/lib/utils'
 import {
   Search, Plus, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone, Mail,
-  Download, Loader2,
+  Download, Loader2, Eye,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Laboratory } from '@/types/laboratory.types'
@@ -19,6 +19,7 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
 import {
   getLaboratories,
+  getLaboratoryById,
   createLaboratory,
   updateLaboratory,
   deleteLaboratory,
@@ -44,6 +45,7 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 const LABS_QUERY_KEY = ['laboratories'] as const
 const LAB_DIETITIANS_KEY = ['laboratory-dietitians'] as const
 const DIETICIANS_KEY = ['dieticians'] as const
+const labDetailQueryKey = (id: string) => ['laboratories', id, 'detail'] as const
 
 export function LaboratoriesPage() {
   const queryClient = useQueryClient()
@@ -52,6 +54,8 @@ export function LaboratoriesPage() {
   const [editLabOpen, setEditLabOpen] = useState(false)
   const [assignDietitianOpen, setAssignDietitianOpen] = useState(false)
   const [deleteLabOpen, setDeleteLabOpen] = useState(false)
+  const [viewLabOpen, setViewLabOpen] = useState(false)
+  const [viewLabId, setViewLabId] = useState<string>('')
   const [selectedLab, setSelectedLab] = useState<Laboratory | null>(null)
   const [selectedDietitianId, setSelectedDietitianId] = useState<string>('')
 
@@ -91,6 +95,13 @@ export function LaboratoriesPage() {
     queryFn: getDieticians,
   })
 
+  const labDetailQuery = useQuery({
+    queryKey: labDetailQueryKey(viewLabId || '0'),
+    queryFn: () => getLaboratoryById(viewLabId),
+    enabled: viewLabOpen && !!viewLabId,
+    retry: 1,
+  })
+
   const labsWithDietitians = useMemo(() => {
     const assignmentsByLabId = new Map<string, { dieticianId: number; name: string }[]>()
     for (const assignment of labDietitianAssignments) {
@@ -108,6 +119,21 @@ export function LaboratoriesPage() {
       assignedDietitianDetails: assignmentsByLabId.get(lab.id) ?? [],
     }))
   }, [laboratories, labDietitianAssignments])
+
+  const viewedLabDietitians = useMemo(() => {
+    const id = String(viewLabId || '')
+    if (!id) return [] as { dieticianId: number; name: string }[]
+    const list: { dieticianId: number; name: string }[] = []
+    for (const assignment of labDietitianAssignments) {
+      const labId = String(assignment.laboratory?.id ?? '')
+      if (!labId || labId !== id) continue
+      const dietician = assignment.dietician
+      const dieticianUser = dietician?.user
+      const name = [dieticianUser?.firstName, dieticianUser?.lastName].filter(Boolean).join(' ') || `Diyetisyen #${dietician?.id ?? ''}`
+      list.push({ dieticianId: dietician?.id ?? 0, name })
+    }
+    return list
+  }, [labDietitianAssignments, viewLabId])
 
   const filteredLaboratories = useMemo(
     () =>
@@ -304,6 +330,11 @@ export function LaboratoriesPage() {
     setDeleteLabOpen(true)
   }
 
+  const openViewLab = (lab: Laboratory) => {
+    setViewLabId(lab.id)
+    setViewLabOpen(true)
+  }
+
   const submitDeleteLab = () => {
     if (!selectedLab) return
     deleteMutation.mutate(selectedLab.id)
@@ -399,6 +430,7 @@ export function LaboratoriesPage() {
           ) : (
             <LaboratoryTable
               laboratories={filteredLaboratories}
+              onView={openViewLab}
               onEdit={openEditLab}
               onDelete={openDeleteLab}
               onAssignDietitian={openAssignDietitian}
@@ -407,6 +439,147 @@ export function LaboratoriesPage() {
           )}
         </div>
       </motion.div>
+
+      {/* ── View Laboratory Modal ── */}
+      <Modal
+        open={viewLabOpen}
+        onOpenChange={(open) => {
+          setViewLabOpen(open)
+          if (!open) setViewLabId('')
+        }}
+      >
+        <ModalContent className="max-w-xl">
+          <ModalHeader>
+            <ModalTitle>Laboratuvar Detayı</ModalTitle>
+            <ModalDescription>
+              {labDetailQuery.data?.name || 'Laboratuvar bilgileri görüntüleniyor.'}
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-4">
+            {labDetailQuery.isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-5 w-5 animate-spin" style={{ color: W.olive }} />
+              </div>
+            ) : labDetailQuery.isError ? (
+              <div className="space-y-3">
+                <p className="text-sm" style={{ color: W.text }}>
+                  {getApiErrorMessage(labDetailQuery.error, { fallback: 'Laboratuvar detayı yüklenemedi' })}
+                </p>
+                <div>
+                  <Button variant="outline" size="sm" onClick={() => labDetailQuery.refetch()}>
+                    Tekrar Dene
+                  </Button>
+                </div>
+              </div>
+            ) : labDetailQuery.data ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="panel p-3 sm:col-span-2">
+                  <p className="text-[11px] font-semibold" style={{ color: W.textLight }}>Genel</p>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Laboratuvar ID:</span> {labDetailQuery.data.id || '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Kullanıcı ID:</span> {labDetailQuery.data.userId ?? '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Durum:</span> {labDetailQuery.data.isActive === false ? 'Pasif' : 'Aktif'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Oluşturulma:</span> {labDetailQuery.data.createdAt ? formatDate(labDetailQuery.data.createdAt) : '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Güncellenme:</span> {labDetailQuery.data.updatedAt ? formatDate(labDetailQuery.data.updatedAt) : '-'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="panel p-3">
+                  <p className="text-[11px] font-semibold" style={{ color: W.textLight }}>Kargo</p>
+                  <div className="mt-2 space-y-1">
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Firma:</span> {labDetailQuery.data.cargofirm || '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Numara:</span> {labDetailQuery.data.cargoNumber || '-'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="panel p-3 sm:col-span-2">
+                  <p className="text-[11px] font-semibold" style={{ color: W.textLight }}>Bağlı Diyetisyenler</p>
+                  {viewedLabDietitians.length > 0 ? (
+                    <ul className="mt-2 space-y-1">
+                      {viewedLabDietitians.map((d) => (
+                        <li key={d.dieticianId} className="text-[12px]" style={{ color: W.text }}>
+                          {d.name}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 text-[12px]" style={{ color: W.textLight }}>Atanmamış</p>
+                  )}
+                </div>
+
+                <div className="panel p-3 sm:col-span-2">
+                  <p className="text-[11px] font-semibold" style={{ color: W.textLight }}>Adres</p>
+                  <div className="mt-2 space-y-1">
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Başlık:</span> {labDetailQuery.data.addressTitle || '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Ülke:</span> {labDetailQuery.data.country || '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Şehir/İlçe:</span> {labDetailQuery.data.city || '-'}{labDetailQuery.data.district ? ` / ${labDetailQuery.data.district}` : ''}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Mahalle:</span> {labDetailQuery.data.neighborhood || '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Sokak:</span> {labDetailQuery.data.street || '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">No:</span> {labDetailQuery.data.no || '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Açık Adres:</span> {labDetailQuery.data.fullAddress || labDetailQuery.data.address || '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Posta Kodu:</span> {labDetailQuery.data.postalCode || '-'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="panel p-3 sm:col-span-2">
+                  <p className="text-[11px] font-semibold" style={{ color: W.textLight }}>Kullanıcı</p>
+                  <div className="mt-2 space-y-1">
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">ID:</span> {labDetailQuery.data.userId ?? '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Ad Soyad:</span> {[labDetailQuery.data.firstName, labDetailQuery.data.lastName].filter(Boolean).join(' ') || '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">Telefon:</span> {labDetailQuery.data.phone || '-'}
+                    </div>
+                    <div className="text-[12px]" style={{ color: W.text }}>
+                      <span className="font-medium">E-posta:</span> {labDetailQuery.data.email || '-'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm" style={{ color: W.textLight }}>Detay bulunamadı.</p>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => { setViewLabOpen(false); setViewLabId('') }}>
+              Kapat
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* ── Create Laboratory Modal ── */}
       <Modal open={newLabOpen} onOpenChange={setNewLabOpen}>
@@ -667,12 +840,14 @@ type LabWithDietitians = Laboratory & { assignedDietitianDetails: { dieticianId:
 
 function LaboratoryTable({
   laboratories,
+  onView,
   onEdit,
   onDelete,
   onAssignDietitian,
   W: colors,
 }: {
   laboratories: LabWithDietitians[]
+  onView: (lab: Laboratory) => void
   onEdit: (lab: Laboratory) => void
   onDelete: (lab: Laboratory) => void
   onAssignDietitian: (lab: Laboratory) => void
@@ -815,6 +990,10 @@ function LaboratoryTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onView(lab)}>
+                          <Eye className="h-4 w-4 mr-2" /> Görüntüle
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onAssignDietitian(lab)}>
                           <Users className="h-4 w-4 mr-2" /> Diyetisyen Ata
                         </DropdownMenuItem>

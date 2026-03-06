@@ -1,14 +1,25 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { Controller, type Resolver, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { PageHeader } from '@/components/shared/page-header'
-import { Card, CardContent, Button, Input, Textarea, Badge } from '@/components/ui'
 import {
-  Save, ArrowLeft, User, Phone, Mail, MapPin, Calendar,
-  Ruler, Weight, Droplets, Heart,
-  Hash, BadgeCheck, Sparkles,
+  Card,
+  CardContent,
+  Button,
+  Input,
+  Textarea,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui'
+import {
+  Save, ArrowLeft, User, Phone, Mail, Calendar,
+  Ruler, Weight, Heart,
+  BadgeCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ROUTES, danisanDetayPath } from '@/utils/routes'
@@ -16,6 +27,13 @@ import { useClientsStore } from '@/stores/clients.store'
 import { useCurrentUser } from '@/stores/auth.store'
 
 /* ──────────── Schema ──────────── */
+const optionalNumber = z
+  .preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+    z.number()
+  )
+  .optional()
+
 const clientSchema = z.object({
   firstName: z.string().min(2, 'Ad en az 2 karakter olmalidir'),
   lastName: z.string().min(2, 'Soyad en az 2 karakter olmalidir'),
@@ -25,8 +43,13 @@ const clientSchema = z.object({
   birthDate: z.string().optional(),
   gender: z.string().optional(),
   bloodType: z.string().optional(),
-  height: z.string().optional(),
-  weight: z.string().optional(),
+  // Anamnez (Step 2) tamamen opsiyonel
+  height: optionalNumber,
+  weight: optionalNumber,
+  waistCircumference: optionalNumber,
+  hipCircumference: optionalNumber,
+  profession: z.string().optional(),
+  education: z.string().optional(),
   allergies: z.string().optional(),
   medications: z.string().optional(),
   chronicDiseases: z.string().optional(),
@@ -46,23 +69,15 @@ export function ClientFormPage() {
   const currentUser = useCurrentUser()
   const isEdit = Boolean(clientId)
 
-  const autoIdExample = useMemo(() => {
-    const d = new Date()
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}${m}${day}XXX`
-  }, [])
-
   const [step, setStep] = useState<1 | 2>(1)
 
   const {
+    control,
     register,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<ClientFormData>({
-    resolver: zodResolver(clientSchema),
+    resolver: zodResolver(clientSchema) as unknown as Resolver<ClientFormData>,
     defaultValues: isEdit ? {
       firstName: 'Ahmet',
       lastName: 'Yildiz',
@@ -70,10 +85,14 @@ export function ClientFormPage() {
       email: 'ahmet.yildiz@email.com',
       address: 'Kadikoy, Istanbul',
       birthDate: '1990-05-15',
-      gender: 'Erkek',
+      gender: 'male',
       bloodType: 'A Rh+',
-      height: '178',
-      weight: '82',
+      height: 178,
+      weight: 82,
+      waistCircumference: 85.5,
+      hipCircumference: 95.5,
+      profession: 'Yazilim Gelistirici',
+      education: "Lisans",
       allergies: 'Gluten, Findik',
       medications: 'Vitamin D3, Omega-3',
       chronicDiseases: 'Tip 2 Diyabet (kontrol altinda)',
@@ -81,22 +100,61 @@ export function ClientFormPage() {
     } : {},
   })
 
-  const firstName = watch('firstName')
-  const lastName = watch('lastName')
-
   const onSubmit = async (data: ClientFormData) => {
     if (isEdit) {
       toast.success('Danisan bilgileri guncellendi')
       navigate(ROUTES.DIYETISYEN_DANISANLAR)
     } else {
       try {
+        const anamnezForm = (() => {
+          const chronicIllness = data.chronicDiseases?.trim()
+          const medicationUsed = data.medications?.trim()
+          const foodAllergy = data.allergies?.trim()
+          const profession = data.profession?.trim()
+          const education = data.education?.trim()
+
+          const bodyHeight = typeof data.height === 'number' && !Number.isNaN(data.height) ? data.height : undefined
+          const bodyWeight = typeof data.weight === 'number' && !Number.isNaN(data.weight) ? data.weight : undefined
+          const waistCircumference = typeof data.waistCircumference === 'number' && !Number.isNaN(data.waistCircumference)
+            ? data.waistCircumference
+            : undefined
+          const hipCircumference = typeof data.hipCircumference === 'number' && !Number.isNaN(data.hipCircumference)
+            ? data.hipCircumference
+            : undefined
+
+          const partial: {
+            chronicIllness?: string
+            medicationUsed?: string
+            foodAllergy?: string
+            bodyWeight?: number
+            bodyHeight?: number
+            waistCircumference?: number
+            hipCircumference?: number
+            profession?: string
+            education?: string
+          } = {}
+
+          if (chronicIllness) partial.chronicIllness = chronicIllness
+          if (medicationUsed) partial.medicationUsed = medicationUsed
+          if (foodAllergy) partial.foodAllergy = foodAllergy
+          if (profession) partial.profession = profession
+          if (education) partial.education = education
+          if (bodyHeight !== undefined) partial.bodyHeight = bodyHeight
+          if (bodyWeight !== undefined) partial.bodyWeight = bodyWeight
+          if (waistCircumference !== undefined) partial.waistCircumference = waistCircumference
+          if (hipCircumference !== undefined) partial.hipCircumference = hipCircumference
+
+          return Object.keys(partial).length ? partial : undefined
+        })()
+
         const { id } = await addClient({
           firstName: data.firstName,
           lastName: data.lastName,
           phone: data.phone,
           email: data.email || undefined,
-          gender: (data.gender?.toLowerCase() === 'kadin' || data.gender?.toLowerCase() === 'female') ? 'female' : 'male',
+          gender: data.gender === 'female' ? 'female' : 'male',
           dieticianId: currentUser?.id ? Number(currentUser.id) : undefined,
+          ...(anamnezForm ? { anamnezForm } : {}),
         })
         toast.success(`Danisan eklendi — ID: ${id}`)
         navigate(danisanDetayPath(id))
@@ -117,33 +175,7 @@ export function ClientFormPage() {
         }
       />
 
-      {/* Auto-ID Card */}
-      {!isEdit && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary-50 flex items-center justify-center shrink-0">
-                <Hash className="h-5 w-5 text-primary-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-medium text-surface-400 uppercase tracking-wider">Otomatik Danisan ID</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-lg font-bold font-mono text-surface-600">{autoIdExample}</code>
-                  <Badge variant="primary" size="sm">
-                    <Sparkles className="h-3 w-3" /> Kayit sirasinda olusturulacak
-                  </Badge>
-                </div>
-              </div>
-              {firstName && lastName && (
-                <div className="text-right hidden sm:block">
-                  <p className="text-[11px] text-surface-400">Danisan</p>
-                  <p className="text-sm font-semibold text-surface-800">{firstName} {lastName}</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+    
 
       {/* Step indicator */}
       <div className="flex items-center gap-2">
@@ -219,35 +251,39 @@ export function ClientFormPage() {
                   {...register('email')}
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Dogum Tarihi"
                   type="date"
                   leftIcon={<Calendar className="h-4 w-4" />}
                   {...register('birthDate')}
                 />
-                <Input
-                  label="Cinsiyet"
-                  placeholder="Erkek / Kadin"
-                  {...register('gender')}
+                <Controller
+                  control={control}
+                  name="gender"
+                  render={({ field }) => (
+                    <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                      <SelectTrigger label="Cinsiyet" className="w-full">
+                        <SelectValue placeholder="Secin..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Erkek</SelectItem>
+                        <SelectItem value="female">Kadin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 />
-                <Input
-                  label="Kan Grubu"
-                  placeholder="A Rh+"
-                  leftIcon={<Droplets className="h-4 w-4" />}
-                  {...register('bloodType')}
-                />
+              
               </div>
-              <Input
-                label="Adres"
-                placeholder="Tam adres bilgisi"
-                leftIcon={<MapPin className="h-4 w-4" />}
-                {...register('address')}
-              />
+              
 
-              <div className="flex justify-end pt-2">
-                <Button type="button" variant="primary" size="sm" onClick={() => setStep(2)}>
-                  Devam Et — Anamnez
+              <div className="flex items-center justify-between pt-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setStep(2)}>
+                  Anamnez (Opsiyonel)
+                </Button>
+                <Button type="submit" variant="primary" loading={isSubmitting}>
+                  <Save className="h-4 w-4" />
+                  {isEdit ? 'Degisiklikleri Kaydet' : 'Danisani Kaydet'}
                 </Button>
               </div>
             </CardContent>
@@ -270,6 +306,7 @@ export function ClientFormPage() {
                   type="number"
                   placeholder="178"
                   leftIcon={<Ruler className="h-4 w-4" />}
+                  // error={errors.height?.message}
                   {...register('height')}
                 />
                 <Input
@@ -277,23 +314,59 @@ export function ClientFormPage() {
                   type="number"
                   placeholder="82"
                   leftIcon={<Weight className="h-4 w-4" />}
+                  // error={errors.weight?.message}
                   {...register('weight')}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Bel Olcusu (cm)"
+                  type="number"
+                  placeholder="85.5"
+                  // error={errors.waistCircumference?.message}
+                  {...register('waistCircumference')}
+                />
+                <Input
+                  label="Kalca Olcusu (cm)"
+                  type="number"
+                  placeholder="95.5"
+                  // error={errors.hipCircumference?.message}
+                  {...register('hipCircumference')}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Meslek"
+                  placeholder="Orn: Yazilim gelistirici"
+                  error={errors.profession?.message}
+                  {...register('profession')}
+                />
+                <Input
+                  label="Egitim"
+                  placeholder="Orn: Lisans"
+                  error={errors.education?.message}
+                  {...register('education')}
                 />
               </div>
 
               <Textarea
                 label="Alerjiler"
                 placeholder="Bilinen alerjiler (orn: Gluten, Findik...)"
+                error={errors.allergies?.message}
                 {...register('allergies')}
               />
               <Textarea
                 label="Kullanilan Ilaclar"
                 placeholder="Duzenli kullanilan ilaclar ve takviyeler..."
+                error={errors.medications?.message}
                 {...register('medications')}
               />
               <Textarea
                 label="Kronik Hastaliklar"
                 placeholder="Bilinen kronik hastaliklar..."
+                error={errors.chronicDiseases?.message}
                 {...register('chronicDiseases')}
               />
               <Textarea

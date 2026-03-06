@@ -7,11 +7,14 @@ interface ApiLabUser {
   lastName?: string
   phone?: string
   email?: string
+  password?: string
   role?: string
   gender?: string
   identityNumber?: string
+  isVerified?: boolean
   createdAt?: string
   updatedAt?: string
+  deletedAt?: string | null
 }
 
 interface ApiLabAddress {
@@ -28,17 +31,25 @@ interface ApiLabAddress {
   postalCode?: string
   createdAt?: string
   updatedAt?: string
+  deletedAt?: string | null
 }
 
 interface ApiLaboratoryItem {
   id?: number
+  userId?: number
+  addressId?: number
   user?: ApiLabUser
   address?: ApiLabAddress
+  /** Detail endpoint may return user under this key */
+  userLaboratory?: ApiLabUser
+  /** Detail endpoint may return address under this key */
+  laboratoryAddress?: ApiLabAddress
   cargofirm?: string
   cargoNumber?: string
   isActive?: boolean
   createdAt?: string
   updatedAt?: string
+  deletedAt?: string | null
 }
 
 interface ApiLabDietician {
@@ -67,8 +78,8 @@ function buildDisplayAddress(addr: ApiLabAddress | undefined): string {
 }
 
 function mapApiLabToLab(item: ApiLaboratoryItem): Laboratory {
-  const user = item.user
-  const addr = item.address
+  const user = item.userLaboratory ?? item.user
+  const addr = item.laboratoryAddress ?? item.address
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ')
   return {
     id: String(item.id ?? ''),
@@ -85,7 +96,7 @@ function mapApiLabToLab(item: ApiLaboratoryItem): Laboratory {
     cargofirm: item.cargofirm,
     cargoNumber: item.cargoNumber,
     isActive: item.isActive,
-    userId: user?.id,
+    userId: item.userId ?? user?.id,
     street: addr?.street,
     neighborhood: addr?.neighborhood,
     no: addr?.no,
@@ -113,11 +124,11 @@ export async function getLaboratories(params?: GetLaboratoriesParams): Promise<L
   const { data } = await api.get<unknown>('/laboratories', {
     params: params
       ? {
-          page: params.page ?? 1,
-          limit: params.limit ?? 200,
-          ...(params.search && { search: params.search }),
-          ...(params.sort && { sort: params.sort }),
-        }
+        page: params.page ?? 1,
+        limit: params.limit ?? 200,
+        ...(params.search && { search: params.search }),
+        ...(params.sort && { sort: params.sort }),
+      }
       : undefined,
   })
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
@@ -273,6 +284,16 @@ export async function getDieticiansViewLaboratory(): Promise<ApiLabDietician | n
   } catch {
     return null
   }
+}
+
+/**
+ * Convenience helper for dietitian dashboard.
+ * Returns the authenticated dietician's assigned laboratory (address + cargo info included).
+ */
+export async function getDietitiansAssignedLaboratory(): Promise<Laboratory | null> {
+  const assignment = await getDieticiansViewLaboratory()
+  if (!assignment?.laboratory) return null
+  return mapApiLabToLab(assignment.laboratory)
 }
 
 export type { ApiLabDietician }

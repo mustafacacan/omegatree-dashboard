@@ -46,6 +46,17 @@ interface ClientsState {
     email?: string
     gender?: 'male' | 'female'
     dieticianId?: number
+    anamnezForm?: {
+      chronicIllness?: string
+      medicationUsed?: string
+      foodAllergy?: string
+      bodyWeight?: number
+      bodyHeight?: number
+      waistCircumference?: number
+      hipCircumference?: number
+      profession?: string
+      education?: string
+    }
   }) => Promise<{ id: string }>
   getClientById: (id: string) => ClientRecord | undefined
   setClients: (clients: ClientRecord[]) => void
@@ -91,13 +102,17 @@ export const useClientsStore = create<ClientsState>()(
 
       addClient: async (data) => {
         try {
+          if (!data.dieticianId) {
+            throw new Error('Diyetisyen bulunamadi. Lutfen tekrar giris yapin.')
+          }
           const created = await apiCreateClient({
             firstName: data.firstName,
             lastName: data.lastName,
             phone: data.phone,
             email: data.email,
             gender: data.gender ?? 'male',
-            dieticianId: data.dieticianId ?? 0,
+            ...(data.anamnezForm ? { anamnezForm: data.anamnezForm } : {}),
+            dieticianId: data.dieticianId,
           })
           const record = mapAppClientToRecord(created)
           set((state) => ({ clients: [record, ...state.clients] }))

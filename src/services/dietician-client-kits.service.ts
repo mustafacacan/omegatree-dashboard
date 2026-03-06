@@ -3,41 +3,100 @@ import type { components } from '@/types/openapi'
 
 const skipAuth: ApiRequestConfig = { skipAuthRedirect: true }
 
-type ApiDieticianKitResponse = components['schemas']['DieticianKitResponse']
+type ApiCreateDieticianKit = components['schemas']['CreateDieticianKit']
 
 export interface DieticianClientKit {
   id: number
   dieticianId?: number
   dieticianName?: string
+  dieticianUserId?: number
+  dieticianPhone?: string
+  dieticianEmail?: string
   kitId?: number
   kitBarcode?: string
   kitName?: string
+  kitIsActive?: boolean
+  kitCreatedAt?: string
+  kitUpdatedAt?: string
   clientId?: number
   clientName?: string
+  clientUserId?: number
+  clientPhone?: string
+  clientEmail?: string
   status?: 'in_client' | 'in_laboratory' | 'in_expert' | 'delivered' | 'cancelled' | 'completed'
   isActive?: boolean
   createdAt?: string
   updatedAt?: string
 }
 
-function mapApiKit(item: ApiDieticianKitResponse): DieticianClientKit {
+function asObj(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === 'object' ? (v as Record<string, unknown>) : null
+}
+
+function asNumber(v: unknown): number | undefined {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v)
+    return Number.isFinite(n) ? n : undefined
+  }
+  return undefined
+}
+
+function asString(v: unknown): string | undefined {
+  return typeof v === 'string' ? v : undefined
+}
+
+function asBoolean(v: unknown): boolean | undefined {
+  return typeof v === 'boolean' ? v : undefined
+}
+
+function mapApiKit(item: unknown): DieticianClientKit {
+  const obj = asObj(item) ?? {}
+
+  const kitObj = asObj(obj.kit) ?? asObj(obj.kitId)
+
+  const clientEntity = asObj(obj.client) ?? asObj(obj.clientId)
+  const clientUserObj = asObj(clientEntity?.user) ?? clientEntity
+
+  const dieticianEntity = asObj(obj.dietician) ?? asObj(obj.dieticianId)
+  const dieticianUserObj = asObj(dieticianEntity?.user) ?? dieticianEntity
+
+  const clientName =
+    clientUserObj
+      ? `${asString(clientUserObj.firstName) ?? ''} ${asString(clientUserObj.lastName) ?? ''}`.trim() || undefined
+      : undefined
+
+  const dieticianName =
+    dieticianUserObj
+      ? `${asString(dieticianUserObj.firstName) ?? ''} ${asString(dieticianUserObj.lastName) ?? ''}`.trim() || undefined
+      : undefined
+
+  const status = asString(obj.status) as DieticianClientKit['status'] | undefined
+
   return {
-    id: item.id,
-    dieticianId: item.dieticianId?.id,
-    dieticianName: item.dieticianId
-      ? `${item.dieticianId.firstName ?? ''} ${item.dieticianId.lastName ?? ''}`.trim()
-      : undefined,
-    kitId: item.kitId?.id,
-    kitBarcode: item.kitId?.barcode,
-    kitName: item.kitId?.name,
-    clientId: item.clientId?.id,
-    clientName: item.clientId
-      ? `${item.clientId.firstName ?? ''} ${item.clientId.lastName ?? ''}`.trim()
-      : undefined,
-    status: item.status,
-    isActive: item.isActive,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
+    id: asNumber(obj.id) ?? 0,
+    dieticianId: asNumber(dieticianEntity?.id) ?? asNumber(obj.dieticianId),
+    dieticianName,
+    dieticianUserId: asNumber(dieticianEntity?.userId) ?? asNumber(dieticianUserObj?.id),
+    dieticianPhone: asString(dieticianUserObj?.phone),
+    dieticianEmail: asString(dieticianUserObj?.email),
+
+    kitId: asNumber(kitObj?.id) ?? asNumber(obj.kitId),
+    kitBarcode: asString(kitObj?.barcode),
+    kitName: asString(kitObj?.name),
+    kitIsActive: asBoolean(kitObj?.isActive),
+    kitCreatedAt: asString(kitObj?.createdAt),
+    kitUpdatedAt: asString(kitObj?.updatedAt),
+
+    clientId: asNumber(clientEntity?.id) ?? asNumber(obj.clientId),
+    clientName,
+    clientUserId: asNumber(clientEntity?.userId) ?? asNumber(clientUserObj?.id),
+    clientPhone: asString(clientUserObj?.phone),
+    clientEmail: asString(clientUserObj?.email),
+    status,
+    isActive: asBoolean(obj.isActive),
+    createdAt: asString(obj.createdAt),
+    updatedAt: asString(obj.updatedAt),
   }
 }
 
@@ -50,7 +109,14 @@ export async function getDieticianClientKits(page?: number): Promise<DieticianCl
 
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
   const payload = top && 'data' in top ? top.data : data
-  const list: ApiDieticianKitResponse[] = Array.isArray(payload) ? payload : []
+
+  const list: unknown[] =
+    Array.isArray(payload)
+      ? payload
+      : (asObj(payload) && Array.isArray((payload as Record<string, unknown>).items)
+        ? (((payload as Record<string, unknown>).items as unknown[]) ?? [])
+        : [])
+
   return list.map(mapApiKit)
 }
 
@@ -58,7 +124,7 @@ export async function getDieticianClientKits(page?: number): Promise<DieticianCl
 export async function getDieticianClientKitById(id: number | string): Promise<DieticianClientKit> {
   const { data } = await api.get<unknown>(`/dietician-client-kits/${id}`, skipAuth)
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
-  const item = (top && 'data' in top ? top.data : data) as ApiDieticianKitResponse
+  const item = (top && 'data' in top ? top.data : data) as unknown
   return mapApiKit(item)
 }
 
@@ -66,7 +132,19 @@ export async function getDieticianClientKitById(id: number | string): Promise<Di
 export async function createDieticianClientKit(kitId: number): Promise<DieticianClientKit> {
   const { data } = await api.post<unknown>('/dietician-client-kits', { kitId }, skipAuth)
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
-  const item = (top && 'data' in top ? top.data : data) as ApiDieticianKitResponse
+  const item = (top && 'data' in top ? top.data : data) as unknown
+  return mapApiKit(item)
+}
+
+/** POST /dietician-client-kits/{clientId} — stoktaki kiti danışana ata */
+export async function assignDieticianClientKitToClient(
+  clientId: number | string,
+  kitId: number
+): Promise<DieticianClientKit> {
+  const body: ApiCreateDieticianKit = { kitId }
+  const { data } = await api.post<unknown>(`/dietician-client-kits/${clientId}`, body, skipAuth)
+  const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
+  const item = (top && 'data' in top ? top.data : data) as unknown
   return mapApiKit(item)
 }
 
@@ -83,7 +161,7 @@ export async function deleteDieticianClientKit(id: number | string): Promise<voi
   await api.delete(`/dietician-client-kits/${id}`, skipAuth)
 }
 
-/** POST /dietician-client-kits/send-kit-laboratory — laboratuvara gönder */
-export async function sendKitToLaboratory(kitId: number): Promise<void> {
-  await api.post('/dietician-client-kits/send-kit-laboratory', { id: kitId }, skipAuth)
+/** POST /dietician-client-kits/send-kit-laboratory — laboratuvara gönder (dietician-client-kit assignment id) */
+export async function sendKitToLaboratory(dieticianClientKitId: number | string): Promise<void> {
+  await api.post('/dietician-client-kits/send-kit-laboratory', { id: Number(dieticianClientKitId) }, skipAuth)
 }

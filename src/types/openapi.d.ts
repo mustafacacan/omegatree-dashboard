@@ -333,6 +333,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieve a paginated list of audit logs */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Page number for pagination */
+                    page?: number;
+                    /** @description Number of logs per page */
+                    limit?: number;
+                    /** @description Search term to filter logs by action or entity */
+                    search?: string;
+                    /** @description Field to sort by */
+                    sortField?: "timestamp" | "action" | "entity";
+                    /** @description Sort direction (ascending or descending) */
+                    sortDirection?: "asc" | "desc";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A paginated list of audit logs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["AuditLog"][];
+                            pagination?: components["schemas"]["Pagination"];
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/register": {
         parameters: {
             query?: never;
@@ -433,6 +490,51 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/not-verified-users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a list of users who are not yet verified (admin only) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List of not verified users retrieved successfully. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+                /** @description Forbidden, only admins can access this endpoint. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": unknown;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -844,7 +946,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["CreateClientRequest"];
+                    "application/json": components["schemas"]["CreateClient"];
                 };
             };
             responses: {
@@ -940,6 +1042,57 @@ export interface paths {
                 };
             };
         };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/damaged-kits/details/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get details of a specific damaged kit */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description ID of the damaged kit to retrieve details for */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Damaged kit details retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["DamagedKit"];
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Unauthorized access */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UnauthorizedResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1875,6 +2028,22 @@ export interface paths {
                 };
             };
         };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dietician-client-kits/{clientId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
         put?: never;
         /** Create a new dietician-client kit assignment */
         post: {
@@ -3104,6 +3273,140 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/orders/update-status/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update order status */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description ID of the order to update */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description New status of the order
+                         * @enum {string}
+                         */
+                        status?: "pending" | "completed" | "cancelled";
+                    };
+                };
+            };
+            responses: {
+                /** @description Order status updated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OrderResponse"];
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Order not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotFoundResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orders/add-dekont/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Add dekont to order */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description ID of the order to add dekont to */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /**
+                         * Format: binary
+                         * @description Dekont file to upload
+                         */
+                        dekont?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Dekont added to order successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OrderResponse"];
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Order not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotFoundResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/orders": {
         parameters: {
             query?: never;
@@ -3194,73 +3497,6 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/orders/update-status/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update order status */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description ID of the order to update */
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * @description New status of the order
-                         * @enum {string}
-                         */
-                        status?: "pending" | "completed" | "cancelled";
-                    };
-                };
-            };
-            responses: {
-                /** @description Order status updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["OrderResponse"];
-                    };
-                };
-                /** @description Bad request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Order not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NotFoundResponse"];
-                    };
-                };
-            };
-        };
         post?: never;
         delete?: never;
         options?: never;
@@ -3391,7 +3627,48 @@ export interface paths {
             };
         };
         post?: never;
-        delete?: never;
+        /** Delete a sales kit by ID */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description ID of the sales kit to delete */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sales kit deleted successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Unauthorized access */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UnauthorizedResponse"];
+                    };
+                };
+                /** @description Sales kit not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotFoundResponse"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -3648,6 +3925,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the profile of the authenticated user */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description User profile retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{id}": {
         parameters: {
             query?: never;
@@ -3782,51 +4104,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/users/profile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get the profile of the authenticated user */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description User profile retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/users": {
         parameters: {
             query?: never;
@@ -3941,7 +4218,7 @@ export interface components {
             email?: string | null;
             /**
              * @description User's role
-             * @example client
+             * @example client or dietician
              * @enum {string}
              */
             role: "dietician" | "client";
@@ -4149,6 +4426,16 @@ export interface components {
              */
             neighborhood: string;
             /**
+             * @description Street number
+             * @example 10
+             */
+            no: string;
+            /**
+             * @description Full address
+             * @example Ataturk Sokak No:10, Moda, Kadikoy, Istanbul, Turkiye
+             */
+            fullAddress?: string;
+            /**
              * @description Postal code
              * @example 34710
              */
@@ -4186,6 +4473,16 @@ export interface components {
              * @example Moda
              */
             neighborhood?: string;
+            /**
+             * @description Street number
+             * @example 10
+             */
+            no?: string;
+            /**
+             * @description Full address
+             * @example Ataturk Sokak No:10, Moda, Kadikoy, Istanbul, Turkiye
+             */
+            fullAddress?: string;
             /**
              * @description Postal code
              * @example 34710
@@ -4235,6 +4532,16 @@ export interface components {
              * @example Moda
              */
             neighborhood: string;
+            /**
+             * @description Street number
+             * @example 10
+             */
+            no?: string;
+            /**
+             * @description Full address
+             * @example Ataturk Sokak No:10, Moda, Kadikoy, Istanbul, Turkiye
+             */
+            fullAddress?: string;
             /**
              * @description Postal code
              * @example 34710
@@ -4474,6 +4781,56 @@ export interface components {
                  * @enum {string}
                  */
                 gender: "male" | "female";
+            };
+            anamnezForm?: {
+                /**
+                 * @description Chronic illness of the client
+                 * @example diabetes
+                 */
+                chronic_illness: string;
+                /**
+                 * @description Medication used by the client
+                 * @example metformin
+                 */
+                medication_used: string;
+                /**
+                 * @description Food allergy of the client
+                 * @example peanuts
+                 */
+                food_allergy: string;
+                /**
+                 * Format: double
+                 * @description Body weight of the client in kg
+                 * @example 70.5
+                 */
+                body_weight: number;
+                /**
+                 * @description Body height of the client in cm
+                 * @example 175
+                 */
+                body_height: number;
+                /**
+                 * Format: double
+                 * @description Waist circumference of the client in cm
+                 * @example 85.5
+                 */
+                waist_circumference: number;
+                /**
+                 * Format: double
+                 * @description Hip circumference of the client in cm
+                 * @example 95.5
+                 */
+                hip_circumference: number;
+                /**
+                 * @description Profession of the client
+                 * @example software developer
+                 */
+                profession: string;
+                /**
+                 * @description Education level of the client
+                 * @example bachelor's degree
+                 */
+                education: string;
             };
             /**
              * Format: float
@@ -5240,6 +5597,16 @@ export interface components {
                  */
                 neighborhood: string;
                 /**
+                 * @description Street number
+                 * @example 10
+                 */
+                no?: string;
+                /**
+                 * @description Full address
+                 * @example Ataturk Sokak No:10, Moda, Kadikoy, Istanbul, Turkiye
+                 */
+                fullAddress?: string;
+                /**
                  * @description Postal code
                  * @example 34710
                  */
@@ -5354,6 +5721,16 @@ export interface components {
                  * @example Moda
                  */
                 neighborhood: string;
+                /**
+                 * @description Street number
+                 * @example 10
+                 */
+                no?: string;
+                /**
+                 * @description Full address
+                 * @example Ataturk Sokak No:10, Moda, Kadikoy, Istanbul, Turkiye
+                 */
+                fullAddress?: string;
                 /**
                  * @description Postal code
                  * @example 34710
@@ -5486,6 +5863,16 @@ export interface components {
                      * @example Moda
                      */
                     neighborhood: string;
+                    /**
+                     * @description Street number
+                     * @example 10
+                     */
+                    no?: string;
+                    /**
+                     * @description Full address
+                     * @example Ataturk Sokak No:10, Moda, Kadikoy, Istanbul, Turkiye
+                     */
+                    fullAddress?: string;
                     /**
                      * @description Postal code
                      * @example 34710
@@ -5770,6 +6157,7 @@ export interface components {
             /** @enum {string} */
             paymentMethod: "credit_card" | "eft" | "havale";
             isPaid?: boolean;
+            orderNumber?: string;
         };
         UpdateOrder: {
             /** @enum {string} */
@@ -5873,6 +6261,7 @@ export interface components {
                      */
                     mimeType: string;
                 };
+                isActive?: boolean;
             };
             /** @enum {string} */
             status: "pending" | "completed" | "cancelled";
@@ -5930,6 +6319,11 @@ export interface components {
              * @example 49.99
              */
             price?: number;
+            /**
+             * @description Whether the sales kit is active
+             * @example true
+             */
+            isActive?: boolean;
         };
         SalesKitResponse: {
             /**
@@ -5982,6 +6376,7 @@ export interface components {
                  */
                 mimeType: string;
             };
+            isActive?: boolean;
         };
         Pagination: {
             /**
@@ -6136,6 +6531,19 @@ export interface components {
         CreateClientRequest: components["schemas"]["CreateClient"];
         DamagedKit: components["schemas"]["DamageKitResponse"];
         BadRequestResponse: components["schemas"]["ErrorResponse"];
+        AuditLog: {
+            id: string;
+            userId: string;
+            userName: string;
+            userRole: string;
+            action: string;
+            entity: string;
+            entityId: string;
+            details: string;
+            ipAddress: string;
+            userAgent?: string | null;
+            timestamp: string;
+        };
     };
     responses: {
         /** @description Yetkisiz */

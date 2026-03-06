@@ -5,8 +5,9 @@ import { Avatar, Button } from '@/components/ui'
 import { KitStatus } from '@/utils/constants'
 import { ROUTES, danisanDetayPath } from '@/utils/routes'
 import { useCurrentUser } from '@/stores/auth.store'
-import { useLaboratoriesStore } from '@/stores/laboratories.store'
 import { motion } from 'framer-motion'
+import { useQuery } from '@tanstack/react-query'
+import { getDietitiansAssignedLaboratory } from '@/services/laboratories.service'
 import {
   Users, FlaskConical, Package, FileCheck, TrendingUp, TrendingDown,
   ArrowUpRight, Clock, MapPin,
@@ -68,10 +69,13 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 export function DietitianDashboardPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
-  const laboratories = useLaboratoriesStore((s) => s.laboratories)
-  const assignedLab = user?.id
-    ? laboratories.find((l) => l.assignedDietitians.includes(user.id))
-    : null
+  const {
+    data: assignedLab,
+    isLoading: assignedLabLoading,
+  } = useQuery({
+    queryKey: ['laboratory-dietician', 'dieticians-view-laboratory', 'laboratory'],
+    queryFn: getDietitiansAssignedLaboratory,
+  })
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Gunaydin' : hour < 18 ? 'Iyi gunler' : 'Iyi aksamlar'
 
@@ -90,7 +94,11 @@ export function DietitianDashboardPage() {
             </p>
           </div>
           <div className="min-w-0 max-w-full sm:max-w-md">
-            {assignedLab ? (
+            {assignedLabLoading ? (
+              <div className="rounded-xl p-3.5 border" style={{ background: W.cream, borderColor: W.warmBorder }}>
+                <p className="text-[12px]" style={{ color: W.textLight }}>Laboratuvar bilgileri yukleniyor...</p>
+              </div>
+            ) : assignedLab ? (
               <div className="rounded-xl p-3.5 border" style={{ background: W.oliveLight, borderColor: W.warmBorder }}>
                 <div className="flex items-start gap-2.5">
                   <MapPin className="h-4 w-4 shrink-0 mt-0.5" style={{ color: W.olive }} />
@@ -102,6 +110,11 @@ export function DietitianDashboardPage() {
                       {assignedLab.district ? `, ${assignedLab.district}` : ''} / {assignedLab.city}
                       {assignedLab.postalCode ? ` ${assignedLab.postalCode}` : ''}
                     </p>
+                    {(assignedLab.cargofirm || assignedLab.cargoNumber) && (
+                      <p className="text-[11px] mt-1" style={{ color: W.textLight }}>
+                        Kargo: {assignedLab.cargofirm ?? '-'}{assignedLab.cargoNumber ? ` / ${assignedLab.cargoNumber}` : ''}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
