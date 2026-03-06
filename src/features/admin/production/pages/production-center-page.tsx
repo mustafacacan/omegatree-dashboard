@@ -11,7 +11,7 @@ import { TablePagination } from '@/components/shared/table-pagination'
 import { formatDate } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { motion } from 'framer-motion'
-import { Factory, Barcode, Package, Plus, Copy, Check, Pencil, Printer, Search, MoreHorizontal, Loader2, TrendingUp } from 'lucide-react'
+import { Factory, Barcode, Package, Plus, Copy, Check, Pencil, Printer, Search, MoreHorizontal, Loader2 } from 'lucide-react'
 import JsBarcode from 'jsbarcode'
 import { toast } from 'sonner'
 import {
@@ -200,12 +200,6 @@ export function ProductionCenterPage() {
     }
   }
 
-  const kitsThisMonth = useMemo(
-    () =>
-      apiKits.filter((k) => new Date(k.createdAt).getMonth() === new Date().getMonth()).length,
-    [apiKits]
-  )
-
   const openEditKit = (kit: Kit) => {
     setEditKit(kit)
     setEditKitName(kit.name)
@@ -233,39 +227,7 @@ export function ProductionCenterPage() {
     <div className="space-y-5 animate-fade-in">
       <PageHeader />
 
-      {/* Stat cards - stok sayfası ile aynı stil */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { title: 'Toplam Kit', value: apiKits.length, icon: Package, iconColor: W.olive, iconBg: W.oliveLight },
-          { title: 'Aktif', value: apiKits.filter((k) => k.isActive).length, icon: Barcode, iconColor: W.orange, iconBg: W.orangeLight },
-          { title: 'Pasif', value: apiKits.filter((k) => !k.isActive).length, icon: Package, iconColor: W.amber, iconBg: W.amberLight },
-          { title: 'Bu Ay Eklenen', value: kitsThisMonth, icon: Factory, iconColor: '#7C5CBF', iconBg: '#EDE8F5' },
-        ].map((s, i) => {
-          const Icon = s.icon
-          return (
-            <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.05 }}>
-              <div className="rounded-2xl p-5 transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-                <div className="flex items-center gap-3.5">
-                  <div className="h-12 w-12 rounded-full flex items-center justify-center shrink-0" style={{ background: s.iconBg }}>
-                    <Icon className="h-5 w-5" style={{ color: s.iconColor }} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: W.textLight }}>{s.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xl font-bold" style={{ color: W.dark }}>{s.value}</span>
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: W.greenLight, color: '#3D8B3D' }}>
-                        <TrendingUp className="h-2.5 w-2.5" />
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
-
-      {/* Kitler tablosu - stok takibi ile aynı yazı tipi / şekil */}
+      {/* Kitler tablosu */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
         <div className="panel">
           <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>

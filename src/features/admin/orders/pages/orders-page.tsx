@@ -7,7 +7,7 @@ import {
 } from '@/components/ui'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { motion } from 'framer-motion'
-import { Search, ListOrdered, Truck, Package, ShoppingBag, Clock, CheckCircle, Loader2 } from 'lucide-react'
+import { Search, ListOrdered, Truck, Package, CheckCircle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { PdfViewer } from '@/components/shared/pdf-viewer'
@@ -69,13 +69,6 @@ export function OrdersPage() {
     () => filteredOrders.slice((page - 1) * pageSize, page * pageSize),
     [filteredOrders, page, pageSize]
   )
-
-  const stats = useMemo(() => {
-    const total = orders.length
-    const awaitingShip = orders.filter((o) => o.assignedBarcodes.length < o.qty).length
-    const fullyShipped = orders.filter((o) => o.assignedBarcodes.length >= o.qty && o.qty > 0).length
-    return { total, awaitingShip, fullyShipped }
-  }, [orders])
 
   const availableKitsFromStore = useMemo(() => {
     return kits.filter(
@@ -316,33 +309,7 @@ export function OrdersPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      {/* Özet kartları — üretim merkezi stili */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          { title: 'Toplam Sipariş', value: stats.total, icon: ShoppingBag, iconColor: W.olive, iconBg: W.oliveLight },
-          { title: 'Kargo Bekleyen', value: stats.awaitingShip, icon: Clock, iconColor: W.orange, iconBg: W.orangeLight },
-          { title: 'Kargoya Verilen', value: stats.fullyShipped, icon: CheckCircle, iconColor: '#6ABF69', iconBg: '#E8F5E8' },
-        ].map((s, i) => {
-          const Icon = s.icon
-          return (
-            <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.05 }}>
-              <div className="rounded-2xl p-5 transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-                <div className="flex items-center gap-3.5">
-                  <div className="h-12 w-12 rounded-full flex items-center justify-center shrink-0" style={{ background: s.iconBg }}>
-                    <Icon className="h-5 w-5" style={{ color: s.iconColor }} />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: W.textLight }}>{s.title}</p>
-                    <p className="text-xl font-bold tabular-nums mt-0.5" style={{ color: W.dark }}>{s.value}</p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )
-        })}
-      </section>
-
-      {/* Siparişler tablosu — kullanıcılar tablosu ile aynı stil */}
+      {/* Siparişler tablosu */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
         <div className="panel">
           <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>

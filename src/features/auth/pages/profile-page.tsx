@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
 import { useCurrentUser, useAuthStore } from '@/stores/auth.store'
 import { getProfile, changePassword } from '@/services/auth.service'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, Button, Avatar, Badge, Input } from '@/components/ui'
 import { USER_ROLE_LABELS } from '@/utils/constants'
-import { getBasePath } from '@/utils/routes'
 import { formatDate } from '@/lib/utils'
-import { ArrowLeft, Mail, Shield, Calendar, Edit2, User, Lock, Phone } from 'lucide-react'
+import { Mail, Shield, Calendar, Edit2, User, Lock, Phone } from 'lucide-react'
 import { toast } from 'sonner'
 
 export function ProfilePage() {
   const user = useCurrentUser()
   const updateUser = useAuthStore((s) => s.updateUser)
-  const navigate = useNavigate()
-  const location = useLocation()
-  const basePath = getBasePath(location.pathname)
 
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [oldPassword, setOldPassword] = useState('')
@@ -65,13 +60,7 @@ export function ProfilePage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <PageHeader
-        actions={
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-3.5 w-3.5" /> Geri
-          </Button>
-        }
-      />
+      <PageHeader />
 
       <Card>
         <CardContent className="p-6">

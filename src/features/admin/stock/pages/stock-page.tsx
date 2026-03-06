@@ -6,8 +6,7 @@ import { formatDate } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Package, Boxes, Search, ArrowRightLeft, AlertTriangle,
-  TrendingUp, TrendingDown, X, Check,
+  Search, ArrowRightLeft, X, Check,
   User, Send, CheckCircle, Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -174,13 +173,6 @@ export function StockPage() {
     setPage(1)
   }, [searchQuery, statusFilter, filterUserId])
 
-  const stats = useMemo(() => ({
-    inStock: stockList.filter((s) => s.status === 'available').length,
-    assigned: stockList.filter((s) => s.status === 'used').length,
-    inProcess: stockList.filter((s) => s.status === 'approval_pending').length,
-    damaged: stockList.filter((s) => s.status === 'expired').length,
-  }), [stockList])
-
   const toggleKitSelect = (kitId: number) => {
     setSelectedKitIds((prev) =>
       prev.includes(kitId) ? prev.filter((id) => id !== kitId) : [...prev, kitId]
@@ -224,56 +216,7 @@ export function StockPage() {
     <div className="space-y-5 animate-fade-in">
       <PageHeader />
 
-      {/* ═══ STAT CARDS ═══ */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { title: 'Ana Stok', value: stats.inStock, icon: Package, iconColor: W.olive, iconBg: W.oliveLight, change: 4 },
-          { title: 'Zimmetli', value: stats.assigned, icon: Send, iconColor: W.orange, iconBg: W.orangeLight, change: 2 },
-          { title: 'Surecte', value: stats.inProcess, icon: Boxes, iconColor: W.amber, iconBg: W.amberLight, change: 1 },
-          { title: 'Hasarli', value: stats.damaged, icon: AlertTriangle, iconColor: '#D97070', iconBg: '#FDE8E8', change: -1 },
-        ].map((s, i) => {
-          const Icon = s.icon
-          const up = s.change >= 0
-          return (
-            <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.05 }}>
-              <div className="rounded-2xl p-5 transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-                <div className="flex items-center gap-3.5">
-                  <div className="h-12 w-12 rounded-full flex items-center justify-center shrink-0" style={{ background: s.iconBg }}>
-                    <Icon className="h-5 w-5" style={{ color: s.iconColor }} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: W.textLight }}>{s.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xl font-bold" style={{ color: W.dark }}>{s.value}</span>
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: up ? W.greenLight : '#FDE8E8', color: up ? '#3D8B3D' : '#C53030' }}>
-                        {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
-                        {up ? '+' : ''}{s.change}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
-
-      {/* ═══ INFO BANNER ═══ */}
-      <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.15 }}>
-        <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: W.oliveLight, border: '1px solid #D6DFC0' }}>
-          <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#C8D6A0' }}>
-            <Send className="h-4 w-4" style={{ color: '#5A6B2A' }} />
-          </div>
-          <div className="flex-1">
-            <p className="text-[12px] font-semibold" style={{ color: '#5A6B2A' }}>Stok takibi</p>
-            <p className="text-[11px]" style={{ color: '#7A8A4A' }}>
-              Varsayılan olarak <strong>sizin stokunuzdaki (admin) tüm kitler</strong> listelenir. Diyetisyen seçerek <strong>hangi diyetisyende hangi kitlerin</strong> olduğunu görebilirsiniz. Kit zimmetlendiginde diyetisyen fiziksel teslimatta barkod ile kiti stoguna ekler.
-            </p>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ═══ KIT INVENTORY TABLE ═══ */}
+      {/* Kit envanter tablosu */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
         <div className="panel">
           <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
