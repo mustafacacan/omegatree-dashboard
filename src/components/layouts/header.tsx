@@ -11,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui'
-import { NotificationDropdown } from '@/features/auth/components/notification-dropdown'
 import { USER_ROLE_LABELS } from '@/utils/constants'
 import { ROUTES, getBasePath } from '@/utils/routes'
 import {
@@ -35,7 +34,6 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith(ROUTES.YONETICI_SIPARISLER)) return 'Siparisler'
   if (pathname.startsWith(ROUTES.YONETICI_CARI)) return 'Cari Hesaplar'
   if (pathname.startsWith(ROUTES.YONETICI_SABLONLAR)) return 'Sablonlar'
-  if (pathname.startsWith(ROUTES.YONETICI_DENETIM)) return 'Denetim Izi'
   if (pathname.startsWith(ROUTES.YONETICI_RAPORLAR)) return 'Rapor Onaylari'
   if (pathname.startsWith(ROUTES.YONETICI_BILDIRIMLER)) return 'Bildirimler'
 
@@ -122,9 +120,6 @@ export function Header() {
               <Moon className="h-5 w-5" />
             )}
           </button>
-
-          {/* Notification dropdown */}
-          <NotificationDropdown />
 
           {/* Divider */}
           <div className="h-6 w-px mx-1.5 bg-surface-200" />

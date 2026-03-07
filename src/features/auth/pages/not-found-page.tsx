@@ -1,54 +1,42 @@
-import { Link } from 'react-router-dom'
-import { ROUTES } from '@/utils/routes'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { ROUTES, getBasePath } from '@/utils/routes'
 import { Button } from '@/components/ui'
-import { TreePine, Home } from 'lucide-react'
-
-const W = {
-  olive: '#8B9A4B',
-  oliveLight: '#EEF2DE',
-  cream: '#F9F7F3',
-  warmBorder: '#E8E4DE',
-  dark: '#2D2A26',
-  text: '#4A4640',
-  textLight: '#9C968D',
-}
+import { FileQuestion, Home, ArrowLeft } from 'lucide-react'
 
 export function NotFoundPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const basePath = getBasePath(location.pathname)
+  const canGoBack = basePath && basePath !== '/'
+
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center p-6"
-      style={{ background: W.cream }}
-    >
-      <div
-        className="rounded-3xl border-2 p-10 max-w-md w-full text-center shadow-sm"
-        style={{ borderColor: W.warmBorder, background: '#fff' }}
-      >
-        <div
-          className="h-20 w-20 rounded-2xl flex items-center justify-center mx-auto mb-6"
-          style={{ background: W.oliveLight }}
-        >
-          <TreePine className="h-10 w-10" style={{ color: W.olive }} />
+    <div className="min-h-screen flex items-center justify-center bg-surface-100 px-4 py-8">
+      <div className="w-full max-w-md rounded-2xl border border-surface-200 bg-panel shadow-lg overflow-hidden">
+        <div className="p-8 text-center">
+          <div className="h-16 w-16 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-primary-100 dark:bg-primary-900/30">
+            <FileQuestion className="h-8 w-8 text-primary-600 dark:text-primary-400" />
+          </div>
+          <p className="text-5xl font-black text-surface-300 dark:text-surface-600 mb-2">404</p>
+          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100">
+            Sayfa bulunamadi
+          </h1>
+          <p className="mt-2 text-sm text-surface-600 dark:text-surface-400 leading-relaxed">
+            Aradiginiz sayfa kaldirilmis, tasinmis veya adresi yanlis olabilir. Ana sayfaya donup
+            tekrar deneyebilirsiniz.
+          </p>
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2">
+            {canGoBack && (
+              <Button variant="outline" onClick={() => navigate(basePath)}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Panele don
+              </Button>
+            )}
+            <Button variant="primary" onClick={() => navigate(ROUTES.GIRIS)}>
+              <Home className="h-4 w-4 mr-2" />
+              Giris sayfasina don
+            </Button>
+          </div>
         </div>
-        <h1 className="text-6xl font-black mb-2" style={{ color: W.dark }}>
-          404
-        </h1>
-        <p className="text-lg font-medium mb-1" style={{ color: W.text }}>
-          Sayfa bulunamadi
-        </p>
-        <p className="text-sm mb-8" style={{ color: W.textLight }}>
-          Aradiginiz sayfa kaldirilmis veya adresi yanlis olabilir.
-        </p>
-        <Button
-          variant="primary"
-          size="md"
-          asChild
-          style={{ background: W.olive }}
-        >
-          <Link to={ROUTES.GIRIS} className="inline-flex items-center gap-2">
-            <Home className="h-4 w-4" />
-            Giris sayfasina don
-          </Link>
-        </Button>
       </div>
     </div>
   )

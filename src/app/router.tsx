@@ -30,7 +30,6 @@ const PricingPage = lazy(() => import('@/features/admin/pricing/pages/pricing-pa
 const StockPage = lazy(() => import('@/features/admin/stock/pages/stock-page').then(m => ({ default: m.StockPage })))
 const OrdersPage = lazy(() => import('@/features/admin/orders/pages/orders-page').then(m => ({ default: m.OrdersPage })))
 const CariPage = lazy(() => import('@/features/admin/cari/pages/cari-page').then(m => ({ default: m.CariPage })))
-const AuditLogsPage = lazy(() => import('@/features/admin/audit/pages/audit-logs-page').then(m => ({ default: m.AuditLogsPage })))
 const TemplatesPage = lazy(() => import('@/features/admin/templates/pages/templates-page').then(m => ({ default: m.TemplatesPage })))
 const ReturnRequestsPage = lazy(() => import('@/features/admin/returns/pages/return-requests-page').then(m => ({ default: m.ReturnRequestsPage })))
 const LaboratoriesPage = lazy(() => import('@/features/admin/laboratories/pages/laboratories-page').then(m => ({ default: m.LaboratoriesPage })))
@@ -112,7 +111,6 @@ export const router = createBrowserRouter([
       { path: ROUTES.YONETICI_CARI, element: <SuspensePage><CariPage /></SuspensePage> },
       { path: ROUTES.YONETICI_LABORATUVARLAR, element: <SuspensePage><LaboratoriesPage /></SuspensePage> },
       { path: ROUTES.YONETICI_RAPORLAR, element: <SuspensePage><ReportApprovalsPage /></SuspensePage> },
-      { path: ROUTES.YONETICI_DENETIM, element: <SuspensePage><AuditLogsPage /></SuspensePage> },
       { path: ROUTES.YONETICI_SABLONLAR, element: <SuspensePage><TemplatesPage /></SuspensePage> },
     ],
   },

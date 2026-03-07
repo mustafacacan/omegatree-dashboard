@@ -15,7 +15,6 @@ import {
   Package,
   ShoppingCart,
   CreditCard,
-  Shield,
   FileText,
   UserPlus,
   FlaskConical,
@@ -66,7 +65,6 @@ function getNavGroups(role: UserRole): NavGroup[] {
         ]},
         { title: 'Sistem', items: [
           { label: 'Sablonlar', href: ROUTES.YONETICI_SABLONLAR, icon: FileText },
-          { label: 'Denetim Izi', href: ROUTES.YONETICI_DENETIM, icon: Shield },
           { label: 'Ayarlar', href: ROUTES.YONETICI_AYARLAR, icon: Settings },
         ]},
       ]
