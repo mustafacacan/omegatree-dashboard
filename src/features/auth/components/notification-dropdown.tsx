@@ -17,14 +17,6 @@ import {
 } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 
-const W = {
-  orange: '#E8913A',
-  cream: '#F9F7F3',
-  warmBorder: '#E8E4DE',
-  dark: '#2D2A26',
-  text: '#4A4640',
-  textLight: '#9C968D',
-}
 
 function getRelativeTime(dateStr: string): string {
   const now = Date.now()
@@ -69,17 +61,11 @@ export function NotificationDropdown() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="relative p-2.5 rounded-xl transition-colors"
-          style={{ color: W.text }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+          className="relative p-2.5 rounded-xl transition-colors text-surface-700 hover:bg-surface-100"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span
-              className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full text-[9px] font-bold text-white px-1"
-              style={{ background: W.orange }}
-            >
+            <span className="absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full text-[9px] font-bold text-white px-1 bg-accent-amber">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -91,8 +77,8 @@ export function NotificationDropdown() {
         className="w-[380px] max-w-[calc(100vw-2rem)] p-0"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        <div className="border-b border-surface-100 px-4 py-3 flex items-center justify-between">
-          <span className="text-sm font-semibold" style={{ color: W.dark }}>
+        <div className="border-b border-surface-200 px-4 py-3 flex items-center justify-between">
+          <span className="text-sm font-semibold text-surface-900">
             Bildirimler
           </span>
           {unreadCount > 0 && (

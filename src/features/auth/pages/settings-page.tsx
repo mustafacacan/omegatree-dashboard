@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
-import { Card, CardContent, CardHeader, CardTitle, Button, Input, Switch } from '@/components/ui'
+import { Button, Input, Switch } from '@/components/ui'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui'
-import { Bell, Moon, Shield, MapPin, Plus, Pencil } from 'lucide-react'
+import { Bell, Moon, Shield, MapPin, Plus, Pencil, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCurrentRole } from '@/stores/auth.store'
+import { useThemeStore } from '@/stores/theme.store'
 import { UserRole } from '@/utils/constants'
+import { getBasePath } from '@/utils/routes'
 import {
   getAddresses,
   createAddress,
@@ -166,7 +169,7 @@ function DietitianAddressesCard() {
       street: form.street.trim(),
       neighborhood: form.neighborhood.trim(),
       postalCode: form.postalCode.trim(),
-      ...(form.no.trim() && { no: form.no.trim() }),
+      no: form.no.trim(),
       fullAddress: fullAddress || undefined,
     }
 
@@ -179,19 +182,18 @@ function DietitianAddressesCard() {
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
+      <div className="panel p-5">
+        <div className="flex flex-row items-center justify-between mb-4">
+          <h2 className="text-card-title text-surface-800 flex items-center gap-2">
             <MapPin className="h-4 w-4 text-primary-500" /> Teslimat adresleri
-          </CardTitle>
+          </h2>
           <Button variant="outline" size="sm" onClick={openAdd}>
             <Plus className="h-4 w-4" /> Yeni adres
           </Button>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-surface-500 mb-4">
-            Sipariş verirken seçebileceğiniz adresleri buradan ekleyin veya düzenleyin.
-          </p>
+        </div>
+        <p className="text-sm text-surface-500 mb-4">
+          Sipariş verirken seçebileceğiniz adresleri buradan ekleyin veya düzenleyin.
+        </p>
           {isLoading ? (
             <p className="text-sm text-surface-500">Yükleniyor...</p>
           ) : isError ? (
@@ -207,7 +209,7 @@ function DietitianAddressesCard() {
               {addresses.map((a) => (
                 <li
                   key={a.id}
-                  className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-50 border border-surface-100"
+                  className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200"
                 >
                   <div>
                     <p className="font-medium text-surface-800">{getAddressLabel(a)}</p>
@@ -220,8 +222,7 @@ function DietitianAddressesCard() {
               ))}
             </ul>
           )}
-        </CardContent>
-      </Card>
+      </div>
 
       <Modal open={modalOpen} onOpenChange={setModalOpen}>
         <ModalContent className="flex flex-col max-h-[90vh] overflow-hidden p-0">
@@ -361,67 +362,68 @@ function DietitianAddressesCard() {
 export function SettingsPage() {
   const role = useCurrentRole()
   const isDietitian = role === UserRole.DIETITIAN
+  const navigate = useNavigate()
+  const location = useLocation()
+  const basePath = getBasePath(location.pathname)
+  const { theme, toggleTheme } = useThemeStore()
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <PageHeader />
 
-      {isDietitian && <DietitianAddressesCard />}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-primary-500" /> Bildirimler
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-xl bg-surface-50">
+      {/* 1. Bildirimler */}
+      <div className="panel p-5">
+        <h2 className="text-card-title text-surface-800 flex items-center gap-2 mb-4">
+          <Bell className="h-4 w-4 text-primary-500" /> Bildirimler
+        </h2>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-surface-50 border border-surface-200">
             <div>
               <p className="text-sm font-medium text-surface-800">E-posta bildirimleri</p>
               <p className="text-xs text-surface-500">Kit durumu ve rapor bildirimleri</p>
             </div>
             <Switch defaultChecked />
           </div>
-          <div className="flex items-center justify-between p-4 rounded-xl bg-surface-50">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-surface-50 border border-surface-200">
             <div>
               <p className="text-sm font-medium text-surface-800">SMS bildirimleri</p>
-              <p className="text-xs text-surface-500">Kritik durum uyarilari</p>
+              <p className="text-xs text-surface-500">Kritik durum uyarıları</p>
             </div>
             <Switch />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Moon className="h-4 w-4 text-primary-500" /> Görünüm
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between p-4 rounded-xl bg-surface-50">
-            <div>
-              <p className="text-sm font-medium text-surface-800">Koyu mod</p>
-              <p className="text-xs text-surface-500">Tema tercihi (yakinda)</p>
-            </div>
-            <Switch disabled />
+      {/* 2. Görünüm */}
+      <div className="panel p-5">
+        <h2 className="text-card-title text-surface-800 flex items-center gap-2 mb-4">
+          <Moon className="h-4 w-4 text-primary-500" /> Görünüm
+        </h2>
+        <div className="flex items-center justify-between p-4 rounded-xl bg-surface-50 border border-surface-200">
+          <div>
+            <p className="text-sm font-medium text-surface-800">Koyu mod</p>
+            <p className="text-xs text-surface-500">Tema tercihi</p>
           </div>
-        </CardContent>
-      </Card>
+          <Switch checked={theme === 'dark'} onCheckedChange={() => toggleTheme()} />
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-primary-500" /> Guvenlik
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Input label="Mevcut sifre" type="password" placeholder="••••••••" />
-          <Input label="Yeni sifre" type="password" placeholder="••••••••" />
-          <Input label="Yeni sifre (tekrar)" type="password" placeholder="••••••••" />
-          <Button variant="primary" size="sm" onClick={() => toast.success('Sifre basariyla guncellendi')}>Sifreyi Guncelle</Button>
-        </CardContent>
-      </Card>
+      {/* 3. Teslimat adresleri (sadece diyetisyen) */}
+      {isDietitian && <DietitianAddressesCard />}
+
+      {/* 4. Güvenlik — Profil sayfasına yönlendir */}
+      <div className="panel p-5">
+        <h2 className="text-card-title text-surface-800 flex items-center gap-2 mb-1">
+          <Shield className="h-4 w-4 text-primary-500" /> Güvenlik
+        </h2>
+        <p className="text-sm text-surface-500 mb-4">
+          Şifrenizi değiştirmek için Profil sayfasını kullanın.
+        </p>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate(`${basePath}/profil`)}>
+          <User className="h-4 w-4" />
+          Profil sayfasına git
+        </Button>
+      </div>
     </div>
   )
 }

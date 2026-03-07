@@ -23,16 +23,6 @@ import {
 
 const KITS_QUERY_KEY = ['kits'] as const
 
-const W = {
-  olive: '#8B9A4B', oliveLight: '#EEF2DE',
-  orange: '#E8913A', orangeLight: '#FDF0E2',
-  amber: '#F5C842', amberLight: '#FDF8E8',
-  green: '#6ABF69', greenLight: '#E8F5E8',
-  cream: '#F9F7F3', creamDark: '#F0EDE7',
-  warmBorder: '#E8E4DE', dark: '#2D2A26',
-  text: '#4A4640', textLight: '#9C968D', warmGrayLight: '#B5AFA5',
-}
-
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function ProductionCenterPage() {
@@ -230,23 +220,20 @@ export function ProductionCenterPage() {
       {/* Kitler tablosu */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
         <div className="panel">
-          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
+          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
             <div>
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kitler</h3>
-              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Üretim merkezi kit tanımları ({filteredKits.length} kit)</p>
+              <h3 className="text-[15px] font-semibold text-surface-900">Kitler</h3>
+              <p className="text-[12px] mt-0.5 text-surface-500">Üretim merkezi kit tanımları ({filteredKits.length} kit)</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
                 <input
                   type="text"
                   placeholder="Barkod, ad veya ID ara..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors"
-                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = W.olive }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -276,28 +263,28 @@ export function ProductionCenterPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead>
-                <tr style={{ background: W.cream }}>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>ID</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Barkod</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Ad</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Oluşturulma</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Durum</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20" style={{ color: W.textLight }} />
+                <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">ID</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Ad</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Oluşturulma</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20 text-surface-500" />
                 </tr>
               </thead>
               <tbody>
                 {kitsLoading ? (
                   <tr>
                     <td colSpan={6} className="px-5 py-12 text-center">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
-                      <p className="text-[12px]" style={{ color: W.textLight }}>Kit listesi yükleniyor...</p>
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
+                      <p className="text-[12px] text-surface-500">Kit listesi yükleniyor...</p>
                     </td>
                   </tr>
                 ) : paginatedKits.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-5 py-12 text-center text-[12px]" style={{ color: W.textLight }}>
+                    <td colSpan={6} className="px-5 py-12 text-center text-[12px] text-surface-500">
                       {apiKits.length === 0 ? 'Henüz kit yok. Yeni Kit ile ekleyin.' : 'Arama veya filtreye uygun kit bulunamadı.'}
                     </td>
                   </tr>
@@ -305,44 +292,36 @@ export function ProductionCenterPage() {
                   paginatedKits.map((k) => (
                     <tr
                       key={k.id}
-                      className="transition-colors"
-                      style={{ borderBottom: `1px solid ${W.warmBorder}` }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                      className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
                     >
                       <td className="px-5 py-3.5">
-                        <span className="text-[12px] font-mono" style={{ color: W.text }}>{k.id}</span>
+                        <span className="text-[12px] font-mono text-surface-700">{k.id}</span>
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
-                          <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{k.barcode || '—'}</code>
+                          <code className="text-[13px] font-mono font-bold text-surface-900">{k.barcode || '—'}</code>
                           {k.barcode && (
                             <button
                               type="button"
                               onClick={() => handleCopyBarcode(k.barcode, k.id)}
-                              className="p-1 rounded transition-colors"
-                              style={{ color: W.warmGrayLight }}
-                              onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }}
-                              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                              className="p-1 rounded transition-colors text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-300"
                             >
-                              {copiedId === k.id ? <Check className="h-3.5 w-3.5" style={{ color: W.olive }} /> : <Copy className="h-3.5 w-3.5" />}
+                              {copiedId === k.id ? <Check className="h-3.5 w-3.5 text-primary-500" /> : <Copy className="h-3.5 w-3.5" />}
                             </button>
                           )}
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[12px]" style={{ color: W.text }}>{k.name}</span>
+                        <span className="text-[12px] text-surface-700">{k.name}</span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[12px]" style={{ color: W.textLight }}>{formatDate(k.createdAt)}</span>
+                        <span className="text-[12px] text-surface-500">{formatDate(k.createdAt)}</span>
                       </td>
                       <td className="px-5 py-3.5">
                         <span
-                          className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                          style={{
-                            background: k.isActive ? W.oliveLight : W.creamDark,
-                            color: k.isActive ? '#5A6B2A' : W.textLight,
-                          }}
+                          className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${
+                            k.isActive ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'bg-surface-200 dark:bg-surface-300/50 text-surface-500'
+                          }`}
                         >
                           {k.isActive ? 'Aktif' : 'Pasif'}
                         </span>

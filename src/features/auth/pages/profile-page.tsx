@@ -2,17 +2,19 @@ import { useEffect, useState } from 'react'
 import { useCurrentUser, useAuthStore } from '@/stores/auth.store'
 import { getProfile, changePassword } from '@/services/auth.service'
 import { PageHeader } from '@/components/shared/page-header'
-import { Card, CardContent, Button, Avatar, Badge, Input } from '@/components/ui'
+import { Button, Avatar, Input } from '@/components/ui'
 import { USER_ROLE_LABELS } from '@/utils/constants'
 import { formatDate } from '@/lib/utils'
-import { Mail, Shield, Calendar, Edit2, User, Lock, Phone } from 'lucide-react'
+import { Mail, Shield, Calendar, Edit2, Lock, Phone, User } from 'lucide-react'
 import { toast } from 'sonner'
+import { motion } from 'framer-motion'
+
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function ProfilePage() {
   const user = useCurrentUser()
   const updateUser = useAuthStore((s) => s.updateUser)
 
-  const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [rePassword, setRePassword] = useState('')
@@ -46,7 +48,6 @@ export function ProfilePage() {
     try {
       await changePassword(oldPassword, newPassword, rePassword)
       toast.success('Şifre başarıyla değiştirildi')
-      setShowPasswordForm(false)
       setOldPassword('')
       setNewPassword('')
       setRePassword('')
@@ -58,14 +59,23 @@ export function ProfilePage() {
     }
   }
 
+  const infoRows = [
+    { icon: Mail, label: 'E-posta', value: user.email },
+    { icon: Phone, label: 'Telefon', value: user.phone || '—' },
+    { icon: Shield, label: 'Rol', value: USER_ROLE_LABELS[user.role] },
+    { icon: Calendar, label: 'Kayıt tarihi', value: user.createdAt ? formatDate(user.createdAt) : '—' },
+  ]
+
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <PageHeader />
 
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-6">
-            <div className="flex items-center gap-4 shrink-0">
+      {/* İki kart: Profil bilgileri + Şifre değiştir (dashboard panel tarzı) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Profil bilgileri paneli */}
+        <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
+          <div className="panel p-5">
+            <div className="flex items-center gap-4 mb-5 pb-4 border-b border-surface-200">
               <Avatar
                 name={`${user.firstName} ${user.lastName}`}
                 src={user.avatarUrl}
@@ -75,109 +85,95 @@ export function ProfilePage() {
                 <h2 className="text-lg font-semibold text-surface-900">
                   {user.firstName} {user.lastName}
                 </h2>
-                <Badge variant="primary" size="sm" className="mt-1">
+                <span className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-lg text-xs font-medium bg-primary-100 text-primary-700">
+                  <User className="h-3.5 w-3.5" />
                   {USER_ROLE_LABELS[user.role]}
-                </Badge>
+                </span>
               </div>
             </div>
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-50">
-                <Mail className="h-5 w-5 text-surface-400" />
-                <div>
-                  <p className="text-[10px] font-medium text-surface-400 uppercase tracking-wider">E-posta</p>
-                  <p className="text-sm font-medium text-surface-800">{user.email}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-50">
-                <Phone className="h-5 w-5 text-surface-400" />
-                <div>
-                  <p className="text-[10px] font-medium text-surface-400 uppercase tracking-wider">Telefon</p>
-                  <p className="text-sm font-medium text-surface-800">{user.phone || '—'}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-50">
-                <Shield className="h-5 w-5 text-surface-400" />
-                <div>
-                  <p className="text-[10px] font-medium text-surface-400 uppercase tracking-wider">Rol</p>
-                  <p className="text-sm font-medium text-surface-800">{USER_ROLE_LABELS[user.role]}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-50">
-                <Calendar className="h-5 w-5 text-surface-400" />
-                <div>
-                  <p className="text-[10px] font-medium text-surface-400 uppercase tracking-wider">Kayit Tarihi</p>
-                  <p className="text-sm font-medium text-surface-800">{user.createdAt ? formatDate(user.createdAt) : '—'}</p>
-                </div>
-              </div>
+            <h3 className="text-card-title text-surface-800 mb-3">Hesap bilgileri</h3>
+            <ul className="space-y-3">
+              {infoRows.map((row) => {
+                const Icon = row.icon
+                return (
+                  <li key={row.label} className="flex items-center gap-3 p-3 rounded-xl bg-surface-50 border border-surface-200">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-200 text-surface-600">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-medium text-surface-500 uppercase tracking-wider">{row.label}</p>
+                      <p className="text-sm font-semibold text-surface-800 truncate">{row.value}</p>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+            <div className="mt-4 pt-4 border-t border-surface-200">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => toast.success('Profil düzenleme modu açıldı')}
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+                Bilgileri düzenle
+              </Button>
             </div>
           </div>
-          <div className="mt-6 pt-4 border-t border-surface-100 flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => toast.success('Profil duzenleme modu acildi')}>
-              <Edit2 className="h-3.5 w-3.5" /> Bilgileri Duzenle
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPasswordForm(!showPasswordForm)}
-            >
-              <Lock className="h-3.5 w-3.5" /> Sifre Degistir
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </motion.div>
 
-      {showPasswordForm && (
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <h3 className="text-sm font-semibold text-surface-900">Şifre Değiştir</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Şifre değiştir - direkt form (dashboard panel) */}
+        <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
+          <div className="panel p-5">
+            <h3 className="text-card-title text-surface-800 flex items-center gap-2 mb-1">
+              <Lock className="h-4 w-4 text-surface-500" />
+              Şifre değiştir
+            </h3>
+            <p className="text-[12px] text-text-secondary mb-5">
+              Mevcut şifrenizi girip yeni şifrenizi belirleyin.
+            </p>
+            <div className="space-y-4">
               <Input
-                label="Mevcut Şifre"
+                label="Mevcut şifre"
                 type="password"
                 placeholder="••••••••"
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
               />
               <Input
-                label="Yeni Şifre"
+                label="Yeni şifre"
                 type="password"
                 placeholder="••••••••"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
               <Input
-                label="Yeni Şifre (Tekrar)"
+                label="Yeni şifre (tekrar)"
                 type="password"
                 placeholder="••••••••"
                 value={rePassword}
                 onChange={(e) => setRePassword(e.target.value)}
               />
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 mt-5 pt-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setShowPasswordForm(false)
                   setOldPassword('')
                   setNewPassword('')
                   setRePassword('')
                 }}
               >
-                İptal
+                Temizle
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                loading={changingPassword}
-                onClick={handleChangePassword}
-              >
-                Şifreyi Değiştir
+              <Button variant="primary" size="sm" loading={changingPassword} onClick={handleChangePassword}>
+                Şifreyi güncelle
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </motion.div>
+      </div>
     </div>
   )
 }

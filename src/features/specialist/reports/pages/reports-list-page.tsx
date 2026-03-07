@@ -95,9 +95,9 @@ export function SpecialistReportsListPage() {
             <>
               {/* Masaustu: tablo */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-surface-100 bg-surface-50/50">
+                    <tr className="border-b border-surface-200 bg-surface-100 dark:bg-surface-200/80">
                       <th className="text-left text-xs font-semibold text-surface-500 uppercase tracking-wider px-4 py-3">
                         Barkod
                       </th>
@@ -119,14 +119,14 @@ export function SpecialistReportsListPage() {
                     {filtered.map((r) => (
                       <tr
                         key={r.barcode}
-                        className="border-b border-surface-100 hover:bg-surface-50/50 transition-colors"
+                        className="border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40 transition-colors"
                       >
                         <td className="px-4 py-3">
-                          <code className="font-mono text-sm font-semibold text-surface-800">
+                          <code className="font-mono text-sm font-semibold text-surface-800 dark:text-surface-200">
                             {r.barcode}
                           </code>
                         </td>
-                        <td className="px-4 py-3 text-sm text-surface-700">
+                        <td className="px-4 py-3 text-sm text-surface-700 dark:text-surface-300">
                           {r.clientName}
                         </td>
                         <td className="px-4 py-3 text-sm text-surface-500">

@@ -38,7 +38,7 @@ const TableBody = React.forwardRef<
     ref={ref}
     className={cn(
       '[&_tr:last-child]:border-0',
-      '[&_tr:nth-child(even)]:bg-surface-50/40',
+      '[&_tr:nth-child(even)]:bg-surface-50/50 dark:[&_tr:nth-child(even)]:bg-surface-200/30',
       className
     )}
     {...props}
@@ -63,8 +63,8 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
     <tr
       ref={ref}
       className={cn(
-        'border-b border-surface-100/80 transition-colors duration-150',
-        'hover:bg-primary-50/30',
+        'border-b border-surface-200 transition-colors duration-150',
+        'hover:bg-primary-50/30 dark:hover:bg-surface-200/60',
         className
       )}
       {...props}
@@ -81,7 +81,7 @@ const TableHead = React.forwardRef<
     ref={ref}
     className={cn(
       'h-11 px-4 text-left align-middle',
-      'text-[11px] font-semibold uppercase tracking-wider text-surface-500',
+      'text-[11px] font-semibold uppercase tracking-wider text-surface-500 dark:text-surface-400',
       'first:pl-5 last:pr-5',
       className
     )}
@@ -97,7 +97,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      'px-4 py-3.5 align-middle text-sm text-surface-700',
+      'px-4 py-3.5 align-middle text-sm text-surface-700 dark:text-surface-300',
       'first:pl-5 last:pr-5',
       className
     )}

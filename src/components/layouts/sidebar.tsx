@@ -118,19 +118,6 @@ function getNavGroups(role: UserRole): NavGroup[] {
   }
 }
 
-/* Nutrigo warm palette */
-const W = {
-  olive: '#8B9A4B',
-  oliveDark: '#6B7A3B',
-  oliveLight: '#EEF2DE',
-  cream: '#F9F7F3',
-  creamDark: '#F0EDE7',
-  warmBorder: '#E8E4DE',
-  dark: '#2D2A26',
-  text: '#4A4640',
-  textLight: '#9C968D',
-  warmGrayLight: '#B5AFA5',
-}
 
 export function Sidebar() {
   const { collapsed, toggle, mobileOpen, setMobileOpen } = useSidebarStore()
@@ -165,46 +152,36 @@ export function Sidebar() {
       {/* Mobile overlay */}
       <div
         className={cn(
-          'fixed inset-0 z-30 lg:hidden transition-opacity duration-300',
+          'fixed inset-0 z-30 lg:hidden transition-opacity duration-300 bg-black/25',
           mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
-        style={{ background: 'rgba(45,42,38,0.25)' }}
         onClick={() => setMobileOpen(false)}
         aria-hidden
       />
 
       <aside
         className={cn(
-          'fixed left-0 top-0 z-40 h-screen flex flex-col',
+          'fixed left-0 top-0 z-40 h-screen flex flex-col bg-panel border-r border-surface-200',
           'transition-all duration-300 ease-out',
-          collapsed ? 'w-[72px]' : 'w-[260px]',
+          collapsed ? 'w-[72px]' : 'w-[260px] shadow-sidebar',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
-        style={{
-          background: '#FFFFFF',
-          borderRight: `1px solid ${W.warmBorder}`,
-          boxShadow: collapsed ? 'none' : '4px 0 24px rgba(45, 42, 38, 0.06)',
-        }}
       >
         {/* Logo */}
         <div
           className={cn(
-            'flex items-center h-16 px-4',
+            'flex items-center h-16 px-4 border-b border-surface-200',
             collapsed ? 'justify-center' : 'gap-3'
           )}
-          style={{ borderBottom: `1px solid ${W.creamDark}` }}
         >
-          <div
-            className="flex items-center justify-center h-10 w-10 rounded-xl shrink-0"
-            style={{ background: W.olive }}
-          >
+          <div className="flex items-center justify-center h-10 w-10 rounded-xl shrink-0 bg-primary-500">
             <TreePine className="h-5 w-5 text-white" />
           </div>
           {!collapsed && (
             <div className="overflow-hidden min-w-0">
-              <h1 className="text-[13px] font-semibold leading-tight truncate" style={{ color: W.dark }}>OmegaTree</h1>
-              <p className="text-[8px] leading-tight" style={{ color: W.textLight }}>Kit Takip</p>
+              <h1 className="text-[13px] font-semibold leading-tight truncate text-surface-900">OmegaTree</h1>
+              <p className="text-[8px] leading-tight text-surface-500">Kit Takip</p>
             </div>
           )}
         </div>
@@ -214,15 +191,12 @@ export function Sidebar() {
           {navGroups.map((group, gi) => (
             <div key={gi}>
               {!collapsed && group.title && (
-                <p
-                  className="text-[8px] font-semibold uppercase tracking-wider mb-2 px-3"
-                  style={{ color: W.warmGrayLight }}
-                >
+                <p className="text-[8px] font-semibold uppercase tracking-wider mb-2 px-3 text-surface-500">
                   {group.title}
                 </p>
               )}
               {collapsed && group.title && (
-                <div className="h-px my-2 mx-2" style={{ background: W.creamDark }} />
+                <div className="h-px my-2 mx-2 bg-surface-200" />
               )}
               <div className="space-y-0.5">
                 {group.items.map((item) => {
@@ -237,37 +211,21 @@ export function Sidebar() {
                       key={item.href}
                       to={item.href}
                       onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-3 rounded-xl px-3 py-2 text-[12px] font-medium transition-all duration-200"
-                      style={
+                      className={cn(
+                        'flex items-center gap-3 rounded-xl px-3 py-2 text-[12px] font-medium transition-all duration-200',
                         isActive
-                          ? { background: W.oliveLight, color: W.oliveDark }
-                          : { color: W.text }
-                      }
-                      onMouseEnter={(e) => {
-                        if (!isActive) {
-                          e.currentTarget.style.background = W.cream
-                          e.currentTarget.style.color = W.dark
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) {
-                          e.currentTarget.style.background = 'transparent'
-                          e.currentTarget.style.color = W.text
-                        }
-                      }}
+                          ? 'bg-primary-100 text-primary-800'
+                          : 'text-surface-700 hover:bg-surface-100 hover:text-surface-900'
+                      )}
                     >
                       <item.icon
-                        className="h-5 w-5 shrink-0"
-                        style={{ color: isActive ? W.olive : W.warmGrayLight }}
+                        className={cn('h-5 w-5 shrink-0', isActive ? 'text-primary-600' : 'text-surface-500')}
                       />
                       {!collapsed && (
                         <span className="truncate flex-1">{item.label}</span>
                       )}
                       {!collapsed && badge != null && badge > 0 && (
-                        <span
-                          className="flex h-5 min-w-5 items-center justify-center rounded-full text-[8px] font-bold px-1"
-                          style={{ background: W.oliveLight, color: W.olive }}
-                        >
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full text-[8px] font-bold px-1 bg-primary-100 text-primary-600">
                           {badge}
                         </span>
                       )}
@@ -291,7 +249,7 @@ export function Sidebar() {
 
         {/* Diyetisyen: Atanan laboratuvar adresi (her sayfada görünür) */}
         {role === UserRole.DIETITIAN && (
-          <div className="px-3 pb-2" style={{ borderTop: `1px solid ${W.creamDark}` }}>
+          <div className="px-3 pb-2 border-t border-surface-200">
             {collapsed ? (
               assignedLab && (
                 <Tooltip
@@ -304,25 +262,19 @@ export function Sidebar() {
                   }
                   side="right"
                 >
-                  <div
-                    className="flex justify-center py-2 rounded-xl"
-                    style={{ background: W.oliveLight }}
-                  >
-                    <MapPin className="h-5 w-5 shrink-0" style={{ color: W.olive }} />
+                  <div className="flex justify-center py-2 rounded-xl bg-primary-100">
+                    <MapPin className="h-5 w-5 shrink-0 text-primary-600" />
                   </div>
                 </Tooltip>
               )
             ) : assignedLab ? (
-              <div
-                className="rounded-xl p-3 border"
-                style={{ background: W.oliveLight, borderColor: W.warmBorder }}
-              >
+              <div className="rounded-xl p-3 border border-surface-200 bg-primary-50 dark:bg-primary-100/30">
                 <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 shrink-0 mt-0.5" style={{ color: W.olive }} />
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-primary-600" />
                   <div className="min-w-0">
-                    <p className="text-[8px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>Laboratuvarim</p>
-                    <p className="text-[10px] font-semibold mt-0.5 truncate" style={{ color: W.dark }} title={assignedLab.name}>{assignedLab.name}</p>
-                    <p className="text-[9px] mt-1 leading-snug line-clamp-2" style={{ color: W.text }} title={`${assignedLab.address}${assignedLab.district ? `, ${assignedLab.district}` : ''} / ${assignedLab.city}`}>
+                    <p className="text-[8px] font-semibold uppercase tracking-wider text-surface-500">Laboratuvarim</p>
+                    <p className="text-[10px] font-semibold mt-0.5 truncate text-surface-900" title={assignedLab.name}>{assignedLab.name}</p>
+                    <p className="text-[9px] mt-1 leading-snug line-clamp-2 text-surface-700" title={`${assignedLab.address}${assignedLab.district ? `, ${assignedLab.district}` : ''} / ${assignedLab.city}`}>
                       {assignedLab.address}
                       {assignedLab.district ? `, ${assignedLab.district}` : ''} / {assignedLab.city}
                     </p>
@@ -330,31 +282,22 @@ export function Sidebar() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl p-3 border" style={{ background: W.cream, borderColor: W.warmBorder }}>
-                <p className="text-[9px]" style={{ color: W.textLight }}>Atanmis laboratuvar yok.</p>
+              <div className="rounded-xl p-3 border border-surface-200 bg-surface-50">
+                <p className="text-[9px] text-surface-500">Atanmis laboratuvar yok.</p>
               </div>
             )}
           </div>
         )}
 
         {/* Collapse toggle */}
-        <div className="p-3" style={{ borderTop: `1px solid ${W.creamDark}` }}>
+        <div className="p-3 border-t border-surface-200">
           <button
             type="button"
             onClick={toggle}
             className={cn(
-              'flex items-center gap-3 w-full rounded-xl px-3 py-2 text-[11px] transition-all duration-200',
+              'flex items-center gap-3 w-full rounded-xl px-3 py-2 text-[11px] transition-all duration-200 text-surface-500 hover:bg-surface-100 hover:text-surface-800',
               collapsed && 'justify-center'
             )}
-            style={{ color: W.warmGrayLight }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = W.cream
-              e.currentTarget.style.color = W.text
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.color = W.warmGrayLight
-            }}
           >
             <ChevronLeft
               className={cn(

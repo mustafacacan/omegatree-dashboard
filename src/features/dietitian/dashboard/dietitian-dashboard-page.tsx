@@ -63,7 +63,7 @@ const recentActivities = [
   { icon: AlertTriangle, color: W.amber, bg: W.amberLight, text: 'Stok uyarisi: 5 kit kaldi', time: 'Dun' },
 ]
 
-const tooltipStyle = { background: '#fff', border: `1px solid ${W.warmBorder}`, borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', fontSize: '12px', padding: '10px 14px' }
+const tooltipStyle = { background: 'var(--color-panel)', border: '1px solid var(--color-border)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', fontSize: '12px', padding: '10px 14px' }
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function DietitianDashboardPage() {
@@ -86,32 +86,32 @@ export function DietitianDashboardPage() {
       <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-[22px] font-bold" style={{ color: W.dark }}>
+            <h1 className="text-[22px] font-bold text-surface-900">
               {greeting}, {user?.firstName || 'Diyetisyen'}! <span className="inline-block">&#x1F44B;</span>
             </h1>
-            <p className="text-[13px] mt-0.5" style={{ color: W.textLight }}>
+            <p className="text-[13px] mt-0.5 text-surface-500">
               Danisanlariniz, kitler ve raporlara genel bakis
             </p>
           </div>
           <div className="min-w-0 max-w-full sm:max-w-md">
             {assignedLabLoading ? (
-              <div className="rounded-xl p-3.5 border" style={{ background: W.cream, borderColor: W.warmBorder }}>
-                <p className="text-[12px]" style={{ color: W.textLight }}>Laboratuvar bilgileri yukleniyor...</p>
+              <div className="rounded-xl p-3.5 border bg-surface-50 border-surface-200">
+                <p className="text-[12px] text-surface-500">Laboratuvar bilgileri yukleniyor...</p>
               </div>
             ) : assignedLab ? (
-              <div className="rounded-xl p-3.5 border" style={{ background: W.oliveLight, borderColor: W.warmBorder }}>
+              <div className="rounded-xl p-3.5 border bg-primary-50 dark:bg-primary-100/30 border-surface-200">
                 <div className="flex items-start gap-2.5">
-                  <MapPin className="h-4 w-4 shrink-0 mt-0.5" style={{ color: W.olive }} />
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-primary-600" />
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>Size atanan laboratuvar</p>
-                    <p className="text-[13px] font-semibold mt-0.5" style={{ color: W.dark }}>{assignedLab.name}</p>
-                    <p className="text-[12px] mt-1 leading-snug" style={{ color: W.text }}>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Size atanan laboratuvar</p>
+                    <p className="text-[13px] font-semibold mt-0.5 text-surface-900">{assignedLab.name}</p>
+                    <p className="text-[12px] mt-1 leading-snug text-surface-700">
                       {assignedLab.address}
                       {assignedLab.district ? `, ${assignedLab.district}` : ''} / {assignedLab.city}
                       {assignedLab.postalCode ? ` ${assignedLab.postalCode}` : ''}
                     </p>
                     {(assignedLab.cargofirm || assignedLab.cargoNumber) && (
-                      <p className="text-[11px] mt-1" style={{ color: W.textLight }}>
+                      <p className="text-[11px] mt-1 text-surface-500">
                         Kargo: {assignedLab.cargofirm ?? '-'}{assignedLab.cargoNumber ? ` / ${assignedLab.cargoNumber}` : ''}
                       </p>
                     )}
@@ -119,8 +119,8 @@ export function DietitianDashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl p-3.5 border" style={{ background: W.cream, borderColor: W.warmBorder }}>
-                <p className="text-[12px]" style={{ color: W.textLight }}>Size atanmis laboratuvar bulunmuyor.</p>
+              <div className="rounded-xl p-3.5 border bg-surface-50 border-surface-200">
+                <p className="text-[12px] text-surface-500">Size atanmis laboratuvar bulunmuyor.</p>
               </div>
             )}
           </div>
@@ -139,16 +139,16 @@ export function DietitianDashboardPage() {
           const up = s.change >= 0
           return (
             <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.06 }}>
-              <div className="rounded-2xl p-5 transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+              <div className="rounded-2xl p-5 transition-shadow hover:shadow-md bg-panel border border-surface-200">
                 <div className="flex items-center gap-3.5">
                   <div className="h-12 w-12 rounded-full flex items-center justify-center shrink-0" style={{ background: s.iconBg }}>
                     <Icon className="h-5 w-5" style={{ color: s.iconColor }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: W.textLight }}>{s.title}</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-surface-500">{s.title}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xl font-bold" style={{ color: W.dark }}>{s.value}</span>
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: up ? W.greenLight : '#FDE8E8', color: up ? '#3D8B3D' : '#C53030' }}>
+                      <span className="text-xl font-bold text-surface-900">{s.value}</span>
+                      <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${up ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
                         {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
                         {up ? '+' : ''}{s.change}
                       </span>
@@ -166,15 +166,15 @@ export function DietitianDashboardPage() {
 
         {/* Monthly new clients bar chart */}
         <motion.div className="col-span-12 lg:col-span-8" {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
-          <div className="rounded-2xl p-5" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+          <div className="rounded-2xl p-5 bg-panel border border-surface-200">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Yeni Danisan Trendi</h3>
-                <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Aylik yeni danisan sayisi</p>
+                <h3 className="text-[15px] font-semibold text-surface-900">Yeni Danisan Trendi</h3>
+                <p className="text-[12px] mt-0.5 text-surface-500">Aylik yeni danisan sayisi</p>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: W.oliveLight }}>
-                <TrendingUp className="h-3.5 w-3.5" style={{ color: W.olive }} />
-                <span className="text-[12px] font-bold" style={{ color: W.olive }}>+24 danisan</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary-100">
+                <TrendingUp className="h-3.5 w-3.5 text-primary-600" />
+                <span className="text-[12px] font-bold text-primary-600">+24 danisan</span>
               </div>
             </div>
             <div className="h-[220px]">
@@ -186,9 +186,9 @@ export function DietitianDashboardPage() {
                       <stop offset="100%" stopColor="#F5B06B" stopOpacity={0.85} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={W.creamDark} vertical={false} />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: W.warmGrayLight }} dy={6} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: W.warmGrayLight }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-200)" vertical={false} />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-surface-500)' }} dy={6} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-surface-500)' }} />
                   <ReTooltip contentStyle={tooltipStyle} formatter={(v: number | undefined) => [`${v ?? 0} danisan`, 'Yeni']} cursor={{ fill: 'rgba(0,0,0,0.03)', radius: 8 }} />
                   <Bar dataKey="yeni" fill="url(#barDiet)" radius={[8, 8, 4, 4]} />
                 </BarChart>
@@ -199,13 +199,13 @@ export function DietitianDashboardPage() {
 
         {/* Kit status donut */}
         <motion.div className="col-span-12 lg:col-span-4" {...fadeUp} transition={{ duration: 0.35, delay: 0.15 }}>
-          <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+          <div className="rounded-2xl p-5 h-full bg-panel border border-surface-200">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kit Durumlarim</h3>
-                <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Tum kitlerin dagilimi</p>
+                <h3 className="text-[15px] font-semibold text-surface-900">Kit Durumlarim</h3>
+                <p className="text-[12px] mt-0.5 text-surface-500">Tum kitlerin dagilimi</p>
               </div>
-              <span className="text-xl font-black" style={{ color: W.dark }}>29</span>
+              <span className="text-xl font-black text-surface-900">29</span>
             </div>
             <div className="relative h-[150px] flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
@@ -217,8 +217,8 @@ export function DietitianDashboardPage() {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-lg font-black" style={{ color: W.dark }}>29</p>
-                  <p className="text-[9px]" style={{ color: W.textLight }}>Toplam</p>
+                  <p className="text-lg font-black text-surface-900">29</p>
+                  <p className="text-[9px] text-surface-500">Toplam</p>
                 </div>
               </div>
             </div>
@@ -226,8 +226,8 @@ export function DietitianDashboardPage() {
               {myKitPie.map((item) => (
                 <div key={item.name} className="flex items-center gap-2.5">
                   <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: item.color }} />
-                  <span className="text-[12px] flex-1" style={{ color: W.text }}>{item.name}</span>
-                  <span className="text-[12px] font-bold" style={{ color: W.dark }}>{item.value}</span>
+                  <span className="text-[12px] flex-1 text-surface-700">{item.name}</span>
+                  <span className="text-[12px] font-bold text-surface-900">{item.value}</span>
                 </div>
               ))}
             </div>
@@ -240,21 +240,21 @@ export function DietitianDashboardPage() {
 
         {/* Recent Clients */}
         <motion.div className="col-span-12 lg:col-span-5" {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
-          <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+          <div className="rounded-2xl p-5 h-full bg-panel border border-surface-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Son Danisanlar</h3>
-              <button type="button" onClick={() => navigate(ROUTES.DIYETISYEN_DANISANLAR)} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
+              <h3 className="text-[15px] font-semibold text-surface-900">Son Danisanlar</h3>
+              <button type="button" onClick={() => navigate(ROUTES.DIYETISYEN_DANISANLAR)} className="flex items-center gap-1 text-[11px] font-semibold text-primary-600 hover:opacity-80">
                 Tumu <ArrowUpRight className="h-3 w-3" />
               </button>
             </div>
             <div className="space-y-2">
               {recentClients.map((c) => (
-                <button key={c.id} type="button" onClick={() => navigate(danisanDetayPath(c.id))} className="flex items-center justify-between w-full p-3 rounded-xl text-left transition-colors" style={{ background: W.cream }} onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }} onMouseLeave={(e) => { e.currentTarget.style.background = W.cream }}>
+                <button key={c.id} type="button" onClick={() => navigate(danisanDetayPath(c.id))} className="flex items-center justify-between w-full p-3 rounded-xl text-left transition-colors bg-surface-50 hover:bg-surface-100">
                   <div className="flex items-center gap-3">
                     <Avatar name={c.name} size="sm" />
                     <div>
-                      <p className="text-[12px] font-semibold" style={{ color: W.dark }}>{c.name}</p>
-                      <p className="text-[10px]" style={{ color: W.textLight }}>{c.lastVisit}</p>
+                      <p className="text-[12px] font-semibold text-surface-900">{c.name}</p>
+                      <p className="text-[10px] text-surface-500">{c.lastVisit}</p>
                     </div>
                   </div>
                   <StatusBadge status={c.kitStatus} size="sm" />
@@ -266,39 +266,39 @@ export function DietitianDashboardPage() {
 
         {/* Active Kit Timeline */}
         <motion.div className="col-span-12 lg:col-span-4" {...fadeUp} transition={{ duration: 0.35, delay: 0.25 }}>
-          <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+          <div className="rounded-2xl p-5 h-full bg-panel border border-surface-200">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Aktif Kit Takibi</h3>
-              <button type="button" onClick={() => navigate(ROUTES.DIYETISYEN_KITLER)} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
+              <h3 className="text-[15px] font-semibold text-surface-900">Aktif Kit Takibi</h3>
+              <button type="button" onClick={() => navigate(ROUTES.DIYETISYEN_KITLER)} className="flex items-center gap-1 text-[11px] font-semibold text-primary-600 hover:opacity-80">
                 Kitlerim <ArrowUpRight className="h-3 w-3" />
               </button>
             </div>
-            <code className="text-[11px] font-mono block mb-4" style={{ color: W.textLight }}>OT-2025-00142</code>
+            <code className="text-[11px] font-mono block mb-4 text-surface-500">OT-2025-00142</code>
             <Timeline steps={activeKitTimeline} />
           </div>
         </motion.div>
 
         {/* Activity feed with timeline line */}
         <motion.div className="col-span-12 lg:col-span-3" {...fadeUp} transition={{ duration: 0.35, delay: 0.3 }}>
-          <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+          <div className="rounded-2xl p-5 h-full bg-panel border border-surface-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Aktivite</h3>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ background: W.greenLight }}>
-                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: W.green }} />
-                <span className="text-[9px] font-semibold" style={{ color: '#3D8B3D' }}>Canli</span>
+              <h3 className="text-[15px] font-semibold text-surface-900">Aktivite</h3>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30">
+                <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-green-500" />
+                <span className="text-[9px] font-semibold text-green-700 dark:text-green-400">Canli</span>
               </div>
             </div>
             <div className="relative">
-              <div className="absolute left-[15px] top-3 bottom-3 w-px" style={{ background: `linear-gradient(to bottom, ${W.warmBorder}, transparent)` }} />
+              <div className="absolute left-[15px] top-3 bottom-3 w-px bg-gradient-to-b from-surface-200 to-transparent" />
               <div className="space-y-1">
                 {recentActivities.map((a, i) => (
-                  <div key={i} className="relative flex items-start gap-3 p-2 rounded-xl hover:bg-[#FAF8F5] transition-colors">
-                    <div className="relative z-10 h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ring-[3px] ring-white" style={{ background: a.bg }}>
+                  <div key={i} className="relative flex items-start gap-3 p-2 rounded-xl hover:bg-surface-50 transition-colors">
+                    <div className="relative z-10 h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ring-[3px] ring-panel" style={{ background: a.bg }}>
                       <a.icon className="h-3.5 w-3.5" style={{ color: a.color }} />
                     </div>
                     <div className="min-w-0 flex-1 pt-0.5">
-                      <p className="text-[11px] font-medium leading-snug" style={{ color: W.text }}>{a.text}</p>
-                      <p className="text-[10px] mt-0.5 flex items-center gap-1" style={{ color: W.warmGrayLight }}>
+                      <p className="text-[11px] font-medium leading-snug text-surface-700">{a.text}</p>
+                      <p className="text-[10px] mt-0.5 flex items-center gap-1 text-surface-500">
                         <Clock className="h-2.5 w-2.5" />{a.time}
                       </p>
                     </div>
@@ -312,18 +312,18 @@ export function DietitianDashboardPage() {
 
       {/* ═══ STOCK WARNING ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.35 }}>
-        <div className="rounded-2xl p-5" style={{ background: W.amberLight, border: '1px solid #F0DFA0' }}>
+        <div className="rounded-2xl p-5 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div className="flex items-center gap-6">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center" style={{ background: '#F5E6A0' }}>
-                <Package className="h-6 w-6" style={{ color: '#B8960A' }} />
+              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-amber-200 dark:bg-amber-800/50">
+                <Package className="h-6 w-6 text-amber-700 dark:text-amber-400" />
               </div>
               <div>
-                <p className="font-semibold" style={{ color: '#78600A' }}>Stok Uyarisi</p>
-                <p className="text-[13px]" style={{ color: '#9C7D0A' }}>Stogunuzda 5 kit kaldi. Yeni siparis vermenizi oneririz.</p>
+                <p className="font-semibold text-amber-800 dark:text-amber-200">Stok Uyarisi</p>
+                <p className="text-[13px] text-amber-700 dark:text-amber-300">Stogunuzda 5 kit kaldi. Yeni siparis vermenizi oneririz.</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="shrink-0" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)} style={{ borderColor: '#D4B830', color: '#78600A' }}>
+            <Button variant="outline" size="sm" className="shrink-0 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)}>
               Siparis Ver
             </Button>
           </div>

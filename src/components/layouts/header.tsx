@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore, useCurrentUser } from '@/stores/auth.store'
 import { useSidebarStore } from '@/stores/sidebar.store'
+import { useThemeStore } from '@/stores/theme.store'
 import {
   Avatar,
   DropdownMenu,
@@ -19,22 +20,10 @@ import {
   User,
   Menu,
   X,
+  Moon,
+  Sun,
 } from 'lucide-react'
 
-/* Nutrigo warm palette */
-const W = {
-  olive: '#8B9A4B',
-  oliveLight: '#EEF2DE',
-  orange: '#E8913A',
-  orangeLight: '#FDF0E2',
-  cream: '#F9F7F3',
-  creamDark: '#F0EDE7',
-  warmBorder: '#E8E4DE',
-  dark: '#2D2A26',
-  text: '#4A4640',
-  textLight: '#9C968D',
-  warmGrayLight: '#B5AFA5',
-}
 
 function getPageTitle(pathname: string): string {
   if (pathname === ROUTES.YONETICI) return 'Yonetici Paneli'
@@ -85,6 +74,7 @@ export function Header() {
   const user = useCurrentUser()
   const { logout } = useAuthStore()
   const { mobileOpen, setMobileOpen } = useSidebarStore()
+  const { theme, toggleTheme } = useThemeStore()
   const navigate = useNavigate()
   const location = useLocation()
   const basePath = getBasePath(location.pathname)
@@ -94,31 +84,23 @@ export function Header() {
 
   return (
     <header
-      className="sticky top-0 z-30 h-16"
-      style={{
-        background: 'rgba(255,255,255,0.88)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        borderBottom: `1px solid ${W.warmBorder}`,
-        boxShadow: '0 1px 0 0 rgba(255,255,255,0.8) inset, 0 2px 8px rgba(45,42,38,0.04)',
-      }}
+      className="sticky top-0 z-30 h-16 bg-panel/90 dark:bg-surface-100/90 backdrop-blur-md border-b border-surface-200 shadow-sm"
     >
       <div className="h-full flex items-center justify-between px-4 lg:px-6">
         {/* Left side */}
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
-            className="lg:hidden p-2.5 rounded-xl transition-colors"
-            style={{ color: W.text }}
+            className="lg:hidden p-2.5 rounded-xl transition-colors text-surface-700"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
           <div className="min-w-0">
-            <h2 className="text-[15px] sm:text-[17px] font-semibold truncate" style={{ color: W.dark }}>
+            <h2 className="text-[15px] sm:text-[17px] font-semibold truncate text-surface-900">
               {pageTitle}
             </h2>
-            <p className="hidden sm:block text-[11px] truncate" style={{ color: W.textLight }}>
+            <p className="hidden sm:block text-[11px] truncate text-surface-500">
               {USER_ROLE_LABELS[user.role]} paneli
             </p>
           </div>
@@ -126,20 +108,33 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          {/* Dark mode toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-2.5 rounded-xl transition-colors text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-200"
+            title={theme === 'dark' ? 'Açık moda geç' : 'Koyu moda geç'}
+            aria-label={theme === 'dark' ? 'Açık moda geç' : 'Koyu moda geç'}
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
+          </button>
+
           {/* Notification dropdown */}
           <NotificationDropdown />
 
           {/* Divider */}
-          <div className="h-6 w-px mx-1.5" style={{ background: W.warmBorder }} />
+          <div className="h-6 w-px mx-1.5 bg-surface-200" />
 
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-2.5 rounded-xl py-1.5 px-2.5 transition-colors"
-                onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                className="flex items-center gap-2.5 rounded-xl py-1.5 px-2.5 transition-colors hover:bg-surface-100"
               >
                 <Avatar
                   name={`${user.firstName} ${user.lastName}`}
@@ -147,10 +142,10 @@ export function Header() {
                   size="sm"
                 />
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-[13px] font-medium leading-tight" style={{ color: W.dark }}>
+                  <span className="text-[13px] font-medium leading-tight text-surface-900">
                     {user.firstName} {user.lastName}
                   </span>
-                  <span className="text-[11px] leading-tight" style={{ color: W.textLight }}>
+                  <span className="text-[11px] leading-tight text-surface-500">
                     {USER_ROLE_LABELS[user.role]}
                   </span>
                 </div>
@@ -159,8 +154,8 @@ export function Header() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col gap-0.5">
-                  <p className="text-sm font-medium" style={{ color: W.dark }}>{user.firstName} {user.lastName}</p>
-                  <p className="text-xs" style={{ color: W.textLight }}>{user.email}</p>
+                  <p className="text-sm font-medium text-surface-900">{user.firstName} {user.lastName}</p>
+                  <p className="text-xs text-surface-500">{user.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

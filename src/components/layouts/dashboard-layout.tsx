@@ -9,7 +9,7 @@ export function DashboardLayout() {
   const location = useLocation()
 
   return (
-    <div className="min-h-screen relative" style={{ background: '#F4F6EE' }}>
+    <div className="min-h-screen relative bg-surface-100">
       <Sidebar />
 
       <div

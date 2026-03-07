@@ -9,7 +9,7 @@ import { motion } from 'framer-motion'
 import {
   Package, Users, ShoppingCart, TrendingUp, TrendingDown,
   Clock, CheckCircle, AlertTriangle, Truck, BarChart3,
-  ArrowUpRight, ArrowRight, Search,
+  ArrowUpRight, ArrowRight,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
@@ -98,12 +98,12 @@ const fadeUp = {
 }
 
 const tooltipStyle = {
-  background: '#fff',
-  border: `1px solid ${W.warmBorder}`,
   borderRadius: '12px',
   boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
   fontSize: '12px',
   padding: '10px 14px',
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-panel)',
 }
 
 export function AdminDashboardPage() {
@@ -115,19 +115,13 @@ export function AdminDashboardPage() {
 
           {/* ═══════ GREETING ═══════ */}
           <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-[22px] font-bold" style={{ color: W.dark }}>
-                  Merhaba, {user?.firstName || 'Admin'}! <span className="inline-block animate-[wave_1.5s_ease-in-out_infinite]">&#x1F44B;</span>
-                </h1>
-                <p className="text-[13px] mt-0.5" style={{ color: W.textLight }}>
-                  Bugunun ozetini inceleyelim. Sisteminiz aktif ve saglikli.
-                </p>
-              </div>
-              <div className="hidden md:flex items-center gap-2 h-10 px-4 rounded-xl border" style={{ background: '#fff', borderColor: W.warmBorder }}>
-                <Search className="h-4 w-4" style={{ color: W.warmGrayLight }} />
-                <span className="text-[13px]" style={{ color: W.warmGrayLight }}>Ara...</span>
-              </div>
+            <div>
+              <h1 className="text-[22px] font-bold text-surface-900">
+                Merhaba, {user?.firstName || 'Admin'}! <span className="inline-block animate-[wave_1.5s_ease-in-out_infinite]">&#x1F44B;</span>
+              </h1>
+              <p className="text-[13px] mt-0.5 text-surface-500">
+                Bugunun ozetini inceleyelim. Sisteminiz aktif ve saglikli.
+              </p>
             </div>
           </motion.div>
 
@@ -143,7 +137,7 @@ export function AdminDashboardPage() {
               const up = s.change >= 0
               return (
                 <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.06 }}>
-                  <div className={`rounded-2xl bg-white border border-border p-5 min-h-[122px] hover-lift cursor-default flex items-center ${s.accent}`}>
+                  <div className={`rounded-2xl bg-panel border border-border p-5 min-h-[122px] hover-lift cursor-default flex items-center ${s.accent}`}>
                     <div className="flex items-center gap-3.5">
                       <div className={`h-12 w-12 rounded-full flex items-center justify-center shrink-0 bg-gradient-to-br ${s.bgClass}`}>
                         <Icon className={`h-5 w-5 ${s.iconClass}`} />
@@ -180,9 +174,9 @@ export function AdminDashboardPage() {
                     <h3 className="text-card-title">Gelir Trendi</h3>
                     <p className="text-[12px] mt-0.5 text-text-secondary">Aylik gelir ozeti (bin TL)</p>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: W.oliveLight }}>
-                    <TrendingUp className="h-3.5 w-3.5" style={{ color: W.olive }} />
-                    <span className="text-[12px] font-bold" style={{ color: W.olive }}>+16.9%</span>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary-100">
+                    <TrendingUp className="h-3.5 w-3.5 text-primary-600" />
+                    <span className="text-[12px] font-bold text-primary-600">+16.9%</span>
                   </div>
                 </div>
                 <div className="h-[260px] flex-1 min-h-[220px]">
@@ -194,9 +188,9 @@ export function AdminDashboardPage() {
                           <stop offset="100%" stopColor="#F5B06B" stopOpacity={0.85} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke={W.creamDark} vertical={false} />
-                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: W.warmGrayLight }} dy={6} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: W.warmGrayLight }} tickFormatter={(v: number) => `${v}K`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-200)" vertical={false} />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-surface-500)' }} dy={6} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-surface-500)' }} tickFormatter={(v: number) => `${v}K`} />
                       <ReTooltip
                         contentStyle={tooltipStyle}
                         formatter={(v: number | undefined) => [`${v ?? 0}K TL`, 'Gelir']}
@@ -241,8 +235,8 @@ export function AdminDashboardPage() {
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
-                      <p className="text-[11px]" style={{ color: W.textLight }}>Toplam</p>
-                      <p className="text-xl font-black" style={{ color: W.dark }}>1,332</p>
+                      <p className="text-[11px] text-surface-500">Toplam</p>
+                      <p className="text-xl font-black text-surface-900">1,332</p>
                     </div>
                   </div>
                 </div>
@@ -253,9 +247,9 @@ export function AdminDashboardPage() {
                     return (
                       <div key={item.name} className="flex items-center gap-2.5">
                         <div className="w-3 h-3 rounded-sm shrink-0" style={{ background: item.color }} />
-                        <span className="text-[12px] flex-1" style={{ color: W.text }}>{item.name}</span>
-                        <span className="text-[12px] font-bold" style={{ color: W.dark }}>{item.value}</span>
-                        <span className="text-[10px] w-8 text-right" style={{ color: W.textLight }}>{pct}%</span>
+                        <span className="text-[12px] flex-1 text-surface-700">{item.name}</span>
+                        <span className="text-[12px] font-bold text-surface-900">{item.value}</span>
+                        <span className="text-[10px] w-8 text-right text-surface-500">{pct}%</span>
                       </div>
                     )
                   })}
@@ -285,7 +279,7 @@ export function AdminDashboardPage() {
                           <stop offset="100%" stopColor="#A8B86A" stopOpacity={0.7} />
                         </linearGradient>
                       </defs>
-                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: W.warmGrayLight }} dy={4} />
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--color-surface-500)' }} dy={4} />
                       <YAxis hide />
                       <ReTooltip contentStyle={tooltipStyle} formatter={(v: number | undefined) => [`${v ?? 0} kit`, 'Kit']} cursor={false} />
                       <Bar dataKey="value" fill="url(#barOlive)" radius={[6, 6, 2, 2]} />
@@ -300,31 +294,28 @@ export function AdminDashboardPage() {
               <div className="panel p-5 h-full flex flex-col">
                 <div className="flex items-center justify-between min-h-[54px] mb-4">
                   <h3 className="text-card-title">Canli Aktivite</h3>
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: W.greenLight }}>
-                    <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: W.green }} />
-                    <span className="text-[10px] font-semibold" style={{ color: '#3D8B3D' }}>Canli</span>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
+                    <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-green-500" />
+                    <span className="text-[10px] font-semibold text-green-700 dark:text-green-400">Canli</span>
                   </div>
                 </div>
 
                 <div className="relative flex-1">
                   {/* Timeline line */}
-                  <div
-                    className="absolute left-[19px] top-4 bottom-4 w-px"
-                    style={{ background: `linear-gradient(to bottom, ${W.warmBorder}, transparent)` }}
-                  />
+                  <div className="absolute left-[19px] top-4 bottom-4 w-px bg-gradient-to-b from-surface-200 to-transparent" />
 
                   <div className="space-y-1">
                     {recentActivity.map((act, i) => (
-                      <div key={i} className="relative flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-[#FAF8F5] transition-colors cursor-pointer group">
+                      <div key={i} className="relative flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-surface-50 transition-colors cursor-pointer group">
                         <div
-                          className="relative z-10 h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ring-[3px] ring-white transition-transform group-hover:scale-105"
+                          className="relative z-10 h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ring-[3px] ring-panel transition-transform group-hover:scale-105"
                           style={{ background: act.bg }}
                         >
                           <act.icon className="h-4.5 w-4.5" style={{ color: act.color }} />
                         </div>
                         <div className="min-w-0 flex-1 pt-1">
-                          <p className="text-[12px] font-medium leading-snug" style={{ color: W.text }}>{act.text}</p>
-                          <p className="text-[10px] mt-1 flex items-center gap-1" style={{ color: W.warmGrayLight }}>
+                          <p className="text-[12px] font-medium leading-snug text-surface-700">{act.text}</p>
+                          <p className="text-[10px] mt-1 flex items-center gap-1 text-surface-500">
                             <Clock className="h-2.5 w-2.5" />
                             {act.time}
                           </p>
@@ -350,11 +341,11 @@ export function AdminDashboardPage() {
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">
                             <div className="w-2.5 h-2.5 rounded-sm" style={{ background: cat.color }} />
-                            <span className="text-[12px] font-medium" style={{ color: W.text }}>{cat.label}</span>
+                            <span className="text-[12px] font-medium text-surface-700">{cat.label}</span>
                           </div>
-                          <span className="text-[12px] font-bold" style={{ color: W.dark }}>{cat.count}</span>
+                          <span className="text-[12px] font-bold text-surface-900">{cat.count}</span>
                         </div>
-                        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: W.creamDark }}>
+                        <div className="w-full h-2 rounded-full overflow-hidden bg-surface-100">
                           <motion.div
                             className="h-full rounded-full"
                             style={{ background: cat.color }}
@@ -368,9 +359,9 @@ export function AdminDashboardPage() {
                   })}
                 </div>
 
-                <div className="flex items-center justify-between mt-6 pt-4" style={{ borderTop: `1px solid ${W.warmBorder}` }}>
-                  <span className="text-[12px]" style={{ color: W.textLight }}>Toplam</span>
-                  <span className="text-lg font-bold" style={{ color: W.dark }}>1,332</span>
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-surface-200">
+                  <span className="text-[12px] text-surface-500">Toplam</span>
+                  <span className="text-lg font-bold text-surface-900">1,332</span>
                 </div>
               </div>
             </motion.div>
@@ -384,7 +375,7 @@ export function AdminDashboardPage() {
                     type="button"
                     onClick={() => navigate(ROUTES.YONETICI_STOK)}
                     className="flex items-center gap-1 text-[11px] font-semibold hover:opacity-80 transition-opacity"
-                    style={{ color: W.olive }}
+                    className="text-primary-600 hover:opacity-80"
                   >
                     Tumunu Gor <ArrowUpRight className="h-3 w-3" />
                   </button>
@@ -394,21 +385,18 @@ export function AdminDashboardPage() {
                   {recentKits.map((kit) => (
                     <div
                       key={kit.barcode}
-                      className="flex items-center justify-between p-3.5 rounded-xl transition-colors cursor-pointer hover:shadow-sm"
-                      style={{ background: W.cream, border: `1px solid transparent` }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = W.warmBorder; e.currentTarget.style.background = '#fff' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = W.cream }}
+                      className="flex items-center justify-between p-3.5 rounded-xl transition-colors cursor-pointer hover:shadow-sm bg-surface-50 hover:bg-panel border border-transparent hover:border-surface-200"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg flex items-center justify-center" style={{ background: W.oliveLight }}>
-                          <Package className="h-4 w-4" style={{ color: W.olive }} />
+                        <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-primary-100">
+                          <Package className="h-4 w-4 text-primary-600" />
                         </div>
                         <div>
-                          <code className="text-[12px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
+                          <code className="text-[12px] font-mono font-bold text-surface-900">{kit.barcode}</code>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[10px]" style={{ color: W.textLight }}>{kit.dietitian}</span>
-                            <span className="text-[10px]" style={{ color: W.warmGrayLight }}>·</span>
-                            <span className="text-[10px]" style={{ color: W.textLight }}>{kit.date}</span>
+                            <span className="text-[10px] text-surface-500">{kit.dietitian}</span>
+                            <span className="text-[10px] text-surface-500">·</span>
+                            <span className="text-[10px] text-surface-500">{kit.date}</span>
                           </div>
                         </div>
                       </div>
@@ -424,7 +412,7 @@ export function AdminDashboardPage() {
               <div className="panel p-5 h-full flex flex-col">
                 <div className="flex items-center justify-between min-h-[54px] mb-4">
                   <h3 className="text-card-title">En Iyi Diyetisyenler</h3>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md" style={{ background: W.oliveLight, color: W.olive }}>Bu Ay</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-primary-100 text-primary-600">Bu Ay</span>
                 </div>
 
                 <div className="space-y-4 flex-1">
@@ -448,12 +436,12 @@ export function AdminDashboardPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <p className="text-[12px] font-semibold truncate" style={{ color: W.dark }}>{dt.name}</p>
-                            <span className="text-[12px] font-bold shrink-0" style={{ color: W.olive }}>{formatCurrency(dt.revenue)}</span>
+                            <p className="text-[12px] font-semibold truncate text-surface-900">{dt.name}</p>
+                            <span className="text-[12px] font-bold shrink-0 text-primary-600">{formatCurrency(dt.revenue)}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px]" style={{ color: W.textLight }}>{dt.kits} kit</span>
-                            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: W.creamDark }}>
+                            <span className="text-[10px] text-surface-500">{dt.kits} kit</span>
+                            <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-surface-100">
                               <motion.div
                                 className="h-full rounded-full"
                                 style={{ background: `linear-gradient(90deg, ${W.olive}, ${W.green})` }}
@@ -472,10 +460,7 @@ export function AdminDashboardPage() {
                 <button
                   type="button"
                   onClick={() => navigate(ROUTES.YONETICI_KULLANICILAR)}
-                  className="w-full mt-5 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[12px] font-medium transition-colors"
-                  style={{ background: W.oliveLight, color: W.olive }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = W.oliveLight }}
+                  className="w-full mt-5 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[12px] font-medium transition-colors bg-primary-100 text-primary-600 hover:bg-surface-100"
                 >
                   Tum Diyetisyenleri Gor <ArrowRight className="h-3.5 w-3.5" />
                 </button>

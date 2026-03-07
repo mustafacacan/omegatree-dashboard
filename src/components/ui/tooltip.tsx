@@ -16,6 +16,7 @@ const TooltipContent = React.forwardRef<
       sideOffset={sideOffset}
       className={cn(
         'z-50 overflow-hidden rounded-md bg-surface-900 px-2.5 py-1.5 text-xs text-white shadow-md',
+        'dark:bg-surface-200 dark:text-surface-900',
         'animate-scale-in',
         className
       )}
@@ -27,7 +28,7 @@ TooltipContent.displayName = 'TooltipContent'
 
 interface TooltipProps {
   children: React.ReactNode
-  content: string
+  content: React.ReactNode
   side?: 'top' | 'right' | 'bottom' | 'left'
   delayDuration?: number
 }

@@ -20,14 +20,6 @@ const ORDERS_QUERY_KEY = ['orders'] as const
 const STOCKS_AVAILABLE_QUERY_KEY = ['stocks', 'available'] as const
 const EMPTY_ORDERS: OrderItem[] = []
 
-const W = {
-  olive: '#8B9A4B', oliveLight: '#EEF2DE',
-  orange: '#E8913A', orangeLight: '#FDF0E2',
-  warmBorder: '#E8E4DE', dark: '#2D2A26',
-  text: '#4A4640', textLight: '#9C968D', warmGrayLight: '#B5AFA5',
-  cream: '#F9F7F3', creamDark: '#F0EDE7',
-}
-
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function OrdersPage() {
@@ -312,57 +304,54 @@ export function OrdersPage() {
       {/* Siparişler tablosu */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
         <div className="panel">
-          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
+          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
             <div>
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Siparişler</h3>
-              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
+              <h3 className="text-[15px] font-semibold text-surface-900">Siparişler</h3>
+              <p className="text-[12px] mt-0.5 text-surface-500">
                 Ödemesi diyetisyen panelinde yapılan siparişler ({filteredOrders.length} sipariş)
               </p>
             </div>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
               <input
                 type="text"
                 placeholder="Sipariş no, müşteri veya paket ara..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-56 outline-none transition-colors"
-                style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = W.olive }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-56 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
               />
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead>
-                <tr style={{ background: W.cream }}>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Sipariş No</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Müşteri</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Paket</th>
-                  <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Adet</th>
-                  <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Tutar</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Durum</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Ödeme</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Tarih</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>İşlem</th>
+                <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Sipariş No</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Müşteri</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Paket</th>
+                  <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Adet</th>
+                  <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Tutar</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Ödeme</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Tarih</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">İşlem</th>
                 </tr>
               </thead>
               <tbody>
                 {ordersLoading ? (
                   <tr>
                     <td colSpan={9} className="px-5 py-12 text-center">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
-                      <p className="text-[12px]" style={{ color: W.textLight }}>Sipariş listesi yükleniyor...</p>
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
+                      <p className="text-[12px] text-surface-500">Sipariş listesi yükleniyor...</p>
                     </td>
                   </tr>
                 ) : paginatedOrders.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-5 py-12 text-center">
-                      <Package className="h-10 w-10 mx-auto mb-2" style={{ color: W.warmGrayLight }} />
-                      <p className="text-[12px] font-medium" style={{ color: W.text }}>Sipariş bulunamadı</p>
-                      <p className="text-[11px] mt-0.5" style={{ color: W.textLight }}>
+                      <Package className="h-10 w-10 mx-auto mb-2 text-surface-400" />
+                      <p className="text-[12px] font-medium text-surface-700">Sipariş bulunamadı</p>
+                      <p className="text-[11px] mt-0.5 text-surface-500">
                         {search.trim() ? 'Arama kriterine uygun sipariş yok.' : 'Henüz sipariş kaydı yok.'}
                       </p>
                     </td>
@@ -377,50 +366,49 @@ export function OrdersPage() {
                     return (
                       <tr
                         key={order.id}
-                        className="transition-colors"
-                        style={{ borderBottom: `1px solid ${W.warmBorder}` }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                        className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
                       >
                         <td className="px-5 py-3.5">
-                          <span className="text-[12px] font-mono font-semibold" style={{ color: W.dark }}>{order.orderNumber ?? order.id}</span>
+                          <span className="text-[12px] font-mono font-semibold text-surface-900">{order.orderNumber ?? order.id}</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[12px]" style={{ color: W.text }}>{userName}</span>
+                          <span className="text-[12px] text-surface-700">{userName}</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[12px]" style={{ color: W.text }}>{order.salesKit?.name ?? '—'}</span>
+                          <span className="text-[12px] text-surface-700">{order.salesKit?.name ?? '—'}</span>
                         </td>
                         <td className="px-5 py-3.5 text-right">
-                          <span className="text-[12px] tabular-nums" style={{ color: W.text }}>{order.quantity}</span>
+                          <span className="text-[12px] tabular-nums text-surface-700">{order.quantity}</span>
                         </td>
                         <td className="px-5 py-3.5 text-right">
-                          <span className="text-[12px] font-semibold tabular-nums" style={{ color: W.dark }}>{formatCurrency(Number.isFinite(totalPrice) ? totalPrice : 0)}</span>
+                          <span className="text-[12px] font-semibold tabular-nums text-surface-900">{formatCurrency(Number.isFinite(totalPrice) ? totalPrice : 0)}</span>
                         </td>
                         <td className="px-5 py-3.5">
                           <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                            style={{
-                              background: storeOrder && storeOrder.assignedBarcodes.length >= storeOrder.qty ? W.oliveLight : storeOrder && storeOrder.assignedBarcodes.length > 0 ? W.creamDark : W.orangeLight,
-                              color: storeOrder && storeOrder.assignedBarcodes.length >= storeOrder.qty ? '#5A6B2A' : storeOrder && storeOrder.assignedBarcodes.length > 0 ? W.text : '#B56B1E',
-                            }}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${
+                              storeOrder && storeOrder.assignedBarcodes.length >= storeOrder.qty
+                                ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                                : storeOrder && storeOrder.assignedBarcodes.length > 0
+                                  ? 'bg-surface-200 dark:bg-surface-300/50 text-surface-700'
+                                  : 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'
+                            }`}
                           >
                             {statusLabel}
                           </span>
                         </td>
                         <td className="px-5 py-3.5">
                           <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                            style={{
-                              background: order.paymenStatus === 'paid' ? W.oliveLight : W.creamDark,
-                              color: order.paymenStatus === 'paid' ? '#5A6B2A' : W.textLight,
-                            }}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${
+                              order.paymenStatus === 'paid'
+                                ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                                : 'bg-surface-200 dark:bg-surface-300/50 text-surface-500'
+                            }`}
                           >
                             {paymentLabel}
                           </span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[12px]" style={{ color: W.textLight }}>{order.createdAt ? formatDate(order.createdAt) : '—'}</span>
+                          <span className="text-[12px] text-surface-500">{order.createdAt ? formatDate(order.createdAt) : '—'}</span>
                         </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-1">
@@ -504,13 +492,12 @@ export function OrdersPage() {
                     return (
                       <div key={step} className="flex items-center gap-2 flex-1">
                         <div
-                          className={isActive ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-bold text-sm text-white' : isDone ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-bold text-sm text-white bg-green-600' : 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium border-2 border-surface-300 text-surface-500'}
-                          style={isActive ? { background: W.olive } : {}}
+                          className={isActive ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-bold text-sm text-white bg-primary-500' : isDone ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-bold text-sm text-white bg-green-600' : 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium border-2 border-surface-300 text-surface-500'}
                         >
                           {isDone && !isActive ? <CheckCircle className="h-4 w-4" /> : step}
                         </div>
-                        <span className={`text-xs font-medium ${isActive ? '' : 'text-surface-500'}`} style={isActive ? { color: W.dark } : {}}>{label}</span>
-                        {i < 2 && <div className="flex-1 h-0.5 min-w-[12px] rounded" style={{ background: isDone ? W.olive : W.warmBorder }} />}
+                        <span className={`text-xs font-medium ${isActive ? 'text-surface-900 dark:text-surface-100' : 'text-surface-500'}`}>{label}</span>
+                        {i < 2 && <div className={`flex-1 h-0.5 min-w-[12px] rounded ${isDone ? 'bg-primary-500' : 'bg-surface-200'}`} />}
                       </div>
                     )
                   })}
@@ -520,8 +507,8 @@ export function OrdersPage() {
               <ModalBody className="space-y-5 overflow-y-auto flex-1">
                 {selectedOrderDetailLoading && (
                   <div className="py-10 text-center">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
-                    <p className="text-sm" style={{ color: W.textLight }}>Sipariş detayı yükleniyor...</p>
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
+                    <p className="text-sm text-surface-500">Sipariş detayı yükleniyor...</p>
                   </div>
                 )}
 

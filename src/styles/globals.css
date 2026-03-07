@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Neutral surface palette - nutrigo style */
   --color-surface-50: #FBFCF7;
@@ -54,6 +56,7 @@
   /* Clean borders - warm */
   --color-border: #E8E4DE;
   --color-border-hover: #D8D3CB;
+  --color-panel: #fff;
 
   /* Soft shadows - depth without heaviness */
   --shadow-sm: 0 1px 2px rgba(45, 42, 38, 0.04);
@@ -99,6 +102,41 @@
   --animate-slide-up: slide-up 0.35s ease-out;
   --animate-scale-in: scale-in 0.2s ease-out;
   --animate-shimmer: shimmer 2s ease-in-out infinite;
+}
+
+/* Koyu mod – tema değişkenleri */
+.dark {
+  --color-surface-50: #1a1c18;
+  --color-surface-100: #252822;
+  --color-surface-200: #32362e;
+  --color-surface-300: #43483d;
+  --color-surface-400: #646b5d;
+  --color-surface-500: #8f9683;
+  --color-surface-600: #b2b9a6;
+  --color-surface-700: #d7ddca;
+  --color-surface-800: #e7ebdd;
+  --color-surface-900: #f4f6ee;
+  --color-surface-950: #fbfcf7;
+  --color-primary-50: #1e2612;
+  --color-primary-100: #2b3915;
+  --color-primary-200: #3d4d1f;
+  --color-primary-300: #5e7531;
+  --color-primary-400: #77923e;
+  --color-primary-500: #8aa64a;
+  --color-primary-600: #9ab45b;
+  --color-primary-700: #b2c97f;
+  --color-text-primary: #f4f6ee;
+  --color-text-secondary: #b2b9a6;
+  --color-text-muted: #8f9683;
+  --color-border: #32362e;
+  --color-border-hover: #43483d;
+  --color-panel: #252822;
+}
+
+/* Koyu modda beyaz arka planları panel rengine çevir */
+.dark .bg-white,
+.dark [class*="bg-white"] {
+  background-color: var(--color-panel) !important;
 }
 
 @keyframes fade-in {
@@ -147,7 +185,7 @@
     font-family: var(--font-sans);
     font-size: var(--text-body-size);
     font-weight: var(--text-body-weight);
-    background: #F4F6EE;
+    background: var(--color-surface-100);
     color: var(--color-text-primary);
     min-height: 100vh;
     line-height: 1.5;
@@ -162,10 +200,15 @@
     pointer-events: none;
     z-index: 0;
   }
+  .dark body::before {
+    background-image: radial-gradient(circle at 1px 1px, rgba(139, 154, 75, 0.08) 1px, transparent 0);
+  }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #D8D3CB; border-radius: 999px; }
   ::-webkit-scrollbar-thumb:hover { background: #B5AFA5; }
+  .dark ::-webkit-scrollbar-thumb { background: #43483d; }
+  .dark ::-webkit-scrollbar-thumb:hover { background: #646b5d; }
 
   /* Selection - warm olive tint */
   ::selection {
@@ -231,7 +274,7 @@
 
   /* Card / panel - primary surface for tables and content blocks */
   .panel {
-    background: #fff;
+    background: var(--color-panel);
     border-radius: var(--radius-2xl);
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow-card);
@@ -246,6 +289,12 @@
   }
   .shadow-panel {
     box-shadow: var(--shadow-md);
+  }
+  .shadow-sidebar {
+    box-shadow: 4px 0 24px rgba(45, 42, 38, 0.06);
+  }
+  .dark .shadow-sidebar {
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
   }
 
   /* Page content entrance */

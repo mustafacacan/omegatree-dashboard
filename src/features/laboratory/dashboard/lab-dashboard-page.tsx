@@ -45,7 +45,7 @@ const LAB_PIPELINE_STATUSES = [
   KitStatus.COMPLETED,
 ] as const
 
-const tooltipStyle = { background: '#fff', border: `1px solid ${W.warmBorder}`, borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', fontSize: '12px', padding: '10px 14px' }
+const tooltipStyle = { background: 'var(--color-panel)', border: '1px solid var(--color-border)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', fontSize: '12px', padding: '10px 14px' }
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function LabDashboardPage() {
@@ -111,8 +111,8 @@ export function LabDashboardPage() {
       {/* ═══ GREETING + Hizli baglantilar ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35 }} className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold" style={{ color: W.dark }}>Laboratuvar Paneli</h1>
-          <p className="text-[13px] mt-0.5" style={{ color: W.textLight }}>Numune havuzu, analiz surecleri ve performans ozeti</p>
+          <h1 className="text-[22px] font-bold text-surface-900">Laboratuvar Paneli</h1>
+          <p className="text-[13px] mt-0.5 text-surface-500">Numune havuzu, analiz surecleri ve performans ozeti</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR_HAVUZ)} className="gap-1.5">
@@ -141,14 +141,14 @@ export function LabDashboardPage() {
           const Icon = s.icon
           return (
           <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.06 }}>
-            <div className="rounded-2xl p-5 transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+            <div className="rounded-2xl p-5 transition-shadow hover:shadow-md bg-panel border border-surface-200">
               <div className="flex items-center gap-3.5">
                 <div className="h-12 w-12 rounded-full flex items-center justify-center shrink-0" style={{ background: s.iconBg }}>
                   <Icon className="h-5 w-5" style={{ color: s.iconColor }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: W.textLight }}>{s.title}</p>
-                  <span className="text-xl font-bold" style={{ color: W.dark }}>{s.value}</span>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-surface-500">{s.title}</p>
+                  <span className="text-xl font-bold text-surface-900">{s.value}</span>
                 </div>
               </div>
             </div>
@@ -160,23 +160,23 @@ export function LabDashboardPage() {
       {/* ═══ ROW 1: Daily Chart + Pipeline Donut ═══ */}
       <div className="grid grid-cols-12 gap-4">
         <motion.div className="col-span-12 lg:col-span-8" {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
-          <div className="rounded-2xl p-5" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+          <div className="rounded-2xl p-5 bg-panel border border-surface-200">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Haftalik Analiz Trendi</h3>
-                <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Gelen numuneler vs tamamlanan analizler</p>
+                <h3 className="text-[15px] font-semibold text-surface-900">Haftalik Analiz Trendi</h3>
+                <p className="text-[12px] mt-0.5 text-surface-500">Gelen numuneler vs tamamlanan analizler</p>
               </div>
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm" style={{ background: W.orange }} /><span className="text-[10px]" style={{ color: W.textLight }}>Gelen</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm" style={{ background: W.olive }} /><span className="text-[10px]" style={{ color: W.textLight }}>Tamamlanan</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-orange-400" /><span className="text-[10px] text-surface-500">Gelen</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-primary-500" /><span className="text-[10px] text-surface-500">Tamamlanan</span></div>
               </div>
             </div>
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailyAnalysis} barGap={4} barSize={18}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={W.creamDark} vertical={false} />
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: W.warmGrayLight }} dy={6} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: W.warmGrayLight }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-200)" vertical={false} />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-surface-500)' }} dy={6} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-surface-500)' }} />
                   <ReTooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(0,0,0,0.03)', radius: 8 }} />
                   <Bar dataKey="gelen" fill={W.orange} radius={[6, 6, 0, 0]} name="Gelen" opacity={0.8} />
                   <Bar dataKey="tamamlanan" fill={W.olive} radius={[6, 6, 0, 0]} name="Tamamlanan" />
@@ -187,10 +187,10 @@ export function LabDashboardPage() {
         </motion.div>
 
         <motion.div className="col-span-12 lg:col-span-4" {...fadeUp} transition={{ duration: 0.35, delay: 0.15 }}>
-          <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+          <div className="rounded-2xl p-5 h-full bg-panel border border-surface-200">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Duruma Gore Istatistik</h3>
-              <span className="text-xl font-black" style={{ color: W.dark }}>{totalPipeline}</span>
+              <h3 className="text-[15px] font-semibold text-surface-900">Duruma Gore Istatistik</h3>
+              <span className="text-xl font-black text-surface-900">{totalPipeline}</span>
             </div>
             <div className="relative h-[150px] flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
@@ -202,8 +202,8 @@ export function LabDashboardPage() {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex items-center justify-center text-center">
                 <div>
-                  <p className="text-lg font-black" style={{ color: W.dark }}>{totalPipeline}</p>
-                  <p className="text-[9px]" style={{ color: W.textLight }}>Toplam</p>
+                  <p className="text-lg font-black text-surface-900">{totalPipeline}</p>
+                  <p className="text-[9px] text-surface-500">Toplam</p>
                 </div>
               </div>
             </div>
@@ -211,8 +211,8 @@ export function LabDashboardPage() {
               {pipelinePieData.map((item) => (
                 <div key={item.status} className="flex items-center gap-2.5">
                   <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: item.color }} />
-                  <span className="text-[12px] flex-1" style={{ color: W.text }}>{item.name}</span>
-                  <span className="text-[12px] font-bold" style={{ color: W.dark }}>{item.value}</span>
+                  <span className="text-[12px] flex-1 text-surface-700">{item.name}</span>
+                  <span className="text-[12px] font-bold text-surface-900">{item.value}</span>
                 </div>
               ))}
             </div>
@@ -225,13 +225,13 @@ export function LabDashboardPage() {
 
         {/* Queue */}
         <motion.div className="col-span-12 lg:col-span-5" {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
-          <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
+          <div className="rounded-2xl p-5 h-full bg-panel border border-surface-200">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4" style={{ color: W.orange }} />
-                <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Numune Sirasi</h3>
+                <Zap className="h-4 w-4 text-orange-500" />
+                <h3 className="text-[15px] font-semibold text-surface-900">Numune Sirasi</h3>
               </div>
-              <button type="button" onClick={() => navigate(ROUTES.LABORATUVAR_HAVUZ)} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
+              <button type="button" onClick={() => navigate(ROUTES.LABORATUVAR_HAVUZ)} className="flex items-center gap-1 text-[11px] font-semibold text-primary-600 hover:opacity-80">
                 Havuza Git <ArrowUpRight className="h-3 w-3" />
               </button>
             </div>
@@ -240,16 +240,16 @@ export function LabDashboardPage() {
                 <p className="text-[12px] text-surface-500 py-4 text-center">Havuzda bekleyen numune yok</p>
               ) : (
                 queueItems.map((item) => (
-                  <div key={item.barcode} className="flex items-center justify-between p-3 rounded-xl transition-colors" style={{ background: W.cream }} onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }} onMouseLeave={(e) => { e.currentTarget.style.background = W.cream }}>
+                  <div key={item.barcode} className="flex items-center justify-between p-3 rounded-xl transition-colors bg-surface-50 hover:bg-surface-100">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: W.orangeLight }}>
-                        <TestTubes className="h-4 w-4" style={{ color: W.orange }} />
+                      <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-orange-100 dark:bg-orange-900/30">
+                        <TestTubes className="h-4 w-4 text-orange-500" />
                       </div>
                       <div className="min-w-0">
                         <button type="button" onClick={() => setDetailBarcode(item.barcode)} className="text-left block w-full">
-                          <code className="text-[12px] font-mono font-bold hover:underline" style={{ color: W.dark }}>{item.barcode}</code>
+                          <code className="text-[12px] font-mono font-bold hover:underline text-surface-900">{item.barcode}</code>
                         </button>
-                        <p className="text-[10px]" style={{ color: W.textLight }}>Gelis: {item.receivedAt}</p>
+                        <p className="text-[10px] text-surface-500">Gelis: {item.receivedAt}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -265,8 +265,8 @@ export function LabDashboardPage() {
 
         {/* Recent completed */}
         <motion.div className="col-span-12 lg:col-span-4" {...fadeUp} transition={{ duration: 0.35, delay: 0.25 }}>
-          <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-            <h3 className="text-[15px] font-semibold mb-4" style={{ color: W.dark }}>Son Tamamlananlar</h3>
+          <div className="rounded-2xl p-5 h-full bg-panel border border-surface-200">
+            <h3 className="text-[15px] font-semibold mb-4 text-surface-900">Son Tamamlananlar</h3>
             <div className="space-y-3">
               {recentCompleted.length === 0 ? (
                 <p className="text-[12px] text-surface-500 py-4 text-center">Henuz tamamlanan yok</p>
@@ -276,67 +276,66 @@ export function LabDashboardPage() {
                     key={item.barcode}
                     type="button"
                     onClick={() => setDetailBarcode(item.barcode)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl text-left hover:opacity-90 transition-opacity"
-                    style={{ background: W.greenLight }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl text-left hover:opacity-90 transition-opacity bg-green-100 dark:bg-green-900/30"
                   >
-                    <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#C8E6C8' }}>
-                      <CheckCircle className="h-4 w-4" style={{ color: '#3D8B3D' }} />
+                    <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-green-200 dark:bg-green-800/50">
+                      <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <code className="text-[12px] font-mono font-bold block" style={{ color: '#2D5A2D' }}>{item.barcode}</code>
-                      <p className="text-[10px]" style={{ color: '#4A7A4A' }}>{item.completedAt}</p>
+                      <code className="text-[12px] font-mono font-bold block text-green-800 dark:text-green-200">{item.barcode}</code>
+                      <p className="text-[10px] text-green-700 dark:text-green-300">{item.completedAt}</p>
                     </div>
-                    <Eye className="h-3.5 w-3.5 shrink-0" style={{ color: '#4A7A4A' }} />
+                    <Eye className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
                   </button>
                 ))
               )}
             </div>
 
             {/* Kor Protocol mini */}
-            <div className="rounded-xl p-4 mt-4 text-center" style={{ background: W.dark }}>
-              <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg mb-2" style={{ background: 'rgba(139,154,75,0.2)' }}>
-                <ShieldCheck className="h-5 w-5" style={{ color: W.olive }} />
+            <div className="rounded-xl p-4 mt-4 text-center bg-surface-800 dark:bg-surface-700">
+              <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg mb-2 bg-primary-500/20">
+                <ShieldCheck className="h-5 w-5 text-primary-400" />
               </div>
               <p className="text-[11px] font-semibold text-white">Kor Protokol Aktif</p>
-              <p className="text-[10px] mt-1" style={{ color: '#9C968D' }}>Danisan bilgileri gizlidir</p>
+              <p className="text-[10px] mt-1 text-surface-400">Danisan bilgileri gizlidir</p>
             </div>
           </div>
         </motion.div>
 
         {/* Performance gauge */}
         <motion.div className="col-span-12 lg:col-span-3" {...fadeUp} transition={{ duration: 0.35, delay: 0.3 }}>
-          <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-            <h3 className="text-[15px] font-semibold mb-2" style={{ color: W.dark }}>Verimlilik</h3>
+          <div className="rounded-2xl p-5 h-full bg-panel border border-surface-200">
+            <h3 className="text-[15px] font-semibold mb-2 text-surface-900">Verimlilik</h3>
             <div className="flex flex-col items-center">
               <div className="h-[120px] w-[120px] relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadialBarChart cx="50%" cy="50%" innerRadius="70%" outerRadius="100%" startAngle={90} endAngle={-270} data={performanceData}>
-                    <RadialBar background={{ fill: W.creamDark }} dataKey="value" cornerRadius={12} />
+                    <RadialBar background={{ fill: 'var(--color-surface-200)' }} dataKey="value" cornerRadius={12} />
                   </RadialBarChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <p className="text-2xl font-black" style={{ color: W.dark }}>{performanceValue}<span className="text-sm" style={{ color: W.textLight }}>%</span></p>
+                  <p className="text-2xl font-black text-surface-900">{performanceValue}<span className="text-sm text-surface-500">%</span></p>
                 </div>
               </div>
-              <p className="text-[11px] text-center mt-2" style={{ color: W.textLight }}>Zamaninda tamamlanma</p>
+              <p className="text-[11px] text-center mt-2 text-surface-500">Zamaninda tamamlanma</p>
 
-              <div className="w-full space-y-3 mt-4 pt-4" style={{ borderTop: `1px solid ${W.warmBorder}` }}>
+              <div className="w-full space-y-3 mt-4 pt-4 border-t border-surface-200">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px]" style={{ color: W.textLight }}>Ort. Sure</span>
-                    <span className="text-[10px] font-bold" style={{ color: W.olive }}>3.2 gun</span>
+                    <span className="text-[10px] text-surface-500">Ort. Sure</span>
+                    <span className="text-[10px] font-bold text-primary-600">3.2 gun</span>
                   </div>
-                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: W.creamDark }}>
-                    <div className="h-full rounded-full" style={{ width: '68%', background: W.olive }} />
+                  <div className="w-full h-1.5 rounded-full overflow-hidden bg-surface-200">
+                    <div className="h-full rounded-full bg-primary-500" style={{ width: '68%' }} />
                   </div>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px]" style={{ color: W.textLight }}>Kalite Skoru</span>
-                    <span className="text-[10px] font-bold" style={{ color: W.green }}>4.9/5</span>
+                    <span className="text-[10px] text-surface-500">Kalite Skoru</span>
+                    <span className="text-[10px] font-bold text-green-600 dark:text-green-400">4.9/5</span>
                   </div>
-                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: W.creamDark }}>
-                    <div className="h-full rounded-full" style={{ width: '98%', background: W.green }} />
+                  <div className="w-full h-1.5 rounded-full overflow-hidden bg-surface-200">
+                    <div className="h-full rounded-full bg-green-500" style={{ width: '98%' }} />
                   </div>
                 </div>
               </div>

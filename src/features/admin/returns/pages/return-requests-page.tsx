@@ -25,14 +25,6 @@ import { getStocks, type Stock } from '@/services/stocks.service'
 const DAMAGED_KITS_QUERY_KEY = ['damaged-kits'] as const
 const STOCKS_AVAILABLE_QUERY_KEY = ['stocks', 'available'] as const
 
-const W = {
-  olive: '#8B9A4B',
-  cream: '#F9F7F3',
-  warmBorder: '#E8E4DE',
-  dark: '#2D2A26',
-  text: '#4A4640',
-  textLight: '#9C968D',
-}
 
 function dietitianName(d: DamagedKit): string {
   const raw = d as unknown
@@ -475,17 +467,17 @@ export function ReturnRequestsPage() {
               )}
 
               {damagedLoading && (
-                <div className="rounded-xl p-4" style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}>
-                  <p className="text-sm" style={{ color: W.textLight }}>Yukleniyor...</p>
+                <div className="rounded-xl p-4 bg-panel border border-surface-200">
+                  <p className="text-sm text-surface-500">Yukleniyor...</p>
                 </div>
               )}
 
               {!damagedLoading && returnRequests.length === 0 && (
                 <div
                   className="rounded-xl p-4"
-                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
+                  className="rounded-xl p-4 bg-panel border border-surface-200"
                 >
-                  <p className="text-sm font-medium" style={{ color: W.text }}>
+                  <p className="text-sm font-medium text-surface-700">
                     Bekleyen iade talebi bulunmuyor.
                   </p>
                 </div>
@@ -494,8 +486,7 @@ export function ReturnRequestsPage() {
               {returnRequests.map((d) => (
                 <div
                   key={d.id ?? kitBarcode(d)}
-                  className="rounded-xl p-4 flex flex-col xl:flex-row gap-4 xl:items-center xl:justify-between cursor-pointer"
-                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
+                  className="rounded-xl p-4 bg-panel border border-surface-200 flex flex-col xl:flex-row gap-4 xl:items-center xl:justify-between cursor-pointer"
                   role="button"
                   tabIndex={0}
                   onClick={() => {
@@ -509,17 +500,17 @@ export function ReturnRequestsPage() {
                   }}
                 >
                   <div className="space-y-1.5">
-                    <p className="text-sm font-semibold" style={{ color: W.dark }}>
+                    <p className="text-sm font-semibold text-surface-900">
                       {kitBarcode(d)} - {dietitianName(d)}
                     </p>
-                    <p className="text-xs" style={{ color: W.textLight }}>
-                      Durum: <span className="font-semibold" style={{ color: W.text }}>{damagedStatusValue(d)}</span>
+                    <p className="text-xs text-surface-500">
+                      Durum: <span className="font-semibold text-surface-700">{damagedStatusValue(d)}</span>
                     </p>
-                    <p className="text-sm" style={{ color: W.text }}>
+                    <p className="text-sm text-surface-700">
                       <span className="font-medium">Neden:</span>{' '}
                       {d.reason || '-'}
                     </p>
-                    <p className="text-xs" style={{ color: W.textLight }}>
+                    <p className="text-xs text-surface-500">
                       Talep Tarihi:{' '}
                       {d.createdAt ? formatDateTime(d.createdAt) : '-'}
                     </p>
@@ -578,18 +569,18 @@ export function ReturnRequestsPage() {
               {damagedLoading && (
                 <div
                   className="rounded-xl p-4"
-                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
+                  className="rounded-xl p-4 bg-panel border border-surface-200"
                 >
-                  <p className="text-sm" style={{ color: W.textLight }}>Yukleniyor...</p>
+                  <p className="text-sm text-surface-500">Yukleniyor...</p>
                 </div>
               )}
 
               {!damagedLoading && filteredHistory.length === 0 && (
                 <div
                   className="rounded-xl p-4"
-                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
+                  className="rounded-xl p-4 bg-panel border border-surface-200"
                 >
-                  <p className="text-sm font-medium" style={{ color: W.text }}>
+                  <p className="text-sm font-medium text-surface-700">
                     Iade gecmisi kaydi bulunmuyor. Onaylanan talepler burada listelenir.
                   </p>
                 </div>
@@ -599,19 +590,19 @@ export function ReturnRequestsPage() {
                 <div
                   key={d.id ?? kitBarcode(d)}
                   className="rounded-xl p-4 flex flex-wrap items-center justify-between gap-3"
-                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
+                  className="rounded-xl p-4 bg-panel border border-surface-200"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: W.dark }}>
+                      <p className="text-sm font-semibold text-surface-900">
                         {kitBarcode(d)} · {dietitianName(d)}
                         <span className="ml-2 font-normal text-surface-500">{damagedStatusValue(d)}</span>
                       </p>
-                      <p className="text-sm mt-0.5" style={{ color: W.text }}>
+                      <p className="text-sm mt-0.5 text-surface-700">
                         <span className="font-medium">Neden:</span> {d.reason || '-'}
                       </p>
-                      <p className="text-xs mt-1" style={{ color: W.textLight }}>
+                      <p className="text-xs mt-1 text-surface-500">
                         Talep: {d.createdAt ? formatDateTime(d.createdAt) : '-'}
                       </p>
                       <div className="flex flex-wrap gap-2 mt-2">
@@ -736,44 +727,44 @@ export function ReturnRequestsPage() {
                 {(selectedReturnRequestDetailsLoading || selectedReturnRequestDetailsError) && (
                   <div
                     className="rounded-xl p-4"
-                    style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}
+                    className="rounded-xl p-4 bg-panel border border-surface-200"
                   >
                     {selectedReturnRequestDetailsLoading ? (
-                      <p className="text-sm" style={{ color: W.textLight }}>Detay yukleniyor...</p>
+                      <p className="text-sm text-surface-500">Detay yukleniyor...</p>
                     ) : (
-                      <p className="text-sm" style={{ color: W.textLight }}>Detay alinamadi. Liste verisi gosteriliyor.</p>
+                      <p className="text-sm text-surface-500">Detay alinamadi. Liste verisi gosteriliyor.</p>
                     )}
                   </div>
                 )}
 
-                <div className="rounded-xl p-4" style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: W.textLight }}>
+                <div className="rounded-xl p-4 bg-panel border border-surface-200">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider mb-3 text-surface-500">
                     Talep bilgileri
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className="text-xs" style={{ color: W.textLight }}>Talep No</p>
-                      <p className="font-semibold" style={{ color: W.dark }}>#{requestIdValue(modalRequest) ?? '—'}</p>
+                      <p className="text-xs text-surface-500">Talep No</p>
+                      <p className="font-semibold text-surface-900">#{requestIdValue(modalRequest) ?? '—'}</p>
                     </div>
                     <div>
-                      <p className="text-xs" style={{ color: W.textLight }}>Durum</p>
-                      <p className="font-semibold" style={{ color: W.text }}>{damagedStatusLabel(modalRequest)}</p>
+                      <p className="text-xs text-surface-500">Durum</p>
+                      <p className="font-semibold text-surface-700">{damagedStatusLabel(modalRequest)}</p>
                     </div>
                     <div>
-                      <p className="text-xs" style={{ color: W.textLight }}>Kit</p>
-                      <p className="font-semibold" style={{ color: W.dark }}>ID: {kitIdValue(modalRequest) ?? '—'}</p>
+                      <p className="text-xs text-surface-500">Kit</p>
+                      <p className="font-semibold text-surface-900">ID: {kitIdValue(modalRequest) ?? '—'}</p>
                     </div>
                     <div>
-                      <p className="text-xs" style={{ color: W.textLight }}>Talep tarihi</p>
-                      <p className="font-semibold" style={{ color: W.text }}>
+                      <p className="text-xs text-surface-500">Talep tarihi</p>
+                      <p className="font-semibold text-surface-700">
                         {typeof modalRequest.createdAt === 'string' && modalRequest.createdAt
                           ? formatDateTime(modalRequest.createdAt)
                           : '—'}
                       </p>
                     </div>
                     <div className="sm:col-span-2">
-                      <p className="text-xs" style={{ color: W.textLight }}>Neden</p>
-                      <p className="font-semibold" style={{ color: W.text }}>
+                      <p className="text-xs text-surface-500">Neden</p>
+                      <p className="font-semibold text-surface-700">
                         {typeof modalRequest.reason === 'string' && modalRequest.reason.trim() !== ''
                           ? modalRequest.reason
                           : '—'}
@@ -782,30 +773,30 @@ export function ReturnRequestsPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl p-4" style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: W.textLight }}>
+                <div className="rounded-xl p-4 bg-panel border border-surface-200">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider mb-3 text-surface-500">
                     Diyetisyen bilgileri
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className="text-xs" style={{ color: W.textLight }}>Ad Soyad</p>
-                      <p className="font-semibold" style={{ color: W.dark }}>{dietitianName(modalRequest as unknown as DamagedKit)}</p>
+                      <p className="text-xs text-surface-500">Ad Soyad</p>
+                      <p className="font-semibold text-surface-900">{dietitianName(modalRequest as unknown as DamagedKit)}</p>
                     </div>
                     <div>
-                      <p className="text-xs" style={{ color: W.textLight }}>Telefon</p>
-                      <p className="font-semibold" style={{ color: W.text }}>{dietitianPhone(modalRequest)}</p>
+                      <p className="text-xs text-surface-500">Telefon</p>
+                      <p className="font-semibold text-surface-700">{dietitianPhone(modalRequest)}</p>
                     </div>
                     <div className="sm:col-span-2">
-                      <p className="text-xs" style={{ color: W.textLight }}>E-posta</p>
-                      <p className="font-semibold" style={{ color: W.text }}>{dietitianEmail(modalRequest)}</p>
+                      <p className="text-xs text-surface-500">E-posta</p>
+                      <p className="font-semibold text-surface-700">{dietitianEmail(modalRequest)}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Kanıt medya (backend döndürüyorsa) */}
-                <div className="rounded-xl p-4" style={{ background: W.cream, border: `1px solid ${W.warmBorder}` }}>
+                <div className="rounded-xl p-4 bg-panel border border-surface-200">
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500">
                       Kanıt
                     </h4>
                     {requestMediaUrl && (
@@ -815,7 +806,7 @@ export function ReturnRequestsPage() {
                     )}
                   </div>
                   {!requestMediaUrl ? (
-                    <p className="text-sm" style={{ color: W.textLight }}>Kanıt dosyası bulunmuyor.</p>
+                    <p className="text-sm text-surface-500">Kanıt dosyası bulunmuyor.</p>
                   ) : requestMediaIsPdf ? (
                     <PdfViewer file={requestMediaUrl} maxHeight="40vh" />
                   ) : (

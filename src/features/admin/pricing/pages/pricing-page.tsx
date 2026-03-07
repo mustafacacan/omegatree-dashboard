@@ -27,18 +27,6 @@ import { TablePagination } from '@/components/shared/table-pagination'
 
 const SALES_KITS_QUERY_KEY = ['sales-kits'] as const
 
-const W = {
-  olive: '#8B9A4B',
-  oliveLight: '#EEF2DE',
-  warmBorder: '#E8E4DE',
-  dark: '#2D2A26',
-  text: '#4A4640',
-  textLight: '#9C968D',
-  warmGrayLight: '#B5AFA5',
-  cream: '#F9F7F3',
-  creamDark: '#F0EDE7',
-}
-
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function PricingPage() {
@@ -262,41 +250,24 @@ export function PricingPage() {
 
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
         <div className="panel">
-          <div
-            className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-            style={{ borderBottom: `1px solid ${W.warmBorder}` }}
-          >
+          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
             <div>
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>
+              <h3 className="text-[15px] font-semibold text-surface-900">
                 Fiyatlandırma — Satış kitleri
               </h3>
-              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
+              <p className="text-[12px] mt-0.5 text-surface-500">
                 Kayıtlı satış kitleri ({filteredList.length} adet)
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <div className="relative">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5"
-                  style={{ color: W.warmGrayLight }}
-                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
                 <input
                   type="text"
                   placeholder="Ad veya açıklama ara..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors"
-                  style={{
-                    background: W.cream,
-                    border: `1px solid ${W.warmBorder}`,
-                    color: W.dark,
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = W.olive
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = W.warmBorder
-                  }}
+                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
               <Button variant="outline" size="sm" onClick={handleExportCsv}>
@@ -324,19 +295,15 @@ export function PricingPage() {
                 {isLoading ? (
                   <TableRow>
                     <TableCell colSpan={5} className="px-5 py-12 text-center">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
-                      <p className="text-[12px]" style={{ color: W.textLight }}>
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
+                      <p className="text-[12px] text-surface-500">
                         Satış kitleri yükleniyor...
                       </p>
                     </TableCell>
                   </TableRow>
                 ) : filteredList.length === 0 ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="px-5 py-12 text-center text-[12px]"
-                      style={{ color: W.textLight }}
-                    >
+                    <TableCell colSpan={5} className="px-5 py-12 text-center text-[12px] text-surface-500">
                       {apiList.length === 0
                         ? 'Henüz satış kiti yok. "Yeni satış kiti" ile ekleyin.'
                         : 'Arama kriterine uygun kayıt bulunamadı.'}
@@ -366,54 +333,35 @@ export function PricingPage() {
                                 />
                               </div>
                             ) : (
-                              <div
-                                className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0"
-                                style={{ background: W.oliveLight }}
-                              >
-                                <Package className="h-4.5 w-4.5" style={{ color: W.olive }} />
+                              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-primary-100 dark:bg-primary-900/30">
+                                <Package className="h-4.5 w-4.5 text-primary-600" />
                               </div>
                             )}
                             <div className="min-w-0">
-                              <p
-                                className="text-[12px] font-medium truncate"
-                                style={{ color: W.text }}
-                                title={k.name}
-                              >
+                              <p className="text-[12px] font-medium truncate text-surface-700" title={k.name}>
                                 {k.name}
                               </p>
-                              <p
-                                className="text-[11px] truncate"
-                                style={{ color: W.textLight }}
-                                title={k.description || ''}
-                              >
+                              <p className="text-[11px] truncate text-surface-500" title={k.description || ''}>
                                 {k.description || 'Açıklama yok'}
                               </p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                            style={{ background: W.creamDark, color: W.text }}
-                          >
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-200 dark:bg-surface-300/50 text-surface-700">
                             {k.quantity} adet
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span
-                            className="text-[12px] font-semibold tabular-nums"
-                            style={{ color: W.dark }}
-                          >
+                          <span className="text-[12px] font-semibold tabular-nums text-surface-900">
                             {formatCurrency(k.price)}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                            style={{
-                              background: isActive ? W.oliveLight : '#FDE8E8',
-                              color: isActive ? '#5A6B2A' : '#C53030',
-                            }}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${
+                              isActive ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                            }`}
                           >
                             {isActive ? 'Aktif' : 'Pasif'}
                           </span>

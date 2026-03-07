@@ -28,18 +28,6 @@ import {
 } from '@/services/laboratories.service'
 import { getDieticians } from '@/services/kits.service'
 
-const W = {
-  olive: '#8B9A4B',
-  oliveLight: '#EEF2DE',
-  warmBorder: '#E8E4DE',
-  dark: '#2D2A26',
-  text: '#4A4640',
-  textLight: '#9C968D',
-  warmGrayLight: '#B5AFA5',
-  cream: '#F9F7F3',
-  creamDark: '#F0EDE7',
-}
-
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 const LABS_QUERY_KEY = ['laboratories'] as const
@@ -384,25 +372,22 @@ export function LaboratoriesPage() {
 
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
         <div className="panel">
-          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
+          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
             <div>
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Laboratuvarlar</h3>
-              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
+              <h3 className="text-[15px] font-semibold text-surface-900">Laboratuvarlar</h3>
+              <p className="text-[12px] mt-0.5 text-surface-500">
                 {isLoading ? 'Yükleniyor...' : `Kayıtlı laboratuvarlar (${filteredLaboratories.length} adet)`}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
                 <input
                   type="text"
                   placeholder="Laboratuvar ara..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors"
-                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = W.olive }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
               <Button variant="outline" size="sm" onClick={handleExportCsv}>
@@ -417,12 +402,12 @@ export function LaboratoriesPage() {
 
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin" style={{ color: W.olive }} />
+              <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
             </div>
           ) : labsError ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <p className="text-sm" style={{ color: W.text }}>Laboratuvarlar yüklenirken sunucu hatası oluştu (500).</p>
-              <p className="text-xs" style={{ color: W.textLight }}>Backend servisi kontrol edin. Veritabanı bağlantısı veya tablo şeması sorunu olabilir.</p>
+              <p className="text-sm text-surface-700">Laboratuvarlar yüklenirken sunucu hatası oluştu (500).</p>
+              <p className="text-xs text-surface-500">Backend servisi kontrol edin. Veritabanı bağlantısı veya tablo şeması sorunu olabilir.</p>
               <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: LABS_QUERY_KEY })}>
                 Tekrar Dene
               </Button>
@@ -434,7 +419,6 @@ export function LaboratoriesPage() {
               onEdit={openEditLab}
               onDelete={openDeleteLab}
               onAssignDietitian={openAssignDietitian}
-              W={W}
             />
           )}
         </div>
@@ -458,11 +442,11 @@ export function LaboratoriesPage() {
           <ModalBody className="space-y-4">
             {labDetailQuery.isLoading ? (
               <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-5 w-5 animate-spin" style={{ color: W.olive }} />
+                <Loader2 className="h-5 w-5 animate-spin text-primary-500" />
               </div>
             ) : labDetailQuery.isError ? (
               <div className="space-y-3">
-                <p className="text-sm" style={{ color: W.text }}>
+                <p className="text-sm text-surface-700">
                   {getApiErrorMessage(labDetailQuery.error, { fallback: 'Laboratuvar detayı yüklenemedi' })}
                 </p>
                 <div>
@@ -474,103 +458,103 @@ export function LaboratoriesPage() {
             ) : labDetailQuery.data ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="panel p-3 sm:col-span-2">
-                  <p className="text-[11px] font-semibold" style={{ color: W.textLight }}>Genel</p>
+                  <p className="text-[11px] font-semibold text-surface-500">Genel</p>
                   <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Laboratuvar ID:</span> {labDetailQuery.data.id || '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Kullanıcı ID:</span> {labDetailQuery.data.userId ?? '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Durum:</span> {labDetailQuery.data.isActive === false ? 'Pasif' : 'Aktif'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Oluşturulma:</span> {labDetailQuery.data.createdAt ? formatDate(labDetailQuery.data.createdAt) : '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Güncellenme:</span> {labDetailQuery.data.updatedAt ? formatDate(labDetailQuery.data.updatedAt) : '-'}
                     </div>
                   </div>
                 </div>
 
                 <div className="panel p-3">
-                  <p className="text-[11px] font-semibold" style={{ color: W.textLight }}>Kargo</p>
+                  <p className="text-[11px] font-semibold text-surface-500">Kargo</p>
                   <div className="mt-2 space-y-1">
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Firma:</span> {labDetailQuery.data.cargofirm || '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Numara:</span> {labDetailQuery.data.cargoNumber || '-'}
                     </div>
                   </div>
                 </div>
 
                 <div className="panel p-3 sm:col-span-2">
-                  <p className="text-[11px] font-semibold" style={{ color: W.textLight }}>Bağlı Diyetisyenler</p>
+                  <p className="text-[11px] font-semibold text-surface-500">Bağlı Diyetisyenler</p>
                   {viewedLabDietitians.length > 0 ? (
                     <ul className="mt-2 space-y-1">
                       {viewedLabDietitians.map((d) => (
-                        <li key={d.dieticianId} className="text-[12px]" style={{ color: W.text }}>
+                        <li key={d.dieticianId} className="text-[12px] text-surface-700">
                           {d.name}
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-2 text-[12px]" style={{ color: W.textLight }}>Atanmamış</p>
+                    <p className="mt-2 text-[12px] text-surface-500">Atanmamış</p>
                   )}
                 </div>
 
                 <div className="panel p-3 sm:col-span-2">
-                  <p className="text-[11px] font-semibold" style={{ color: W.textLight }}>Adres</p>
+                  <p className="text-[11px] font-semibold text-surface-500">Adres</p>
                   <div className="mt-2 space-y-1">
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Başlık:</span> {labDetailQuery.data.addressTitle || '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Ülke:</span> {labDetailQuery.data.country || '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Şehir/İlçe:</span> {labDetailQuery.data.city || '-'}{labDetailQuery.data.district ? ` / ${labDetailQuery.data.district}` : ''}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Mahalle:</span> {labDetailQuery.data.neighborhood || '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Sokak:</span> {labDetailQuery.data.street || '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">No:</span> {labDetailQuery.data.no || '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Açık Adres:</span> {labDetailQuery.data.fullAddress || labDetailQuery.data.address || '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Posta Kodu:</span> {labDetailQuery.data.postalCode || '-'}
                     </div>
                   </div>
                 </div>
 
                 <div className="panel p-3 sm:col-span-2">
-                  <p className="text-[11px] font-semibold" style={{ color: W.textLight }}>Kullanıcı</p>
+                  <p className="text-[11px] font-semibold text-surface-500">Kullanıcı</p>
                   <div className="mt-2 space-y-1">
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">ID:</span> {labDetailQuery.data.userId ?? '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Ad Soyad:</span> {[labDetailQuery.data.firstName, labDetailQuery.data.lastName].filter(Boolean).join(' ') || '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">Telefon:</span> {labDetailQuery.data.phone || '-'}
                     </div>
-                    <div className="text-[12px]" style={{ color: W.text }}>
+                    <div className="text-[12px] text-surface-700">
                       <span className="font-medium">E-posta:</span> {labDetailQuery.data.email || '-'}
                     </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-sm" style={{ color: W.textLight }}>Detay bulunamadı.</p>
+              <p className="text-sm text-surface-500">Detay bulunamadı.</p>
             )}
           </ModalBody>
           <ModalFooter>
@@ -844,14 +828,12 @@ function LaboratoryTable({
   onEdit,
   onDelete,
   onAssignDietitian,
-  W: colors,
 }: {
   laboratories: LabWithDietitians[]
   onView: (lab: Laboratory) => void
   onEdit: (lab: Laboratory) => void
   onDelete: (lab: Laboratory) => void
   onAssignDietitian: (lab: Laboratory) => void
-  W: typeof W
 }) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -874,22 +856,22 @@ function LaboratoryTable({
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full text-sm">
           <thead>
-            <tr style={{ background: colors.cream }}>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>Laboratuvar</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>Adres</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>İletişim</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>Kargo</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>Diyetisyenler</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: colors.textLight }}>Oluşturulma</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20" style={{ color: colors.textLight }} />
+            <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Laboratuvar</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Adres</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">İletişim</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kargo</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Diyetisyenler</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Oluşturulma</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20 text-surface-500" />
             </tr>
           </thead>
           <tbody>
             {laboratories.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-5 py-12 text-center text-[12px]" style={{ color: colors.textLight }}>
+                <td colSpan={7} className="px-5 py-12 text-center text-[12px] text-surface-500">
                   Laboratuvar bulunamadı.
                 </td>
               </tr>
@@ -897,26 +879,23 @@ function LaboratoryTable({
               paginatedLabs.map((lab) => (
                 <tr
                   key={lab.id}
-                  className="transition-colors"
-                  style={{ borderBottom: `1px solid ${colors.warmBorder}` }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = colors.cream }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
                 >
                   <td className="px-5 py-3.5">
                     <div>
-                      <span className="text-[12px] block font-medium" style={{ color: colors.text }}>{lab.name}</span>
-                      <span className="text-[11px]" style={{ color: colors.textLight }}>
+                      <span className="text-[12px] block font-medium text-surface-700">{lab.name}</span>
+                      <span className="text-[11px] text-surface-500">
                         {lab.city}{lab.district && `, ${lab.district}`}
                       </span>
                     </div>
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-start gap-2">
-                      <MapPin className="h-4 w-4 mt-0.5 shrink-0" style={{ color: colors.warmGrayLight }} />
+                      <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-surface-400" />
                       <div className="min-w-0">
-                        <span className="text-[12px] block" style={{ color: colors.text }}>{lab.address || '-'}</span>
+                        <span className="text-[12px] block text-surface-700">{lab.address || '-'}</span>
                         {lab.postalCode && (
-                          <span className="text-[11px]" style={{ color: colors.textLight }}>PK: {lab.postalCode}</span>
+                          <span className="text-[11px] text-surface-500">PK: {lab.postalCode}</span>
                         )}
                       </div>
                     </div>
@@ -924,19 +903,19 @@ function LaboratoryTable({
                   <td className="px-5 py-3.5">
                     <div className="space-y-1">
                       {lab.phone && (
-                        <div className="flex items-center gap-1.5 text-[12px]" style={{ color: colors.text }}>
-                          <Phone className="h-3.5 w-3.5" style={{ color: colors.warmGrayLight }} />
+                        <div className="flex items-center gap-1.5 text-[12px] text-surface-700">
+                          <Phone className="h-3.5 w-3.5 text-surface-400" />
                           <span>{lab.phone}</span>
                         </div>
                       )}
                       {lab.email && (
-                        <div className="flex items-center gap-1.5 text-[12px] truncate" style={{ color: colors.text }}>
-                          <Mail className="h-3.5 w-3.5 shrink-0" style={{ color: colors.warmGrayLight }} />
+                        <div className="flex items-center gap-1.5 text-[12px] truncate text-surface-700">
+                          <Mail className="h-3.5 w-3.5 shrink-0 text-surface-400" />
                           <span className="truncate">{lab.email}</span>
                         </div>
                       )}
                       {!lab.phone && !lab.email && (
-                        <span className="text-[11px]" style={{ color: colors.textLight }}>-</span>
+                        <span className="text-[11px] text-surface-500">-</span>
                       )}
                     </div>
                   </td>
@@ -944,13 +923,13 @@ function LaboratoryTable({
                     <div className="space-y-0.5">
                       {lab.cargofirm ? (
                         <>
-                          <span className="text-[12px] block" style={{ color: colors.text }}>{lab.cargofirm}</span>
+                          <span className="text-[12px] block text-surface-700">{lab.cargofirm}</span>
                           {lab.cargoNumber && (
-                            <span className="text-[11px]" style={{ color: colors.textLight }}>{lab.cargoNumber}</span>
+                            <span className="text-[11px] text-surface-500">{lab.cargoNumber}</span>
                           )}
                         </>
                       ) : (
-                        <span className="text-[11px]" style={{ color: colors.textLight }}>-</span>
+                        <span className="text-[11px] text-surface-500">-</span>
                       )}
                     </div>
                   </td>
@@ -960,27 +939,23 @@ function LaboratoryTable({
                         {lab.assignedDietitianDetails.slice(0, 2).map((d) => (
                           <span
                             key={d.dieticianId}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                            style={{ background: colors.creamDark, color: colors.text }}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-200 dark:bg-surface-300/50 text-surface-700"
                           >
                             {d.name}
                           </span>
                         ))}
                         {lab.assignedDietitianDetails.length > 2 && (
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                            style={{ background: colors.creamDark, color: colors.text }}
-                          >
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-200 dark:bg-surface-300/50 text-surface-700">
                             +{lab.assignedDietitianDetails.length - 2}
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-[11px]" style={{ color: colors.textLight }}>Atanmamış</span>
+                      <span className="text-[11px] text-surface-500">Atanmamış</span>
                     )}
                   </td>
                   <td className="px-5 py-3.5">
-                    <span className="text-[12px]" style={{ color: colors.textLight }}>{formatDate(lab.createdAt)}</span>
+                    <span className="text-[12px] text-surface-500">{formatDate(lab.createdAt)}</span>
                   </td>
                   <td className="px-5 py-3.5">
                     <DropdownMenu>

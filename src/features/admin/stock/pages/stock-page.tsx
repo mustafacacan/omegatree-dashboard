@@ -13,16 +13,6 @@ import { toast } from 'sonner'
 import { getStocks, type Stock, type StockStatus } from '@/services/stocks.service'
 import { getDieticians, assignKitsToDietician, type DieticianOption } from '@/services/kits.service'
 
-const W = {
-  olive: '#8B9A4B', oliveLight: '#EEF2DE',
-  orange: '#E8913A', orangeLight: '#FDF0E2',
-  amber: '#F5C842', amberLight: '#FDF8E8',
-  green: '#6ABF69', greenLight: '#E8F5E8',
-  cream: '#F9F7F3', creamDark: '#F0EDE7',
-  warmBorder: '#E8E4DE', dark: '#2D2A26',
-  text: '#4A4640', textLight: '#9C968D', warmGrayLight: '#B5AFA5',
-}
-
 const STOCK_STATUS_LABELS: Record<StockStatus, string> = {
   available: 'Stokta',
   used: 'Kullanıldı',
@@ -219,10 +209,10 @@ export function StockPage() {
       {/* Kit envanter tablosu */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
         <div className="panel">
-          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
+          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
             <div>
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kit Envanter</h3>
-              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
+              <h3 className="text-[15px] font-semibold text-surface-900">Kit Envanter</h3>
+              <p className="text-[12px] mt-0.5 text-surface-500">
                 {filterUserId != null
                   ? `${dietitiansForFilter.find((d) => (d.userId ?? d.id) === filterUserId)?.label ?? 'Diyetisyen'} – bu diyetisyene zimmetli kitler (${totalItems} kit)`
                   : `Sizin stokunuzdaki tüm kitler (${totalItems} kit)`}
@@ -230,16 +220,13 @@ export function StockPage() {
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
                 <input
                   type="text"
                   placeholder="Barkod ara..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors"
-                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = W.olive }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
               <Select
@@ -281,27 +268,27 @@ export function StockPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead>
-                <tr style={{ background: W.cream }}>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Barkod</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Kit Adı</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Durum</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Konum / Zimmet</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3" style={{ color: W.textLight }}>Tarih</th>
+                <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kit Adı</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Konum / Zimmet</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Tarih</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
                     <td colSpan={5} className="px-5 py-12 text-center">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" style={{ color: W.olive }} />
-                      <p className="text-[12px]" style={{ color: W.textLight }}>Stok listesi yükleniyor...</p>
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
+                      <p className="text-[12px] text-surface-500">Stok listesi yükleniyor...</p>
                     </td>
                   </tr>
                 ) : tableRows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-5 py-12 text-center text-[12px]" style={{ color: W.textLight }}>
+                    <td colSpan={5} className="px-5 py-12 text-center text-[12px] text-surface-500">
                       Kayıt bulunamadı.
                     </td>
                   </tr>
@@ -309,33 +296,34 @@ export function StockPage() {
                   tableRows.map((s) => (
                     <tr
                       key={s.id}
-                      className="transition-colors"
-                      style={{ borderBottom: `1px solid ${W.warmBorder}` }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = W.cream }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                      className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
                     >
                       <td className="px-5 py-3.5">
-                        <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{s.kitId?.barcode ?? '—'}</code>
+                        <code className="text-[13px] font-mono font-bold text-surface-900">{s.kitId?.barcode ?? '—'}</code>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[12px]" style={{ color: W.text }}>{s.kitId?.name ?? '—'}</span>
+                        <span className="text-[12px] text-surface-700">{s.kitId?.name ?? '—'}</span>
                       </td>
                       <td className="px-5 py-3.5">
                         <span
-                          className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                          style={{
-                            background: s.status === 'available' ? W.oliveLight : s.status === 'used' ? W.orangeLight : s.status === 'expired' ? '#FDE8E8' : W.amberLight,
-                            color: s.status === 'available' ? '#5A6B2A' : s.status === 'used' ? W.orange : s.status === 'expired' ? '#C53030' : '#78600A',
-                          }}
+                          className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${
+                            s.status === 'available'
+                              ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                              : s.status === 'used'
+                                ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                                : s.status === 'expired'
+                                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                                  : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'
+                          }`}
                         >
                           {s.status ? STOCK_STATUS_LABELS[s.status] : '—'}
                         </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[12px]" style={{ color: W.text }}>
+                        <span className="text-[12px] text-surface-700">
                           {s.userId ? (
                             <span className="flex items-center gap-1.5">
-                              <User className="h-3 w-3" style={{ color: W.olive }} />
+                              <User className="h-3 w-3 text-primary-500" />
                               {[s.userId.firstName, s.userId.lastName].filter(Boolean).join(' ') || `#${s.userId.id}`}
                             </span>
                           ) : (
@@ -344,7 +332,7 @@ export function StockPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[12px]" style={{ color: W.textLight }}>{formatDate(s.createdAt)}</span>
+                        <span className="text-[12px] text-surface-500">{formatDate(s.createdAt)}</span>
                       </td>
                     </tr>
                   ))
@@ -370,8 +358,7 @@ export function StockPage() {
         {showAssignModal && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(45,42,38,0.5)', backdropFilter: 'blur(4px)' }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
             onClick={closeAssignModal}
           >
             <motion.div
@@ -379,25 +366,21 @@ export function StockPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.25 }}
-              className="w-full max-w-lg rounded-2xl overflow-hidden shadow-xl"
-              style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}
+              className="w-full max-w-lg rounded-2xl overflow-hidden shadow-xl bg-panel border border-surface-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-5" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
+              <div className="flex items-center justify-between p-5 border-b border-surface-200">
                 <div>
-                  <h2 className="text-[17px] font-bold" style={{ color: W.dark }}>Kit Zimmetle</h2>
-                  <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>
+                  <h2 className="text-[17px] font-bold text-surface-900">Kit Zimmetle</h2>
+                  <p className="text-[12px] mt-0.5 text-surface-500">
                     Kitleri secin ve bir diyetisyene atanyin
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={closeAssignModal}
-                  className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors"
-                  style={{ background: W.cream, color: W.text }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = W.creamDark }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = W.cream }}
+                  className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors bg-surface-100 hover:bg-surface-200 text-surface-700"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -405,11 +388,11 @@ export function StockPage() {
 
               {assignSuccess ? (
                 <div className="p-10 text-center">
-                  <div className="h-16 w-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: W.greenLight }}>
-                    <CheckCircle className="h-8 w-8" style={{ color: W.green }} />
+                  <div className="h-16 w-16 rounded-full mx-auto mb-4 flex items-center justify-center bg-green-100 dark:bg-green-900/30">
+                    <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
                   </div>
-                  <h3 className="text-[16px] font-bold" style={{ color: W.dark }}>Zimmetleme Basarili!</h3>
-                  <p className="text-[13px] mt-2" style={{ color: W.textLight }}>
+                  <h3 className="text-[16px] font-bold text-surface-900">Zimmetleme Basarili!</h3>
+                  <p className="text-[13px] mt-2 text-surface-500">
                     {selectedKitIds.length} kit seçilen diyetisyene zimmetlendi.
                     Diyetisyen kiti teslim aldiginda barkod numarasini girerek stoguna ekleyecek.
                   </p>
@@ -417,36 +400,33 @@ export function StockPage() {
               ) : (
                 <>
                   {/* Step 1: Select Kits */}
-                  <div className="p-5" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
+                  <div className="p-5 border-b border-surface-200">
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{ background: W.olive }}>1</div>
-                      <span className="text-[13px] font-semibold" style={{ color: W.dark }}>Kit Secin</span>
+                      <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-primary-500">1</div>
+                      <span className="text-[13px] font-semibold text-surface-900">Kit Secin</span>
                       {selectedKitIds.length > 0 && (
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: W.oliveLight, color: W.olive }}>
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300">
                           {selectedKitIds.length} seçildi
                         </span>
                       )}
                     </div>
 
                     <div className="relative mb-3">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
                       <input
                         type="text"
                         placeholder="Kit ara (barkod / isim)..."
                         value={assignKitSearch}
                         onChange={(e) => setAssignKitSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-full outline-none transition-colors"
-                        style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
-                        onFocus={(e) => { e.currentTarget.style.borderColor = W.olive }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                        className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-full outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                       />
                     </div>
 
                     <div className="max-h-[160px] overflow-y-auto space-y-1.5 pr-1">
                       {assignModalLoading ? (
-                        <p className="text-[12px] text-center py-4" style={{ color: W.textLight }}>Yükleniyor...</p>
+                        <p className="text-[12px] text-center py-4 text-surface-500">Yükleniyor...</p>
                       ) : filteredAvailableStocksForModal.length === 0 ? (
-                        <p className="text-[12px] text-center py-4" style={{ color: W.textLight }}>Stokta uygun kit bulunmuyor</p>
+                        <p className="text-[12px] text-center py-4 text-surface-500">Stokta uygun kit bulunmuyor</p>
                       ) : (
                         filteredAvailableStocksForModal.map((s) => {
                           const kitId = s.kitId?.id ?? 0
@@ -456,26 +436,22 @@ export function StockPage() {
                               key={s.id}
                               type="button"
                               onClick={() => toggleKitSelect(kitId)}
-                              className="flex items-center gap-3 w-full p-3 rounded-xl text-left transition-all"
-                              style={{
-                                background: selected ? W.oliveLight : W.cream,
-                                border: `1.5px solid ${selected ? W.olive : 'transparent'}`,
-                              }}
+                              className={`flex items-center gap-3 w-full p-3 rounded-xl text-left transition-all ${
+                                selected ? 'bg-primary-100 dark:bg-primary-900/40 border border-primary-500' : 'bg-surface-50 dark:bg-surface-200/30 border border-transparent'
+                              }`}
                             >
                               <div
-                                className="h-5 w-5 rounded-md flex items-center justify-center shrink-0 transition-colors"
-                                style={{
-                                  background: selected ? W.olive : '#fff',
-                                  border: `1.5px solid ${selected ? W.olive : W.warmBorder}`,
-                                }}
+                                className={`h-5 w-5 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                                  selected ? 'bg-primary-500 border border-primary-500' : 'bg-panel border border-surface-200'
+                                }`}
                               >
                                 {selected && <Check className="h-3 w-3 text-white" />}
                               </div>
                               <div className="flex-1">
-                                <code className="text-[12px] font-mono font-bold" style={{ color: W.dark }}>{s.kitId?.barcode ?? '—'}</code>
-                                {s.kitId?.name && <span className="text-[10px] block mt-0.5" style={{ color: W.textLight }}>{s.kitId.name}</span>}
+                                <code className="text-[12px] font-mono font-bold text-surface-900">{s.kitId?.barcode ?? '—'}</code>
+                                {s.kitId?.name && <span className="text-[10px] block mt-0.5 text-surface-500">{s.kitId.name}</span>}
                               </div>
-                              <span className="text-[10px]" style={{ color: W.textLight }}>{formatDate(s.createdAt)}</span>
+                              <span className="text-[10px] text-surface-500">{formatDate(s.createdAt)}</span>
                             </button>
                           )
                         })
@@ -484,31 +460,28 @@ export function StockPage() {
                   </div>
 
                   {/* Step 2: Select Dietitian */}
-                  <div className="p-5" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
+                  <div className="p-5 border-b border-surface-200">
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{ background: selectedKitIds.length > 0 ? W.olive : W.warmGrayLight }}>2</div>
-                      <span className="text-[13px] font-semibold" style={{ color: W.dark }}>Diyetisyen seçin</span>
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${selectedKitIds.length > 0 ? 'bg-primary-500' : 'bg-surface-400'}`}>2</div>
+                      <span className="text-[13px] font-semibold text-surface-900">Diyetisyen seçin</span>
                     </div>
 
                     <div className="relative mb-3">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
                       <input
                         type="text"
                         placeholder="Diyetisyen ara..."
                         value={assignDietitianSearch}
                         onChange={(e) => setAssignDietitianSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-full outline-none transition-colors"
-                        style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
-                        onFocus={(e) => { e.currentTarget.style.borderColor = W.orange }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                        className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-full outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-orange-500"
                       />
                     </div>
 
                     <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
                       {assignModalLoading ? (
-                        <p className="text-[12px] text-center py-4" style={{ color: W.textLight }}>Yükleniyor...</p>
+                        <p className="text-[12px] text-center py-4 text-surface-500">Yükleniyor...</p>
                       ) : filteredDietitiansForModal.length === 0 ? (
-                        <p className="text-[12px] text-center py-4" style={{ color: W.textLight }}>Diyetisyen bulunamadı</p>
+                        <p className="text-[12px] text-center py-4 text-surface-500">Diyetisyen bulunamadı</p>
                       ) : (
                         filteredDietitiansForModal.map((d) => {
                           const sel = selectedDietitianId === d.id
@@ -520,20 +493,18 @@ export function StockPage() {
                               key={d.id}
                               type="button"
                               onClick={() => setSelectedDietitianId(sel ? null : d.id)}
-                              className="flex items-center gap-3 w-full p-3 rounded-xl text-left transition-all"
-                              style={{
-                                background: sel ? W.orangeLight : W.cream,
-                                border: `1.5px solid ${sel ? W.orange : 'transparent'}`,
-                              }}
+                              className={`flex items-center gap-3 w-full p-3 rounded-xl text-left transition-all ${
+                                sel ? 'bg-orange-100 dark:bg-orange-900/30 border border-orange-400' : 'bg-surface-50 dark:bg-surface-200/30 border border-transparent'
+                              }`}
                             >
-                              <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold" style={{ background: sel ? W.orange : W.creamDark, color: sel ? '#fff' : W.text }}>
+                              <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold ${sel ? 'bg-orange-500 text-white' : 'bg-surface-200 dark:bg-surface-300 text-surface-700'}`}>
                                 {dietitianInitials(d)}
                               </div>
                               <div className="flex-1">
-                                <p className="text-[12px] font-semibold" style={{ color: W.dark }}>{primaryText}</p>
-                                <p className="text-[10px] mt-0.5" style={{ color: W.textLight }}>{secondaryText}</p>
+                                <p className="text-[12px] font-semibold text-surface-900">{primaryText}</p>
+                                <p className="text-[10px] mt-0.5 text-surface-500">{secondaryText}</p>
                               </div>
-                              {sel && <Check className="h-4 w-4" style={{ color: W.orange }} />}
+                              {sel && <Check className="h-4 w-4 text-orange-500" />}
                             </button>
                           )
                         })
@@ -543,7 +514,7 @@ export function StockPage() {
 
                   {/* Footer */}
                   <div className="p-5 flex items-center justify-between">
-                    <p className="text-[11px]" style={{ color: W.textLight }}>
+                    <p className="text-[11px] text-surface-500">
                       Zimmetlenen kitler diyetisyene gosterilmez. Fiziksel teslimat sonrasi barkod ile eslestirme yapilir.
                     </p>
                     <Button
