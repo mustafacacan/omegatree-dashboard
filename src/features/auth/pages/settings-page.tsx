@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Switch } from '@/components/ui'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui'
-import { getBasePath } from '@/utils/routes'
-import { ArrowLeft, Bell, Moon, Shield, MapPin, Plus, Pencil } from 'lucide-react'
+import { Bell, Moon, Shield, MapPin, Plus, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCurrentRole } from '@/stores/auth.store'
 import { UserRole } from '@/utils/constants'
@@ -361,21 +359,12 @@ function DietitianAddressesCard() {
 }
 
 export function SettingsPage() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const basePath = getBasePath(location.pathname)
   const role = useCurrentRole()
   const isDietitian = role === UserRole.DIETITIAN
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <PageHeader
-        actions={
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-3.5 w-3.5" /> Geri
-          </Button>
-        }
-      />
+      <PageHeader />
 
       {isDietitian && <DietitianAddressesCard />}
 
