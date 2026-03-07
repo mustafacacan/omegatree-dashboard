@@ -1,91 +1,135 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Card, CardContent, Button, Badge, Input,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
-  Textarea,
+  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+  Tabs, TabsList, TabsTrigger,
 } from '@/components/ui'
-import { TestTubes, Check, X, Search, Eye, Calendar, ImageIcon } from 'lucide-react'
-import { toast } from 'sonner'
-import { useWorkflowStore } from '@/stores/workflow.store'
-import { KitStatus, KIT_STATUS_LABELS } from '@/utils/constants'
+import { TestTubes, Search, Eye, Calendar, Check, X, Upload } from 'lucide-react'
 import { ROUTES } from '@/utils/routes'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { toast } from 'sonner'
+import { getLaboratoryKitsPage, updateLaboratoryKit, type LabKitStatus, type LaboratoryKit } from '@/services/laboratory-kits.service'
 
-const LAB_ACTOR = 'Lab Teknisyen'
+function getKitBarcode(kit: LaboratoryKit) {
+  return kit.kitId?.kitBarcode ?? `#${kit.id}`
+}
+
+function getStatusLabel(status?: LabKitStatus) {
+  if (status === 'pending') return 'Bekliyor'
+  if (status === 'completed') return 'Tamamlandi'
+  if (status === 'cancelled') return 'Iptal'
+  if (status === 'in_progress') return 'Islemde'
+  return 'Bilinmiyor'
+}
+
+function getStatusBadgeVariant(status?: LabKitStatus): 'warning' | 'info' | 'success' | 'danger' | 'default' {
+  if (status === 'pending') return 'warning'
+  if (status === 'in_progress') return 'info'
+  if (status === 'completed') return 'success'
+  if (status === 'cancelled') return 'danger'
+  return 'default'
+}
 
 export function SamplePoolPage() {
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const { kits, labAcceptSample, labRejectSample } = useWorkflowStore()
   const [searchQuery, setSearchQuery] = useState('')
-  const [rejectOpen, setRejectOpen] = useState(false)
-  const [selectedBarcode, setSelectedBarcode] = useState('')
-  const [rejectReason, setRejectReason] = useState('')
-  const [rejectPhotoUrl, setRejectPhotoUrl] = useState<string | undefined>(undefined)
-  const [rejectPhotoName, setRejectPhotoName] = useState('')
-  const [detailBarcode, setDetailBarcode] = useState<string | null>(null)
+  const [detailId, setDetailId] = useState<number | null>(null)
+  const [page, setPage] = useState(1)
+  const [actionKitId, setActionKitId] = useState<number | null>(null)
+  const [activeStatus, setActiveStatus] = useState<Extract<LabKitStatus, 'pending' | 'in_progress' | 'cancelled'>>('pending')
+  const [completeOpen, setCompleteOpen] = useState(false)
+  const [completeKitId, setCompleteKitId] = useState<number | null>(null)
+  const [completeFile, setCompleteFile] = useState<File | null>(null)
 
-  const poolKits = useMemo(
-    () =>
-      kits
-        .filter(
-          (k) =>
-            (k.status === KitStatus.SAMPLE_SENT || k.status === KitStatus.LAB_PENDING) &&
-            (!searchQuery.trim() || k.barcode.toLowerCase().includes(searchQuery.toLowerCase()))
-        )
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [kits, searchQuery]
+  const kitsQuery = useQuery({
+    queryKey: ['laboratory-kits', page],
+    queryFn: () => getLaboratoryKitsPage({ page }),
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
+
+  const pageData = kitsQuery.data
+  const allKits = useMemo(() => pageData?.items ?? [], [pageData?.items])
+
+  const visibleKits = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return allKits
+      .filter((k) => k.status !== 'completed')
+      .filter((k) => k.status === activeStatus)
+      .filter((k) => {
+        if (!q) return true
+        return getKitBarcode(k).toLowerCase().includes(q)
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [activeStatus, allKits, searchQuery])
+
+  const selectedKit = useMemo(() => (detailId != null ? allKits.find((k) => k.id === detailId) ?? null : null), [allKits, detailId])
+  const completeKit = useMemo(
+    () => (completeKitId != null ? allKits.find((k) => k.id === completeKitId) ?? null : null),
+    [allKits, completeKitId]
   )
 
-  const handleAccept = (barcode: string) => {
-    labAcceptSample(barcode, LAB_ACTOR)
-    toast.success(`${barcode} kabul edildi, analiz baslatildi`)
-    navigate(ROUTES.LABORATUVAR_ANALIZ)
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: 'in_progress' | 'cancelled' }) =>
+      updateLaboratoryKit(id, { status }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['laboratory-kits'] })
+      toast.success(variables.status === 'in_progress' ? 'Numune onaylandi' : 'Numune reddedildi')
+      setActionKitId(null)
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Islem basarisiz' }))
+      setActionKitId(null)
+    },
+  })
+
+  const handleApprove = (id: number) => {
+    setActionKitId(id)
+    updateStatusMutation.mutate({ id, status: 'in_progress' })
   }
 
-  const handleRejectClick = (barcode: string) => {
-    setSelectedBarcode(barcode)
-    setRejectReason('')
-    setRejectPhotoUrl(undefined)
-    setRejectPhotoName('')
-    setRejectOpen(true)
+  const handleReject = (id: number) => {
+    setActionKitId(id)
+    updateStatusMutation.mutate({ id, status: 'cancelled' })
   }
 
-  const handleRejectPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setRejectPhotoName(file.name)
-    const reader = new FileReader()
-    reader.onload = () => { if (typeof reader.result === 'string') setRejectPhotoUrl(reader.result) }
-    reader.readAsDataURL(file)
+  const completeMutation = useMutation({
+    mutationFn: ({ id, file }: { id: number; file: File }) => updateLaboratoryKit(id, { status: 'completed', file }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['laboratory-kits'] })
+      toast.success('Rapor tamamlandi')
+      setActionKitId(null)
+      setCompleteOpen(false)
+      setCompleteKitId(null)
+      setCompleteFile(null)
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Rapor tamamlanamadi' }))
+      setActionKitId(null)
+    },
+  })
+
+  const openCompleteModal = (id: number) => {
+    setCompleteKitId(id)
+    setCompleteFile(null)
+    setCompleteOpen(true)
   }
 
-  const handleRejectSubmit = () => {
-    const reason = rejectReason.trim()
-    if (!reason) {
-      toast.error('Red sebebi zorunludur')
+  const handleCompleteSubmit = () => {
+    if (completeKitId == null) return
+    if (!completeFile) {
+      toast.error('Dosya secmelisiniz')
       return
     }
-    if (!rejectPhotoUrl) {
-      toast.error('Numune reddi icin fotoğraf yuklemeniz zorunludur.')
-      return
-    }
-    const result = labRejectSample(selectedBarcode, reason, LAB_ACTOR, undefined, rejectPhotoUrl)
-    if (result.ok) {
-      toast.success(result.message)
-      setRejectOpen(false)
-      setSelectedBarcode('')
-      setRejectReason('')
-      setRejectPhotoUrl(undefined)
-      setRejectPhotoName('')
-    } else toast.error(result.message)
+    setActionKitId(completeKitId)
+    completeMutation.mutate({ id: completeKitId, file: completeFile })
   }
-
-  const selectedKit = useMemo(
-    () => (detailBarcode ? kits.find((k) => k.barcode === detailBarcode) : null),
-    [kits, detailBarcode]
-  )
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -100,7 +144,10 @@ export function SamplePoolPage() {
         <Input
           placeholder="Barkod ile ara..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            setSearchQuery(e.target.value)
+            setPage(1)
+          }}
           leftIcon={<Search className="h-4 w-4" />}
           className="w-72"
         />
@@ -112,133 +159,237 @@ export function SamplePoolPage() {
             Analizler
           </Button>
           <Badge variant="info" dot pulse>
-            {poolKits.length} numune bekliyor
+            {visibleKits.length} numune
           </Badge>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {poolKits.length === 0 ? (
-          <Card className="col-span-full">
-            <CardContent className="py-12 text-center text-surface-500">
+      <Tabs
+        value={activeStatus}
+        onValueChange={(v) => {
+          setActiveStatus(v as typeof activeStatus)
+          setPage(1)
+        }}
+      >
+        <TabsList>
+          <TabsTrigger value="pending">Bekliyor</TabsTrigger>
+          <TabsTrigger value="in_progress">Islemde</TabsTrigger>
+          <TabsTrigger value="cancelled">Iptal</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      <Card>
+        <CardContent className="p-0">
+          {kitsQuery.isLoading ? (
+            <div className="py-12 text-center text-surface-500">
               <TestTubes className="h-12 w-12 mx-auto mb-3 text-surface-300" />
-              <p className="font-medium">Bekleyen numune yok</p>
-              <p className="text-sm mt-1">
-                {searchQuery ? 'Arama kriterine uygun numune bulunamadi.' : 'Numune gonderildiginde burada listelenir.'}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          poolKits.map((kit) => (
-            <Card key={kit.barcode} className="group hover:shadow-md transition-all">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="h-11 w-11 rounded-xl bg-amber-50 flex items-center justify-center">
-                    <TestTubes className="h-5 w-5 text-amber-600" />
-                  </div>
-                  <Badge variant="warning" dot>Bekliyor</Badge>
-                </div>
-
-                <code className="text-lg font-mono font-bold text-surface-800 block mb-1">{kit.barcode}</code>
-                <p className="text-xs text-surface-500 mb-4 flex items-center gap-1">
-                  <Calendar className="h-3 w-3" /> Gelis: {formatDateTime(kit.createdAt)}
-                </p>
-                {/* Kör analiz: Lab sadece barkod görür, danışan/diyetisyen adı gösterilmez */}
-
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setDetailBarcode(kit.barcode)} className="shrink-0">
-                    <Eye className="h-3.5 w-3.5" /> Detay
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleAccept(kit.barcode)}
-                  >
-                    <Check className="h-4 w-4" />
-                    Kabul Et
-                  </Button>
-                  <Button variant="destructive" size="sm" className="flex-1" onClick={() => handleRejectClick(kit.barcode)}>
-                    <X className="h-4 w-4" />
-                    Reddet
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
-
-      {/* Red modal */}
-      <Modal open={rejectOpen} onOpenChange={setRejectOpen}>
-        <ModalContent>
-          <ModalHeader>
-            <ModalTitle>Numune Red</ModalTitle>
-            <ModalDescription>
-              <code className="font-mono">{selectedBarcode}</code> numarali numune reddedilecek. Sebep zorunludur.
-            </ModalDescription>
-          </ModalHeader>
-          <ModalBody className="space-y-4">
-            <Textarea
-              label="Red Sebebi *"
-              placeholder="Numune neden uygun degil? (bozulma, eksiklik, hasar vb.)"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              rows={4}
-            />
-            <div>
-              <label className="block text-[13px] font-medium text-surface-700 mb-2">
-                Red kanit fotografi (zorunlu)
-              </label>
-              <label className="flex items-center gap-2 text-sm text-surface-600 cursor-pointer">
-                <ImageIcon className="h-4 w-4" />
-                <span>Fotoğraf sec</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleRejectPhotoChange} />
-              </label>
-              {rejectPhotoName && <p className="text-xs text-surface-500 mt-1">Secilen: {rejectPhotoName}</p>}
-              {rejectPhotoUrl && (
-                <img src={rejectPhotoUrl} alt="Red kanit" className="mt-2 h-24 w-32 object-cover rounded-lg border border-surface-200" />
-              )}
+              <p className="font-medium">Yukleniyor...</p>
             </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="outline" onClick={() => setRejectOpen(false)}>Iptal</Button>
-            <Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectReason.trim() || !rejectPhotoUrl}>
-              Reddet ve Bildir
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          ) : kitsQuery.isError ? (
+            <div className="py-12 text-center text-surface-500">
+              <TestTubes className="h-12 w-12 mx-auto mb-3 text-surface-300" />
+              <p className="font-medium">Liste yuklenemedi</p>
+              <p className="text-sm mt-1">Lutfen daha sonra tekrar deneyin.</p>
+            </div>
+          ) : visibleKits.length === 0 ? (
+            <div className="py-12 text-center text-surface-500">
+              <TestTubes className="h-12 w-12 mx-auto mb-3 text-surface-300" />
+              <p className="font-medium">Kayit yok</p>
+              <p className="text-sm mt-1">
+                {searchQuery ? 'Arama kriterine uygun kayit bulunamadi.' : 'Bu sekmede gosterilecek kayit yok.'}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Barkod</TableHead>
+                  <TableHead>Durum</TableHead>
+                  <TableHead>Gelis</TableHead>
+                  <TableHead className="text-right">Islemler</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleKits.map((kit) => (
+                  <TableRow key={kit.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <TestTubes className="h-4 w-4 text-amber-600" />
+                        <code className="font-mono font-semibold text-surface-800">{getKitBarcode(kit)}</code>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(kit.status)} dot>
+                        {getStatusLabel(kit.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 text-surface-600">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {formatDateTime(kit.createdAt)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDetailId(kit.id)}
+                          disabled={updateStatusMutation.isPending || completeMutation.isPending}
+                        >
+                          <Eye className="h-3.5 w-3.5" /> Detay
+                        </Button>
+                        {kit.status === 'pending' ? (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleApprove(kit.id)}
+                            disabled={updateStatusMutation.isPending}
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            {actionKitId === kit.id && updateStatusMutation.isPending ? 'Onaylaniyor' : 'Onayla'}
+                          </Button>
+                        ) : null}
+
+                        {kit.status === 'in_progress' ? (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => openCompleteModal(kit.id)}
+                            disabled={updateStatusMutation.isPending || completeMutation.isPending}
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            Uzmana Gonder
+                          </Button>
+                        ) : null}
+
+                        {kit.status === 'pending' || kit.status === 'in_progress' ? (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleReject(kit.id)}
+                            disabled={updateStatusMutation.isPending || completeMutation.isPending}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            {actionKitId === kit.id && updateStatusMutation.isPending ? 'Reddediliyor' : 'Reddet'}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+
+          {!kitsQuery.isLoading && !kitsQuery.isError && pageData && pageData.totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-surface-200 bg-surface-50/50 p-4">
+              <div className="text-sm text-surface-600">
+                {pageData.currentPage} / {pageData.totalPages}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageData.currentPage <= 1}>
+                  Geri
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(pageData.totalPages, p + 1))}
+                  disabled={pageData.currentPage >= pageData.totalPages}
+                >
+                  Ileri
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Detay modal */}
-      <Modal open={!!detailBarcode} onOpenChange={(open) => !open && setDetailBarcode(null)}>
+      <Modal open={detailId != null} onOpenChange={(open) => !open && setDetailId(null)}>
         <ModalContent className="max-w-md">
           <ModalHeader>
             <ModalTitle>Numune Detayi</ModalTitle>
-            <ModalDescription>Barkod: {selectedKit?.barcode} — Kör analiz: sadece barkod bilgisi gosterilir</ModalDescription>
+            <ModalDescription>
+              Barkod: {selectedKit ? getKitBarcode(selectedKit) : '-'} — Kör analiz: sadece barkod bilgisi gosterilir
+            </ModalDescription>
           </ModalHeader>
           <ModalBody className="space-y-4">
             {selectedKit && (
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-surface-500 text-xs">Barkod</p>
-                  <p className="font-mono font-semibold">{selectedKit.barcode}</p>
+                  <p className="font-mono font-semibold">{getKitBarcode(selectedKit)}</p>
                 </div>
                 <div>
                   <p className="text-surface-500 text-xs">Durum</p>
-                  <p>{KIT_STATUS_LABELS[selectedKit.status]}</p>
-                </div>
-                <div>
-                  <p className="text-surface-500 text-xs">Konum</p>
-                  <p>{selectedKit.location}</p>
+                  <p>{getStatusLabel(selectedKit.status)}</p>
                 </div>
                 <div>
                   <p className="text-surface-500 text-xs">Gelis Tarihi</p>
                   <p>{formatDateTime(selectedKit.createdAt)}</p>
                 </div>
+                {selectedKit.reasonForCancellation ? (
+                  <div className="col-span-2">
+                    <p className="text-surface-500 text-xs">Iptal Sebebi</p>
+                    <p className="text-surface-700">{selectedKit.reasonForCancellation}</p>
+                  </div>
+                ) : null}
               </div>
             )}
           </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Rapor tamamlama modal */}
+      <Modal
+        open={completeOpen}
+        onOpenChange={(open) => {
+          setCompleteOpen(open)
+          if (!open) {
+            setCompleteKitId(null)
+            setCompleteFile(null)
+          }
+        }}
+      >
+        <ModalContent className="max-w-md">
+          <ModalHeader>
+            <ModalTitle>Uzmana Gonder</ModalTitle>
+            <ModalDescription>
+              Barkod: {completeKit ? getKitBarcode(completeKit) : '-'}
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-4">
+            <div>
+              <label className="block text-[13px] font-medium text-surface-700 mb-2">Sonuc Dosyasi</label>
+              <label className="flex items-center gap-2 text-sm text-surface-600 cursor-pointer">
+                <Upload className="h-4 w-4" />
+                <span>Dosya sec</span>
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => setCompleteFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              {completeFile ? (
+                <p className="text-xs text-surface-500 mt-1">Secilen: {completeFile.name}</p>
+              ) : (
+                <p className="text-xs text-surface-500 mt-1">Rapor tamamlamak icin dosya yukleyin.</p>
+              )}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setCompleteOpen(false)} disabled={completeMutation.isPending}>
+              Iptal
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleCompleteSubmit}
+              disabled={completeMutation.isPending || !completeFile}
+            >
+              {actionKitId === completeKitId && completeMutation.isPending ? 'Yukleniyor...' : 'Tamamla'}
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </Modal>
     </div>

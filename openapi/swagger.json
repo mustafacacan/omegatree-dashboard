@@ -7,8 +7,12 @@
     },
     "servers": [
         {
-            "url": "https://unbenignantly-tinkliest-diego.ngrok-free.dev/api",
+            "url": "http://localhost:3005/api",
             "description": "Development api server"
+        },
+        {
+            "url": "https://your-ngrok-url.ngrok-free.app/api",
+            "description": "Ngrok tüneli (gerekirse Ngrok-Skip-Browser-Warning: true header ekle)"
         }
     ],
     "components": {
@@ -3904,6 +3908,48 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/UnauthorizedResponse"
+                    }
+                }
+            }
+        },
+        "/audit-logs/{id}": {
+            "get": {
+                "summary": "Retrieve a specific audit log by ID",
+                "tags": [
+                    "Audit Logs"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "ID of the audit log to retrieve"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A specific audit log entry",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditLog"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Audit log not found"
                     }
                 }
             }

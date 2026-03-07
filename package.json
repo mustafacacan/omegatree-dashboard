@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "openapi:generate": "node scripts/patch-openapi.mjs && openapi-typescript openapi/swagger.json -o src/types/openapi.d.ts",
-    "openapi:fetch": "node scripts/fetch-openapi.mjs"
+    "openapi:fetch": "node --env-file=.env scripts/fetch-openapi.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
