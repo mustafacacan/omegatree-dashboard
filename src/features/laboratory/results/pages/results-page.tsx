@@ -1,32 +1,61 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
+import { PdfViewer } from '@/components/shared/pdf-viewer'
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription,
   Button, Badge,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody,
 } from '@/components/ui'
-import { Upload, FileSpreadsheet, Check, Eye } from 'lucide-react'
-import { toast } from 'sonner'
-import { useWorkflowStore } from '@/stores/workflow.store'
-import { KitStatus, KIT_STATUS_LABELS } from '@/utils/constants'
+import { Check, Eye } from 'lucide-react'
 import { ROUTES } from '@/utils/routes'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { getLaboratoryKitById, getLaboratoryKitsPage, type LaboratoryKit } from '@/services/laboratory-kits.service'
+
+function getKitBarcode(kit: LaboratoryKit) {
+  return kit.kitId?.kitBarcode ?? `#${kit.id}`
+}
+
+function isProbablyPdf(url?: string | null) {
+  if (!url) return false
+  return url.toLowerCase().includes('.pdf')
+}
 
 export function ResultsPage() {
   const navigate = useNavigate()
-  const { kits } = useWorkflowStore()
-  const [detailBarcode, setDetailBarcode] = useState<string | null>(null)
+  const [detailId, setDetailId] = useState<number | null>(null)
+  const [page, setPage] = useState(1)
 
-  const completedKits = useMemo(
-    () =>
-      kits
-        .filter((k) => k.status === KitStatus.ANALYSIS_COMPLETE || k.status === KitStatus.SPECIALIST_POOL || k.status === KitStatus.COMPLETED)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [kits]
-  )
+  const kitsQuery = useQuery({
+    queryKey: ['laboratory-kits', 'completed', page],
+    queryFn: () => getLaboratoryKitsPage({ page, status: 'completed' }),
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
 
-  const selectedKit = useMemo(() => (detailBarcode ? kits.find((k) => k.barcode === detailBarcode) : null), [kits, detailBarcode])
+  const completedKits = useMemo(() => {
+    const items = kitsQuery.data?.items ?? []
+    return items
+      .filter((k) => k.status === 'completed')
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
+  }, [kitsQuery.data?.items])
+
+  const detailQuery = useQuery({
+    queryKey: ['laboratory-kits', 'detail', detailId],
+    queryFn: () => getLaboratoryKitById(detailId as number),
+    enabled: detailId != null,
+    retry: 1,
+  })
+
+  const detailKit = detailQuery.data ?? null
+  const detailTitleBarcode = useMemo(() => {
+    if (detailKit) return getKitBarcode(detailKit)
+    if (detailId == null) return '—'
+    const fromList = completedKits.find((k) => k.id === detailId)
+    return fromList ? getKitBarcode(fromList) : `#${detailId}`
+  }, [completedKits, detailId, detailKit])
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -45,36 +74,23 @@ export function ResultsPage() {
       />
 
       <Card>
-        <CardContent className="p-8">
-          <div
-            className="border-2 border-dashed border-surface-300 rounded-2xl p-12 text-center hover:border-primary-300 hover:bg-primary-50/20 transition-all cursor-pointer"
-            onClick={() => toast.success('Dosya secici aciliyor...')}
-            onKeyDown={(e) => e.key === 'Enter' && toast.success('Dosya secici aciliyor...')}
-            role="button"
-            tabIndex={0}
-          >
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary-50 mb-4">
-              <FileSpreadsheet className="h-8 w-8 text-primary-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-surface-800 mb-2">Excel Dosyasi Yukleyin</h3>
-            <p className="text-sm text-surface-500 mb-4 max-w-md mx-auto">
-              Analiz sonuclarini iceren .xlsx dosyasini surukleyin veya dosya secerek yukleyin. Her satir bir barkoda karsilik gelmeli.
-            </p>
-            <Button variant="gradient" onClick={(e) => { e.stopPropagation(); toast.success('Dosya secici aciliyor...') }}>
-              <Upload className="h-4 w-4" />
-              Dosya Sec
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardHeader>
           <CardTitle>Analiz Tamamlanan / Sonuclar</CardTitle>
           <CardDescription>Analizi tamamlanmis numuneler ve uzman havuzuna gecmis kayitlar</CardDescription>
         </CardHeader>
         <CardContent>
-          {completedKits.length === 0 ? (
+          {kitsQuery.isLoading ? (
+            <div className="py-12 text-center text-surface-500">
+              <Check className="h-12 w-12 mx-auto mb-3 text-surface-300" />
+              <p>Yukleniyor...</p>
+            </div>
+          ) : kitsQuery.isError ? (
+            <div className="py-12 text-center text-surface-500">
+              <Check className="h-12 w-12 mx-auto mb-3 text-surface-300" />
+              <p>Liste yuklenemedi.</p>
+              <p className="text-sm mt-1">Lutfen daha sonra tekrar deneyin.</p>
+            </div>
+          ) : completedKits.length === 0 ? (
             <div className="py-12 text-center text-surface-500">
               <Check className="h-12 w-12 mx-auto mb-3 text-surface-300" />
               <p>Henuz tamamlanmis analiz sonucu yok.</p>
@@ -84,7 +100,7 @@ export function ResultsPage() {
             <div className="space-y-3">
               {completedKits.map((kit) => (
                 <div
-                  key={kit.barcode}
+                  key={kit.id}
                   className="flex items-center justify-between p-4 rounded-xl border border-surface-200 hover:border-primary-200 hover:bg-surface-50/50 transition-colors"
                 >
                   <div className="flex items-center gap-4">
@@ -94,60 +110,124 @@ export function ResultsPage() {
                     <div>
                       <button
                         type="button"
-                        onClick={() => setDetailBarcode(kit.barcode)}
+                        onClick={() => setDetailId(kit.id)}
                         className="font-mono font-semibold text-primary-600 hover:underline text-left block"
                       >
-                        {kit.barcode}
+                        {getKitBarcode(kit)}
                       </button>
                       <p className="text-xs text-surface-500">
-                        {formatDateTime(kit.createdAt)} · {kit.location}
+                        {formatDateTime(kit.updatedAt || kit.createdAt)}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => setDetailBarcode(kit.barcode)}>
+                    <Button variant="ghost" size="sm" onClick={() => setDetailId(kit.id)}>
                       <Eye className="h-4 w-4" /> Detay
                     </Button>
                     <Badge variant="success" dot>
-                      {KIT_STATUS_LABELS[kit.status]}
+                      Tamamlandi
                     </Badge>
                   </div>
                 </div>
               ))}
             </div>
           )}
+
+          {!kitsQuery.isLoading && !kitsQuery.isError && kitsQuery.data && kitsQuery.data.totalPages > 1 ? (
+            <div className="mt-4 flex items-center justify-between border-t border-surface-200 pt-4">
+              <div className="text-sm text-surface-600">
+                {kitsQuery.data.currentPage} / {kitsQuery.data.totalPages}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={kitsQuery.data.currentPage <= 1}
+                >
+                  Geri
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(kitsQuery.data!.totalPages, p + 1))}
+                  disabled={kitsQuery.data.currentPage >= kitsQuery.data.totalPages}
+                >
+                  Ileri
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
       {/* Detay modal */}
-      <Modal open={!!detailBarcode} onOpenChange={(open) => !open && setDetailBarcode(null)}>
-        <ModalContent className="max-w-md">
+      <Modal open={detailId != null} onOpenChange={(open) => !open && setDetailId(null)}>
+        <ModalContent className={detailKit?.resultMediaId?.url ? 'max-w-4xl w-full' : 'max-w-md'}>
           <ModalHeader>
             <ModalTitle>Sonuc Detayi</ModalTitle>
-            <ModalDescription>{selectedKit?.barcode}</ModalDescription>
+            <ModalDescription>{detailTitleBarcode}</ModalDescription>
           </ModalHeader>
-          <ModalBody>
-            {selectedKit && (
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-surface-500 text-xs">Barkod</p>
-                  <p className="font-mono font-semibold">{selectedKit.barcode}</p>
-                </div>
-                <div>
-                  <p className="text-surface-500 text-xs">Durum</p>
-                  <p>{KIT_STATUS_LABELS[selectedKit.status]}</p>
-                </div>
-                <div>
-                  <p className="text-surface-500 text-xs">Konum</p>
-                  <p>{selectedKit.location}</p>
-                </div>
-                <div>
-                  <p className="text-surface-500 text-xs">Tarih</p>
-                  <p>{formatDateTime(selectedKit.createdAt)}</p>
-                </div>
-                {/* Kor analiz: Lab sadece barkod gorur; diyetisyen/danisan adi gosterilmez */}
+          <ModalBody className="space-y-4">
+            {detailQuery.isLoading ? (
+              <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 text-sm text-surface-600">
+                Yukleniyor...
               </div>
-            )}
+            ) : detailQuery.isError ? (
+              <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                <p className="text-sm font-medium text-surface-700">Detay yuklenemedi</p>
+                <p className="text-xs text-surface-500 mt-1">{getApiErrorMessage(detailQuery.error, { fallback: 'Lutfen daha sonra tekrar deneyin.' })}</p>
+              </div>
+            ) : detailKit ? (
+              <>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-surface-500 text-xs">Barkod</p>
+                    <p className="font-mono font-semibold">{getKitBarcode(detailKit)}</p>
+                  </div>
+                  <div>
+                    <p className="text-surface-500 text-xs">Durum</p>
+                    <p>Tamamlandi</p>
+                  </div>
+                  <div>
+                    <p className="text-surface-500 text-xs">Olusturma</p>
+                    <p>{formatDateTime(detailKit.createdAt)}</p>
+                  </div>
+                  <div>
+                    <p className="text-surface-500 text-xs">Guncelleme</p>
+                    <p>{formatDateTime(detailKit.updatedAt)}</p>
+                  </div>
+                  {/* Kor analiz: Lab sadece barkod gorur; diyetisyen/danisan adi gosterilmez */}
+                </div>
+
+                {detailKit.resultMediaId?.url ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <p className="text-sm font-medium text-surface-700">Sonuc Dosyasi</p>
+                      <Button
+                        variant="link"
+                        onClick={() => window.open(detailKit.resultMediaId!.url!, '_blank', 'noopener,noreferrer')}
+                      >
+                        Rapor Goster
+                      </Button>
+                    </div>
+                    {isProbablyPdf(detailKit.resultMediaId.url) ? (
+                      <PdfViewer file={detailKit.resultMediaId.url} maxHeight="55vh" className="flex-1" />
+                    ) : (
+                      <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                        <p className="text-sm text-surface-600">Dosya onizlemesi sadece PDF icin destekleniyor.</p>
+                        <p className="text-xs text-surface-500 mt-1">Linkten acarak goruntuleyebilirsiniz.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                    <p className="text-sm text-surface-600">Sonuc dosyasi bulunamadi.</p>
+                    <p className="text-xs text-surface-500 mt-1">Bu kayit icin medya yuklenmemis olabilir.</p>
+                  </div>
+                )}
+              </>
+            ) : null}
           </ModalBody>
         </ModalContent>
       </Modal>

@@ -7,6 +7,7 @@ import {
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
   Tabs, TabsList, TabsTrigger,
+  Textarea,
 } from '@/components/ui'
 import { TestTubes, Search, Eye, Calendar, Check, X, Upload } from 'lucide-react'
 import { ROUTES } from '@/utils/routes'
@@ -42,14 +43,19 @@ export function SamplePoolPage() {
   const [detailId, setDetailId] = useState<number | null>(null)
   const [page, setPage] = useState(1)
   const [actionKitId, setActionKitId] = useState<number | null>(null)
-  const [activeStatus, setActiveStatus] = useState<Extract<LabKitStatus, 'pending' | 'in_progress' | 'cancelled'>>('pending')
+  const [activeStatus, setActiveStatus] = useState<Extract<LabKitStatus, 'pending' | 'cancelled'>>('pending')
+
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [rejectKitId, setRejectKitId] = useState<number | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+
   const [completeOpen, setCompleteOpen] = useState(false)
   const [completeKitId, setCompleteKitId] = useState<number | null>(null)
   const [completeFile, setCompleteFile] = useState<File | null>(null)
 
   const kitsQuery = useQuery({
-    queryKey: ['laboratory-kits', page],
-    queryFn: () => getLaboratoryKitsPage({ page }),
+    queryKey: ['laboratory-kits', activeStatus, page],
+    queryFn: () => getLaboratoryKitsPage({ page, status: activeStatus }),
     placeholderData: keepPreviousData,
     retry: 1,
   })
@@ -60,14 +66,12 @@ export function SamplePoolPage() {
   const visibleKits = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     return allKits
-      .filter((k) => k.status !== 'completed')
-      .filter((k) => k.status === activeStatus)
       .filter((k) => {
         if (!q) return true
         return getKitBarcode(k).toLowerCase().includes(q)
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [activeStatus, allKits, searchQuery])
+  }, [allKits, searchQuery])
 
   const selectedKit = useMemo(() => (detailId != null ? allKits.find((k) => k.id === detailId) ?? null : null), [allKits, detailId])
   const completeKit = useMemo(
@@ -76,12 +80,15 @@ export function SamplePoolPage() {
   )
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: 'in_progress' | 'cancelled' }) =>
-      updateLaboratoryKit(id, { status }),
+    mutationFn: ({ id, status, reasonForCancellation }: { id: number; status: 'in_progress' | 'cancelled'; reasonForCancellation?: string }) =>
+      updateLaboratoryKit(id, { status, reasonForCancellation }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['laboratory-kits'] })
       toast.success(variables.status === 'in_progress' ? 'Numune onaylandi' : 'Numune reddedildi')
       setActionKitId(null)
+      setRejectOpen(false)
+      setRejectKitId(null)
+      setRejectReason('')
     },
     onError: (err: unknown) => {
       toast.error(getApiErrorMessage(err, { fallback: 'Islem basarisiz' }))
@@ -94,9 +101,21 @@ export function SamplePoolPage() {
     updateStatusMutation.mutate({ id, status: 'in_progress' })
   }
 
-  const handleReject = (id: number) => {
-    setActionKitId(id)
-    updateStatusMutation.mutate({ id, status: 'cancelled' })
+  const openRejectModal = (id: number) => {
+    setRejectKitId(id)
+    setRejectReason('')
+    setRejectOpen(true)
+  }
+
+  const handleRejectSubmit = () => {
+    if (rejectKitId == null) return
+    const reason = rejectReason.trim()
+    if (!reason) {
+      toast.error('Iptal sebebi zorunludur')
+      return
+    }
+    setActionKitId(rejectKitId)
+    updateStatusMutation.mutate({ id: rejectKitId, status: 'cancelled', reasonForCancellation: reason })
   }
 
   const completeMutation = useMutation({
@@ -173,7 +192,6 @@ export function SamplePoolPage() {
       >
         <TabsList>
           <TabsTrigger value="pending">Bekliyor</TabsTrigger>
-          <TabsTrigger value="in_progress">Islemde</TabsTrigger>
           <TabsTrigger value="cancelled">Iptal</TabsTrigger>
         </TabsList>
       </Tabs>
@@ -267,7 +285,7 @@ export function SamplePoolPage() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleReject(kit.id)}
+                            onClick={() => openRejectModal(kit.id)}
                             disabled={updateStatusMutation.isPending || completeMutation.isPending}
                           >
                             <X className="h-3.5 w-3.5" />
@@ -388,6 +406,51 @@ export function SamplePoolPage() {
               disabled={completeMutation.isPending || !completeFile}
             >
               {actionKitId === completeKitId && completeMutation.isPending ? 'Yukleniyor...' : 'Tamamla'}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Iptal / Reddet modal */}
+      <Modal
+        open={rejectOpen}
+        onOpenChange={(open) => {
+          setRejectOpen(open)
+          if (!open) {
+            setRejectKitId(null)
+            setRejectReason('')
+          }
+        }}
+      >
+        <ModalContent className="max-w-md">
+          <ModalHeader>
+            <ModalTitle>Iptal Et</ModalTitle>
+            <ModalDescription>
+              Barkod: {rejectKitId != null ? (allKits.find((k) => k.id === rejectKitId) ? getKitBarcode(allKits.find((k) => k.id === rejectKitId)!) : `#${rejectKitId}`) : '-'}
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-3">
+            <div>
+              <label className="block text-[13px] font-medium text-surface-700 mb-2">Iptal Sebebi *</label>
+              <Textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Orn: Numune hasarli / barkod okunmuyor / eksik bilgi"
+                rows={4}
+              />
+              <p className="text-xs text-surface-500 mt-1">Bu alan zorunludur.</p>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={updateStatusMutation.isPending}>
+              Vazgec
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRejectSubmit}
+              disabled={updateStatusMutation.isPending || !rejectReason.trim()}
+            >
+              {actionKitId === rejectKitId && updateStatusMutation.isPending ? 'Iptal ediliyor...' : 'Iptal Et'}
             </Button>
           </ModalFooter>
         </ModalContent>

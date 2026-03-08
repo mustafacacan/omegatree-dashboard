@@ -23,6 +23,8 @@ export interface LaboratoryKit {
   status?: LabKitStatus
   isActive?: boolean
   resultMediaId?: LabKitMedia
+  /** Backend may return media as `mediaResult`; we also map it into `resultMediaId` for backward compatibility. */
+  mediaResult?: LabKitMedia
   reasonForCancellation?: string
   createdAt: string
   updatedAt: string
@@ -49,6 +51,7 @@ interface ApiLaboratoryKitItem {
   status?: LabKitStatus
   isActive?: boolean
   resultMediaId?: LabKitMedia | number | null
+  mediaResult?: LabKitMedia | number | null
   reasonForCancellation?: string
   createdAt?: string
   updatedAt?: string
@@ -70,7 +73,9 @@ function mapApiLabKit(item: ApiLaboratoryKitItem): LaboratoryKit {
       }
       : undefined)
 
-  const mediaObj = item.resultMediaId && typeof item.resultMediaId === 'object' ? item.resultMediaId : undefined
+  const resultMediaObj = item.resultMediaId && typeof item.resultMediaId === 'object' ? item.resultMediaId : undefined
+  const mediaResultObj = item.mediaResult && typeof item.mediaResult === 'object' ? item.mediaResult : undefined
+  const resolvedMedia = resultMediaObj ?? mediaResultObj
   return {
     id: Number(item.id) || 0,
     laboratoryId: item.laboratoryId != null ? Number(item.laboratoryId) : undefined,
@@ -78,7 +83,8 @@ function mapApiLabKit(item: ApiLaboratoryKitItem): LaboratoryKit {
     kitId: resolvedKitObj,
     status: item.status,
     isActive: item.isActive,
-    resultMediaId: mediaObj as LabKitMedia | undefined,
+    resultMediaId: resolvedMedia as LabKitMedia | undefined,
+    mediaResult: mediaResultObj as LabKitMedia | undefined,
     reasonForCancellation: item.reasonForCancellation,
     createdAt: item.createdAt ?? '',
     updatedAt: item.updatedAt ?? '',
@@ -117,7 +123,7 @@ function pickItemsAndMeta(payload: unknown, requestedPage?: number): { items: Ap
  * GET /laboratory-kits (paginated wrapper)
  * Response (observed): { success, message, data: { totalItems, totalPages, currentPage, items: [] } }
  */
-export async function getLaboratoryKitsPage(params?: { page?: number }): Promise<LaboratoryKitsPage> {
+export async function getLaboratoryKitsPage(params?: { page?: number; status?: LabKitStatus }): Promise<LaboratoryKitsPage> {
   const { data } = await api.get<unknown>('/laboratory-kits', { params })
   const top = asRecord(data)
   const payload = top && 'data' in top ? top.data : data

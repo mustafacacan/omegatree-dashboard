@@ -10,11 +10,12 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar,
 } from 'recharts'
-import { useWorkflowStore } from '@/stores/workflow.store'
-import { KitStatus, KIT_STATUS_LABELS } from '@/utils/constants'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ROUTES } from '@/utils/routes'
 import { formatDate, formatDateTime } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { Eye } from 'lucide-react'
+import { getLaboratoryKitById, getLaboratoryKitsPage, type LabKitStatus, type LaboratoryKit } from '@/services/laboratory-kits.service'
 
 const W = {
   olive: '#8B9A4B', oliveLight: '#EEF2DE',
@@ -27,83 +28,178 @@ const W = {
   red: '#C53030', redLight: '#FDE8E8',
 }
 
-const dailyAnalysis = [
-  { day: 'Pzt', tamamlanan: 5, gelen: 7 }, { day: 'Sal', tamamlanan: 8, gelen: 6 },
-  { day: 'Car', tamamlanan: 6, gelen: 9 }, { day: 'Per', tamamlanan: 10, gelen: 5 },
-  { day: 'Cum', tamamlanan: 7, gelen: 8 }, { day: 'Cmt', tamamlanan: 3, gelen: 2 },
-  { day: 'Paz', tamamlanan: 1, gelen: 0 },
-]
+function getStatusLabel(status?: LabKitStatus) {
+  if (status === 'pending') return 'Bekliyor'
+  if (status === 'in_progress') return 'Islemde'
+  if (status === 'cancelled') return 'Iptal'
+  if (status === 'completed') return 'Tamamlandi'
+  return 'Bilinmiyor'
+}
 
-/** Laboratuvar pipeline statuslari: havuz, analizde, reddedildi, tamamlandi */
-const LAB_PIPELINE_STATUSES = [
-  KitStatus.SAMPLE_SENT,
-  KitStatus.LAB_PENDING,
-  KitStatus.IN_ANALYSIS,
-  KitStatus.REJECTED,
-  KitStatus.ANALYSIS_COMPLETE,
-  KitStatus.SPECIALIST_POOL,
-  KitStatus.COMPLETED,
-] as const
+function getKitBarcode(kit: LaboratoryKit) {
+  return kit.kitId?.kitBarcode ?? `#${kit.id}`
+}
+
+function ymdLocal(date: Date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function dayShortTr(date: Date) {
+  // JS: 0=Sun
+  const map = ['Paz', 'Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt']
+  return map[date.getDay()] ?? '—'
+}
+
+function toValidDate(input: string | undefined) {
+  if (!input) return null
+  const d = new Date(input)
+  return Number.isNaN(d.getTime()) ? null : d
+}
 
 const tooltipStyle = { background: 'var(--color-panel)', border: '1px solid var(--color-border)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', fontSize: '12px', padding: '10px 14px' }
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function LabDashboardPage() {
   const navigate = useNavigate()
-  const { kits } = useWorkflowStore()
 
-  const labKits = useMemo(
-    () => kits.filter((k) => (LAB_PIPELINE_STATUSES as readonly KitStatus[]).includes(k.status)),
-    [kits]
-  )
+  const pendingQuery = useQuery({
+    queryKey: ['laboratory-kits', 'dashboard', 'pending'],
+    queryFn: () => getLaboratoryKitsPage({ page: 1, status: 'pending' }),
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
 
-  const statsByStatus = useMemo(() => {
-    const map: Record<string, number> = {}
-    LAB_PIPELINE_STATUSES.forEach((s) => { map[s] = 0 })
-    labKits.forEach((k) => { map[k.status] = (map[k.status] ?? 0) + 1 })
-    return map
-  }, [labKits])
+  const inProgressQuery = useQuery({
+    queryKey: ['laboratory-kits', 'dashboard', 'in_progress'],
+    queryFn: () => getLaboratoryKitsPage({ page: 1, status: 'in_progress' }),
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
 
-  const havuzdaCount = (statsByStatus[KitStatus.SAMPLE_SENT] ?? 0) + (statsByStatus[KitStatus.LAB_PENDING] ?? 0)
-  const analizdeCount = statsByStatus[KitStatus.IN_ANALYSIS] ?? 0
-  const reddedilenCount = statsByStatus[KitStatus.REJECTED] ?? 0
-  const tamamlananCount = (statsByStatus[KitStatus.ANALYSIS_COMPLETE] ?? 0) + (statsByStatus[KitStatus.SPECIALIST_POOL] ?? 0) + (statsByStatus[KitStatus.COMPLETED] ?? 0)
+  const cancelledQuery = useQuery({
+    queryKey: ['laboratory-kits', 'dashboard', 'cancelled'],
+    queryFn: () => getLaboratoryKitsPage({ page: 1, status: 'cancelled' }),
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
+
+  const completedQuery = useQuery({
+    queryKey: ['laboratory-kits', 'dashboard', 'completed'],
+    queryFn: () => getLaboratoryKitsPage({ page: 1, status: 'completed' }),
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
+
+  const bekliyorCount = pendingQuery.data?.totalItems ?? 0
+  const islemdeCount = inProgressQuery.data?.totalItems ?? 0
+  const iptalCount = cancelledQuery.data?.totalItems ?? 0
+  const tamamlananCount = completedQuery.data?.totalItems ?? 0
 
   const pipelinePieData = useMemo(() => {
     const items: { name: string; value: number; color: string; status: string }[] = []
-    if (havuzdaCount > 0) items.push({ name: KIT_STATUS_LABELS[KitStatus.SAMPLE_SENT], value: havuzdaCount, color: W.amber, status: 'havuz' })
-    if (analizdeCount > 0) items.push({ name: KIT_STATUS_LABELS[KitStatus.IN_ANALYSIS], value: analizdeCount, color: W.orange, status: 'analiz' })
-    if (reddedilenCount > 0) items.push({ name: KIT_STATUS_LABELS[KitStatus.REJECTED], value: reddedilenCount, color: W.red, status: 'rejected' })
-    if (tamamlananCount > 0) items.push({ name: 'Tamamlanan', value: tamamlananCount, color: W.green, status: 'done' })
+    if (bekliyorCount > 0) items.push({ name: getStatusLabel('pending'), value: bekliyorCount, color: W.amber, status: 'pending' })
+    if (islemdeCount > 0) items.push({ name: getStatusLabel('in_progress'), value: islemdeCount, color: W.orange, status: 'in_progress' })
+    if (iptalCount > 0) items.push({ name: getStatusLabel('cancelled'), value: iptalCount, color: W.red, status: 'cancelled' })
+    if (tamamlananCount > 0) items.push({ name: getStatusLabel('completed'), value: tamamlananCount, color: W.green, status: 'completed' })
     return items.length ? items : [{ name: 'Veri yok', value: 1, color: W.creamDark, status: 'none' }]
-  }, [havuzdaCount, analizdeCount, reddedilenCount, tamamlananCount])
+  }, [bekliyorCount, islemdeCount, iptalCount, tamamlananCount])
 
   const queueItems = useMemo(() => {
-    return labKits
-      .filter((k) => k.status === KitStatus.SAMPLE_SENT || k.status === KitStatus.LAB_PENDING)
+    const items = pendingQuery.data?.items ?? []
+    return [...items]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 8)
       .map((k) => ({
-        barcode: k.barcode,
+        id: k.id,
+        barcode: getKitBarcode(k),
         receivedAt: formatDateTime(k.createdAt),
         status: k.status,
       }))
-  }, [labKits])
+  }, [pendingQuery.data?.items])
 
   const recentCompleted = useMemo(() => {
-    return labKits
-      .filter((k) => k.status === KitStatus.ANALYSIS_COMPLETE || k.status === KitStatus.SPECIALIST_POOL || k.status === KitStatus.COMPLETED)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const items = completedQuery.data?.items ?? []
+    return [...items]
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
       .slice(0, 5)
-      .map((k) => ({ barcode: k.barcode, completedAt: formatDate(k.createdAt), status: k.status }))
-  }, [labKits])
+      .map((k) => ({
+        id: k.id,
+        barcode: getKitBarcode(k),
+        completedAt: formatDate(k.updatedAt || k.createdAt),
+        status: k.status,
+      }))
+  }, [completedQuery.data?.items])
 
-  const totalPipeline = havuzdaCount + analizdeCount + reddedilenCount + tamamlananCount
+  const totalPipeline = bekliyorCount + islemdeCount + iptalCount + tamamlananCount
   const performanceValue = totalPipeline > 0 ? Math.round((tamamlananCount / totalPipeline) * 100) : 0
   const performanceData = [{ name: 'Verimlilik', value: performanceValue, fill: W.olive }]
 
-  const [detailBarcode, setDetailBarcode] = useState<string | null>(null)
-  const selectedKit = useMemo(() => (detailBarcode ? kits.find((k) => k.barcode === detailBarcode) : null), [kits, detailBarcode])
+  const dailyAnalysis = useMemo(() => {
+    const now = new Date()
+    const days: Array<{ day: string; key: string; date: Date }> = []
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date(now)
+      d.setDate(now.getDate() - i)
+      days.push({ day: dayShortTr(d), key: ymdLocal(d), date: d })
+    }
+
+    const gelenMap: Record<string, number> = {}
+    const tamamlananMap: Record<string, number> = {}
+    days.forEach((d) => {
+      gelenMap[d.key] = 0
+      tamamlananMap[d.key] = 0
+    })
+
+    const pendingItems = pendingQuery.data?.items ?? []
+    const inProgressItems = inProgressQuery.data?.items ?? []
+    const completedItems = completedQuery.data?.items ?? []
+
+    for (const item of [...pendingItems, ...inProgressItems]) {
+      const dt = toValidDate(item.createdAt)
+      if (!dt) continue
+      const key = ymdLocal(dt)
+      if (key in gelenMap) gelenMap[key] += 1
+    }
+    for (const item of completedItems) {
+      const dt = toValidDate(item.updatedAt || item.createdAt)
+      if (!dt) continue
+      const key = ymdLocal(dt)
+      if (key in tamamlananMap) tamamlananMap[key] += 1
+    }
+
+    return days.map((d) => ({
+      day: d.day,
+      gelen: gelenMap[d.key] ?? 0,
+      tamamlanan: tamamlananMap[d.key] ?? 0,
+    }))
+  }, [pendingQuery.data?.items, inProgressQuery.data?.items, completedQuery.data?.items])
+
+  const avgCompletionDays = useMemo(() => {
+    const items = completedQuery.data?.items ?? []
+    const durations: number[] = []
+    for (const item of items) {
+      const start = toValidDate(item.createdAt)
+      const end = toValidDate(item.updatedAt || item.createdAt)
+      if (!start || !end) continue
+      const ms = end.getTime() - start.getTime()
+      if (Number.isFinite(ms) && ms >= 0) durations.push(ms)
+    }
+    if (!durations.length) return null
+    const avgMs = durations.reduce((a, b) => a + b, 0) / durations.length
+    return avgMs / (1000 * 60 * 60 * 24)
+  }, [completedQuery.data?.items])
+
+  const [detailId, setDetailId] = useState<number | null>(null)
+  const detailQuery = useQuery({
+    queryKey: ['laboratory-kits', 'dashboard', 'detail', detailId],
+    queryFn: () => getLaboratoryKitById(detailId as number),
+    enabled: detailId != null,
+    retry: 1,
+  })
+  const selectedKit = detailQuery.data ?? null
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -133,10 +229,10 @@ export function LabDashboardPage() {
       {/* ═══ STAT CARDS — Statusa gore istatistikler ═══ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { title: KIT_STATUS_LABELS[KitStatus.SAMPLE_SENT], value: String(havuzdaCount), icon: TestTubes, iconColor: W.amber, iconBg: W.amberLight },
-          { title: KIT_STATUS_LABELS[KitStatus.IN_ANALYSIS], value: String(analizdeCount), icon: FlaskConical, iconColor: W.orange, iconBg: W.orangeLight },
-          { title: KIT_STATUS_LABELS[KitStatus.REJECTED], value: String(reddedilenCount), icon: XCircle, iconColor: W.red, iconBg: W.redLight },
-          { title: 'Tamamlanan', value: String(tamamlananCount), icon: CheckCircle, iconColor: W.green, iconBg: W.greenLight },
+          { title: getStatusLabel('pending'), value: String(bekliyorCount), icon: TestTubes, iconColor: W.amber, iconBg: W.amberLight },
+          { title: getStatusLabel('in_progress'), value: String(islemdeCount), icon: FlaskConical, iconColor: W.orange, iconBg: W.orangeLight },
+          { title: getStatusLabel('cancelled'), value: String(iptalCount), icon: XCircle, iconColor: W.red, iconBg: W.redLight },
+          { title: getStatusLabel('completed'), value: String(tamamlananCount), icon: CheckCircle, iconColor: W.green, iconBg: W.greenLight },
         ].map((s, i) => {
           const Icon = s.icon
           return (
@@ -246,14 +342,14 @@ export function LabDashboardPage() {
                         <TestTubes className="h-4 w-4 text-orange-500" />
                       </div>
                       <div className="min-w-0">
-                        <button type="button" onClick={() => setDetailBarcode(item.barcode)} className="text-left block w-full">
+                        <button type="button" onClick={() => setDetailId(item.id)} className="text-left block w-full">
                           <code className="text-[12px] font-mono font-bold hover:underline text-surface-900">{item.barcode}</code>
                         </button>
                         <p className="text-[10px] text-surface-500">Gelis: {item.receivedAt}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <Button variant="ghost" size="xs" onClick={() => setDetailBarcode(item.barcode)} title="Detay"><Eye className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="xs" onClick={() => setDetailId(item.id)} title="Detay"><Eye className="h-3.5 w-3.5" /></Button>
                       <Button variant="default" size="xs" onClick={() => navigate(ROUTES.LABORATUVAR_HAVUZ)}>Sec</Button>
                     </div>
                   </div>
@@ -275,7 +371,7 @@ export function LabDashboardPage() {
                   <button
                     key={item.barcode}
                     type="button"
-                    onClick={() => setDetailBarcode(item.barcode)}
+                    onClick={() => setDetailId(item.id)}
                     className="w-full flex items-center gap-3 p-3 rounded-xl text-left hover:opacity-90 transition-opacity bg-green-100 dark:bg-green-900/30"
                   >
                     <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-green-200 dark:bg-green-800/50">
@@ -323,10 +419,15 @@ export function LabDashboardPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] text-surface-500">Ort. Sure</span>
-                    <span className="text-[10px] font-bold text-primary-600">3.2 gun</span>
+                    <span className="text-[10px] font-bold text-primary-600">
+                      {avgCompletionDays == null ? '—' : `${avgCompletionDays.toFixed(1)} gun`}
+                    </span>
                   </div>
                   <div className="w-full h-1.5 rounded-full overflow-hidden bg-surface-200">
-                    <div className="h-full rounded-full bg-primary-500" style={{ width: '68%' }} />
+                    <div
+                      className="h-full rounded-full bg-primary-500"
+                      style={{ width: avgCompletionDays == null ? '0%' : `${Math.min(100, Math.max(0, (avgCompletionDays / 7) * 100))}%` }}
+                    />
                   </div>
                 </div>
                 <div>
@@ -345,40 +446,46 @@ export function LabDashboardPage() {
       </div>
 
       {/* Kit detay modali */}
-      <Modal open={!!detailBarcode} onOpenChange={(open) => !open && setDetailBarcode(null)}>
+      <Modal open={!!detailId} onOpenChange={(open) => !open && setDetailId(null)}>
         <ModalContent className="max-w-md">
           <ModalHeader>
             <ModalTitle>Kit / Numune Detayi</ModalTitle>
-            <ModalDescription>{selectedKit?.barcode}</ModalDescription>
+            <ModalDescription>{selectedKit ? getKitBarcode(selectedKit) : detailId != null ? `#${detailId}` : ''}</ModalDescription>
           </ModalHeader>
           <ModalBody>
-            {selectedKit && (
+            {detailQuery.isLoading ? (
+              <div className="py-10 text-center text-sm text-surface-500">Yukleniyor...</div>
+            ) : detailQuery.isError ? (
+              <div className="py-10 text-center text-sm text-surface-500">
+                {getApiErrorMessage(detailQuery.error, { fallback: 'Detay yuklenemedi.' })}
+              </div>
+            ) : selectedKit ? (
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-surface-500 text-xs">Barkod</p>
-                  <p className="font-mono font-semibold">{selectedKit.barcode}</p>
+                  <p className="font-mono font-semibold">{getKitBarcode(selectedKit)}</p>
                 </div>
                 <div>
                   <p className="text-surface-500 text-xs">Durum</p>
-                  <p>{KIT_STATUS_LABELS[selectedKit.status]}</p>
+                  <p>{getStatusLabel(selectedKit.status)}</p>
                 </div>
                 <div>
-                  <p className="text-surface-500 text-xs">Konum</p>
-                  <p>{selectedKit.location}</p>
-                </div>
-                <div>
-                  <p className="text-surface-500 text-xs">Tarih</p>
+                  <p className="text-surface-500 text-xs">Olusturma</p>
                   <p>{formatDateTime(selectedKit.createdAt)}</p>
                 </div>
-                {selectedKit.analysisProgress != null && (
-                  <div>
-                    <p className="text-surface-500 text-xs">Ilerleme</p>
-                    <p>%{selectedKit.analysisProgress}</p>
+                <div>
+                  <p className="text-surface-500 text-xs">Guncelleme</p>
+                  <p>{formatDateTime(selectedKit.updatedAt)}</p>
+                </div>
+                {selectedKit.status === 'cancelled' && selectedKit.reasonForCancellation ? (
+                  <div className="col-span-2">
+                    <p className="text-surface-500 text-xs">Iptal Sebebi</p>
+                    <p className="text-surface-700 text-sm mt-0.5 leading-snug">{selectedKit.reasonForCancellation}</p>
                   </div>
-                )}
+                ) : null}
                 {/* Kor analiz: Lab sadece barkod gorur; diyetisyen/danisan adi gosterilmez */}
               </div>
-            )}
+            ) : null}
           </ModalBody>
         </ModalContent>
       </Modal>

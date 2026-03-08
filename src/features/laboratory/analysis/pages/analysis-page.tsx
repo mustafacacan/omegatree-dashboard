@@ -127,10 +127,6 @@ export function AnalysisPage() {
             <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR)}>Dashboard</Button>
             <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR_HAVUZ)}>Numune Havuzu</Button>
             <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.LABORATUVAR_SONUCLAR)}>Sonuclar</Button>
-            <Button variant="outline" onClick={() => toast.success('Excel dosya secici aciliyor...')}>
-              <Upload className="h-4 w-4" />
-              Excel Yukle
-            </Button>
           </div>
         }
       />

@@ -24,6 +24,8 @@ export interface DieticianClientKit {
   clientPhone?: string
   clientEmail?: string
   status?: 'in_client' | 'in_laboratory' | 'in_expert' | 'delivered' | 'cancelled' | 'completed'
+  /** Backend sometimes returns a free-text status/operation description (e.g. cancellation reason). */
+  description?: string
   isActive?: boolean
   createdAt?: string
   updatedAt?: string
@@ -72,6 +74,7 @@ function mapApiKit(item: unknown): DieticianClientKit {
       : undefined
 
   const status = asString(obj.status) as DieticianClientKit['status'] | undefined
+  const description = asString(obj.description)
 
   return {
     id: asNumber(obj.id) ?? 0,
@@ -94,6 +97,7 @@ function mapApiKit(item: unknown): DieticianClientKit {
     clientPhone: asString(clientUserObj?.phone),
     clientEmail: asString(clientUserObj?.email),
     status,
+    description,
     isActive: asBoolean(obj.isActive),
     createdAt: asString(obj.createdAt),
     updatedAt: asString(obj.updatedAt),
