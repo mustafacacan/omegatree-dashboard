@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Button, Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -23,6 +24,17 @@ export function TablePagination({
   const safePageSize = Math.max(1, pageSize)
   const totalPages = Math.max(1, Math.ceil(totalItems / safePageSize))
   const currentPage = Math.min(Math.max(1, page), totalPages)
+
+  // Parent sayfa state'ini gecerli araliga getir (filtre degisince sayfa asimi olmasin)
+  useEffect(() => {
+    if (totalItems === 0) {
+      if (page !== 1) onPageChange(1)
+      return
+    }
+    if (page !== currentPage) onPageChange(currentPage)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only sync when computed currentPage differs from page
+  }, [totalItems, page, currentPage])
+
   const start = totalItems === 0 ? 0 : (currentPage - 1) * safePageSize + 1
   const end = Math.min(currentPage * safePageSize, totalItems)
 

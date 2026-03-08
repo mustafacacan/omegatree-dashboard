@@ -173,6 +173,12 @@
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Hafif yukarı-aşağı float (empty state ikon vb.) */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
 @keyframes slide-in-right {
   from { opacity: 0; transform: translateX(6px); }
   to { opacity: 1; transform: translateX(0); }
@@ -312,6 +318,11 @@
   .hover-lift:hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Float animation – empty state ikon vb. */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
   }
 
   /* Panel section divider */

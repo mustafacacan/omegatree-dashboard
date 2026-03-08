@@ -1,4 +1,6 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Avatar } from '@/components/ui'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { KitStatus } from '@/utils/constants'
@@ -9,12 +11,31 @@ import { motion } from 'framer-motion'
 import {
   Package, Users, ShoppingCart, TrendingUp, TrendingDown,
   Clock, CheckCircle, AlertTriangle, Truck, BarChart3,
-  ArrowUpRight, ArrowRight,
+  ArrowUpRight, ArrowRight, Loader2,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts'
+import { getUsers } from '@/services/users.service'
+import { getOrders } from '@/services/orders.service'
+import { getDieticianClientKits } from '@/services/dietician-client-kits.service'
+import { UserRole } from '@/utils/constants'
+
+/** API dietician-client-kit status → KitStatus (StatusBadge) */
+function mapKitStatusToDisplay(
+  status: 'in_client' | 'in_laboratory' | 'in_expert' | 'delivered' | 'cancelled' | 'completed' | undefined
+): KitStatus {
+  const map: Record<string, KitStatus> = {
+    in_client: KitStatus.CLIENT_RECEIVED,
+    in_laboratory: KitStatus.IN_ANALYSIS,
+    in_expert: KitStatus.SPECIALIST_POOL,
+    delivered: KitStatus.DELIVERED,
+    completed: KitStatus.COMPLETED,
+    cancelled: KitStatus.REJECTED,
+  }
+  return (status && map[status]) ?? KitStatus.IN_STOCK
+}
 
 /* ─── Nutrigo warm palette ─── */
 const W = {
@@ -36,6 +57,7 @@ const W = {
   textLight: '#9C968D',
 }
 
+/** Aylik gelir (API'de tarih bazli ozet yok; ornek veri veya siparis toplamindan) */
 const monthlyRevenue = [
   { month: 'Oca', gelir: 45 },
   { month: 'Sub', gelir: 52 },
@@ -45,13 +67,6 @@ const monthlyRevenue = [
   { month: 'Haz', gelir: 83 },
   { month: 'Tem', gelir: 76 },
   { month: 'Agu', gelir: 89 },
-]
-
-const kitPieData = [
-  { name: 'Stokta', value: 245, color: W.olive },
-  { name: 'Analizde', value: 67, color: W.orange },
-  { name: 'Zimmetli', value: 128, color: W.amber },
-  { name: 'Tamamlanan', value: 892, color: W.green },
 ]
 
 const weeklyKits = [
@@ -72,25 +87,14 @@ const recentActivity = [
   { icon: BarChart3, color: W.olive, bg: W.oliveLight, text: 'Uzman raporu onaya gonderildi', time: '3 saat once' },
 ]
 
-const recentKits = [
-  { barcode: 'OT-2025-00142', status: KitStatus.IN_ANALYSIS, dietitian: 'Dr. Ayse Y.', date: 'Bugun' },
-  { barcode: 'OT-2025-00141', status: KitStatus.DELIVERED, dietitian: 'Dr. Fatma D.', date: 'Bugun' },
-  { barcode: 'OT-2025-00140', status: KitStatus.COMPLETED, dietitian: 'Dr. Ali K.', date: 'Dun' },
-  { barcode: 'OT-2025-00139', status: KitStatus.SAMPLE_SENT, dietitian: 'Dr. Zeynep O.', date: 'Dun' },
-]
-
-const topDietitians = [
-  { name: 'Dr. Ayse Yilmaz', kits: 24, revenue: 36000, pct: 96 },
-  { name: 'Dr. Fatma Demir', kits: 18, revenue: 27000, pct: 72 },
-  { name: 'Dr. Ali Kaya', kits: 15, revenue: 22500, pct: 60 },
-]
-
-const kitCategories = [
-  { label: 'Premium', count: 542, color: W.olive },
-  { label: 'Standart', count: 389, color: W.orange },
-  { label: 'Cocuk', count: 246, color: W.amber },
-  { label: 'Diger', count: 155, color: W.green },
-]
+const kitCategoryLabels: Record<string, string> = {
+  in_client: 'Danışanda',
+  in_laboratory: 'Laboratuvarda',
+  in_expert: 'Uzmanda',
+  delivered: 'Teslim Edildi',
+  completed: 'Tamamlanan',
+  cancelled: 'İptal',
+}
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -110,6 +114,117 @@ export function AdminDashboardPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
 
+  const { data: usersRes } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => getUsers({ page: 1, limit: 500 }),
+  })
+  const { data: ordersList } = useQuery({
+    queryKey: ['orders'],
+    queryFn: () => getOrders(),
+  })
+  const { data: assignmentKits = [], isLoading: kitsLoading } = useQuery({
+    queryKey: ['dietician-client-kits', 'dashboard'],
+    queryFn: () => getDieticianClientKits(1, 500),
+  })
+
+  const usersList = Array.isArray(usersRes) ? usersRes : (usersRes?.users ?? [])
+  const dietitiansCount = useMemo(
+    () => usersList.filter((u) => u.role === UserRole.DIETITIAN).length,
+    [usersList]
+  )
+
+  const pendingOrdersCount = useMemo(
+    () => (ordersList ?? []).filter((o) => (o.status ?? '').toLowerCase() === 'pending').length,
+    [ordersList]
+  )
+  const totalRevenue = useMemo(() => {
+    const list = ordersList ?? []
+    return list
+      .filter((o) => (o.status ?? '').toLowerCase() === 'completed' || (o.status ?? '').toLowerCase() === 'delivered')
+      .reduce((sum, o) => sum + Number(o.totalPrice ?? 0), 0)
+  }, [ordersList])
+
+  const totalKits = assignmentKits.length
+  const kitPieData = useMemo(() => {
+    const statusCounts: Record<string, number> = {}
+    assignmentKits.forEach((k) => {
+      const s = k.status ?? 'in_client'
+      statusCounts[s] = (statusCounts[s] ?? 0) + 1
+    })
+    const colors: Record<string, string> = {
+      in_client: W.amber,
+      in_laboratory: W.orange,
+      in_expert: W.olive,
+      delivered: W.green,
+      completed: W.green,
+      cancelled: W.warmGray,
+    }
+    return Object.entries(statusCounts).map(([key, value]) => ({
+      name: kitCategoryLabels[key] ?? key,
+      value,
+      color: colors[key] ?? W.olive,
+    }))
+  }, [assignmentKits])
+
+  const recentKits = useMemo(() => {
+    const sorted = [...assignmentKits].sort((a, b) => {
+      const da = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime()
+      const db = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime()
+      return db - da
+    })
+    return sorted.slice(0, 6).map((k) => {
+      const d = k.updatedAt ?? k.createdAt
+      const dateStr = d ? new Date(d).toLocaleDateString('tr-TR') : ''
+      const today = new Date().toLocaleDateString('tr-TR')
+      const yesterday = new Date(Date.now() - 864e5).toLocaleDateString('tr-TR')
+      let dateLabel = dateStr
+      if (dateStr === today) dateLabel = 'Bugün'
+      else if (dateStr === yesterday) dateLabel = 'Dün'
+      return {
+        barcode: k.kitBarcode ?? `#${k.id}`,
+        status: mapKitStatusToDisplay(k.status),
+        dietitian: k.dieticianName ?? '—',
+        date: dateLabel,
+      }
+    })
+  }, [assignmentKits])
+
+  const topDietitians = useMemo(() => {
+    const byDietitian: Record<string, { name: string; kits: number }> = {}
+    assignmentKits.forEach((k) => {
+      const id = String(k.dieticianId ?? k.dieticianName ?? '')
+      const name = k.dieticianName ?? 'Bilinmeyen'
+      if (!id) return
+      if (!byDietitian[id]) byDietitian[id] = { name, kits: 0 }
+      byDietitian[id].kits += 1
+      if (k.dieticianName) byDietitian[id].name = k.dieticianName
+    })
+    const arr = Object.values(byDietitian)
+      .sort((a, b) => b.kits - a.kits)
+      .slice(0, 3)
+    const maxKits = Math.max(1, ...arr.map((a) => a.kits))
+    return arr.map((a) => ({
+      name: a.name,
+      kits: a.kits,
+      revenue: 0,
+      pct: Math.round((a.kits / maxKits) * 100),
+    }))
+  }, [assignmentKits])
+
+  const kitCategoriesChart = useMemo(() => {
+    if (kitPieData.length === 0)
+      return [
+        { label: 'Danışanda', count: 0, color: W.amber },
+        { label: 'Laboratuvarda', count: 0, color: W.orange },
+        { label: 'Tamamlanan', count: 0, color: W.green },
+      ]
+    return kitPieData.map((p) => ({
+      label: p.name,
+      count: p.value,
+      color: p.color,
+    }))
+  }, [kitPieData])
+
   return (
     <div className="space-y-5 animate-fade-in">
 
@@ -128,13 +243,14 @@ export function AdminDashboardPage() {
           {/* ═══════ STAT CARDS ═══════ */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
             {[
-              { title: 'Toplam Kit', value: '1,332', change: 12.5, icon: Package, iconClass: 'text-brand-500', bgClass: 'from-primary-50 to-primary-100', accent: 'stat-accent-primary' },
-              { title: 'Aktif Diyetisyen', value: '48', change: 8.2, icon: Users, iconClass: 'text-accent-amber', bgClass: 'from-orange-50 to-orange-100', accent: 'stat-accent-sky' },
-              { title: 'Bekleyen Siparis', value: '7', change: -3.1, icon: ShoppingCart, iconClass: 'text-warning', bgClass: 'from-amber-50 to-amber-100', accent: 'stat-accent-amber' },
-              { title: 'Aylik Gelir', value: formatCurrency(83000), change: 16.9, icon: TrendingUp, iconClass: 'text-success', bgClass: 'from-green-50 to-green-100', accent: 'stat-accent-violet' },
+              { title: 'Toplam Kit', value: kitsLoading ? '...' : totalKits.toLocaleString('tr-TR'), change: null, icon: Package, iconClass: 'text-brand-500', bgClass: 'from-primary-50 to-primary-100', accent: 'stat-accent-primary' },
+              { title: 'Aktif Diyetisyen', value: String(dietitiansCount), change: null, icon: Users, iconClass: 'text-accent-amber', bgClass: 'from-orange-50 to-orange-100', accent: 'stat-accent-sky' },
+              { title: 'Bekleyen Siparis', value: String(pendingOrdersCount), change: null, icon: ShoppingCart, iconClass: 'text-warning', bgClass: 'from-amber-50 to-amber-100', accent: 'stat-accent-amber' },
+              { title: 'Toplam Gelir', value: formatCurrency(totalRevenue), change: null, icon: TrendingUp, iconClass: 'text-success', bgClass: 'from-green-50 to-green-100', accent: 'stat-accent-violet' },
             ].map((s, i) => {
               const Icon = s.icon
-              const up = s.change >= 0
+              const hasChange = s.change != null
+              const up = hasChange && (s.change ?? 0) >= 0
               return (
                 <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.06 }}>
                   <div className={`rounded-2xl bg-panel border border-border p-5 min-h-[122px] hover-lift cursor-default flex items-center ${s.accent}`}>
@@ -146,14 +262,16 @@ export function AdminDashboardPage() {
                         <p className="text-[11px] font-medium uppercase tracking-wider leading-tight text-text-secondary">{s.title}</p>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           <span className="text-xl font-bold text-text-primary">{s.value}</span>
-                          <span
-                            className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-                              up ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                            }`}
-                          >
-                            {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
-                            {up ? '+' : ''}{s.change}%
-                          </span>
+                          {hasChange && (
+                            <span
+                              className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
+                                up ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                              }`}
+                            >
+                              {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+                              {up ? '+' : ''}{s.change ?? 0}%
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -211,39 +329,48 @@ export function AdminDashboardPage() {
                     <h3 className="text-card-title">Kit Dagilimi</h3>
                     <p className="text-[12px] mt-0.5 text-text-secondary">Durumlara gore dagilim</p>
                   </div>
-                  <span className="text-2xl font-black text-text-primary">1,332</span>
+                  <span className="text-2xl font-black text-text-primary">{totalKits.toLocaleString('tr-TR')}</span>
                 </div>
 
                 <div className="relative h-[180px] flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={kitPieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={58}
-                        outerRadius={82}
-                        paddingAngle={3}
-                        dataKey="value"
-                        strokeWidth={0}
-                      >
-                        {kitPieData.map((entry, idx) => (
-                          <Cell key={idx} fill={entry.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-[11px] text-surface-500">Toplam</p>
-                      <p className="text-xl font-black text-surface-900">1,332</p>
+                  {kitPieData.length > 0 ? (
+                    <>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={kitPieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={58}
+                            outerRadius={82}
+                            paddingAngle={3}
+                            dataKey="value"
+                            strokeWidth={0}
+                          >
+                            {kitPieData.map((entry, idx) => (
+                              <Cell key={idx} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                          <p className="text-[11px] text-surface-500">Toplam</p>
+                          <p className="text-xl font-black text-surface-900">{totalKits.toLocaleString('tr-TR')}</p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-surface-500">
+                      {kitsLoading ? <Loader2 className="h-8 w-8 animate-spin" /> : <Package className="h-10 w-10" />}
+                      <p className="text-[12px] mt-2">{kitsLoading ? 'Yükleniyor...' : 'Veri yok'}</p>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="space-y-2.5 mt-3 flex-1">
                   {kitPieData.map((item) => {
-                    const pct = Math.round((item.value / 1332) * 100)
+                    const pct = totalKits > 0 ? Math.round((item.value / totalKits) * 100) : 0
                     return (
                       <div key={item.name} className="flex items-center gap-2.5">
                         <div className="w-3 h-3 rounded-sm shrink-0" style={{ background: item.color }} />
@@ -330,12 +457,12 @@ export function AdminDashboardPage() {
             {/* ── Kit Kategorileri — colored progress bars ── */}
             <motion.div className="col-span-12 lg:col-span-3" {...fadeUp} transition={{ duration: 0.35, delay: 0.3 }}>
               <div className="panel p-5 h-full flex flex-col">
-                <h3 className="text-card-title mb-1">Kit Kategorileri</h3>
-                <p className="text-[12px] mb-5 text-text-secondary">Kategorilere gore dagilim</p>
+                <h3 className="text-card-title mb-1">Kit Durumlari</h3>
+                <p className="text-[12px] mb-5 text-text-secondary">Durumlara gore dagilim</p>
 
                 <div className="space-y-5 flex-1">
-                  {kitCategories.map((cat, i) => {
-                    const pct = Math.round((cat.count / 1332) * 100)
+                  {kitCategoriesChart.map((cat, i) => {
+                    const pct = totalKits > 0 ? Math.round((cat.count / totalKits) * 100) : 0
                     return (
                       <div key={cat.label}>
                         <div className="flex items-center justify-between mb-1.5">
@@ -361,7 +488,7 @@ export function AdminDashboardPage() {
 
                 <div className="flex items-center justify-between mt-6 pt-4 border-t border-surface-200">
                   <span className="text-[12px] text-surface-500">Toplam</span>
-                  <span className="text-lg font-bold text-surface-900">1,332</span>
+                  <span className="text-lg font-bold text-surface-900">{totalKits.toLocaleString('tr-TR')}</span>
                 </div>
               </div>
             </motion.div>
@@ -374,8 +501,7 @@ export function AdminDashboardPage() {
                   <button
                     type="button"
                     onClick={() => navigate(ROUTES.YONETICI_STOK)}
-                    className="flex items-center gap-1 text-[11px] font-semibold hover:opacity-80 transition-opacity"
-                    className="text-primary-600 hover:opacity-80"
+                    className="flex items-center gap-1 text-[11px] font-semibold text-primary-600 hover:opacity-80 transition-opacity"
                   >
                     Tumunu Gor <ArrowUpRight className="h-3 w-3" />
                   </button>
@@ -437,7 +563,7 @@ export function AdminDashboardPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <p className="text-[12px] font-semibold truncate text-surface-900">{dt.name}</p>
-                            <span className="text-[12px] font-bold shrink-0 text-primary-600">{formatCurrency(dt.revenue)}</span>
+                            <span className="text-[12px] font-bold shrink-0 text-primary-600">{dt.kits} kit</span>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] text-surface-500">{dt.kits} kit</span>
@@ -459,7 +585,7 @@ export function AdminDashboardPage() {
 
                 <button
                   type="button"
-                  onClick={() => navigate(ROUTES.YONETICI_KULLANICILAR)}
+                  onClick={() => navigate(ROUTES.YONETICI_DIYETISYENLER)}
                   className="w-full mt-5 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[12px] font-medium transition-colors bg-primary-100 text-primary-600 hover:bg-surface-100"
                 >
                   Tum Diyetisyenleri Gor <ArrowRight className="h-3.5 w-3.5" />

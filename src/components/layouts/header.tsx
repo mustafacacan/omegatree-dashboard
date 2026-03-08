@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui'
 import { USER_ROLE_LABELS } from '@/utils/constants'
-import { ROUTES, getBasePath } from '@/utils/routes'
+import { ROUTES, ROLE_HOME } from '@/utils/routes'
 import {
   LogOut,
   Settings,
@@ -32,7 +32,8 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith(ROUTES.YONETICI_STOK)) return 'Stok Takibi'
   if (pathname.startsWith(ROUTES.YONETICI_IADELER)) return 'Iade Talepleri'
   if (pathname.startsWith(ROUTES.YONETICI_SIPARISLER)) return 'Siparisler'
-  if (pathname.startsWith(ROUTES.YONETICI_CARI)) return 'Cari Hesaplar'
+  if (pathname.startsWith(ROUTES.YONETICI_LABORATUVARLAR)) return 'Laboratuvarlar'
+  if (pathname.startsWith(ROUTES.YONETICI_DIYETISYENLER)) return 'Diyetisyenler'
   if (pathname.startsWith(ROUTES.YONETICI_SABLONLAR)) return 'Sablonlar'
   if (pathname.startsWith(ROUTES.YONETICI_RAPORLAR)) return 'Rapor Onaylari'
   if (pathname.startsWith(ROUTES.YONETICI_BILDIRIMLER)) return 'Bildirimler'
@@ -75,8 +76,8 @@ export function Header() {
   const { theme, toggleTheme } = useThemeStore()
   const navigate = useNavigate()
   const location = useLocation()
-  const basePath = getBasePath(location.pathname)
   const pageTitle = getPageTitle(location.pathname)
+  const roleBasePath = user ? ROLE_HOME[user.role] : '/'
 
   if (!user) return null
 
@@ -154,10 +155,10 @@ export function Header() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate(`${basePath}/profil`)}>
+              <DropdownMenuItem onClick={() => navigate(`${roleBasePath}/profil`)}>
                 <User className="mr-2 h-4 w-4" /> Kullanici Profili
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(`${basePath}/ayarlar`)}>
+              <DropdownMenuItem onClick={() => navigate(`${roleBasePath}/ayarlar`)}>
                 <Settings className="mr-2 h-4 w-4" /> Ayarlar
               </DropdownMenuItem>
               <DropdownMenuSeparator />

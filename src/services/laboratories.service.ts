@@ -50,6 +50,9 @@ interface ApiLaboratoryItem {
   createdAt?: string
   updatedAt?: string
   deletedAt?: string | null
+  /** Bazen liste cevabında telefon/email üst seviyede döner */
+  phone?: string
+  email?: string
 }
 
 interface ApiLabDietician {
@@ -81,6 +84,8 @@ function mapApiLabToLab(item: ApiLaboratoryItem): Laboratory {
   const user = item.userLaboratory ?? item.user
   const addr = item.laboratoryAddress ?? item.address
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ')
+  const phone = user?.phone ?? item.phone
+  const email = user?.email ?? item.email
   return {
     id: String(item.id ?? ''),
     name: fullName || `Laboratuvar #${item.id ?? ''}`,
@@ -88,8 +93,8 @@ function mapApiLabToLab(item: ApiLaboratoryItem): Laboratory {
     city: addr?.city ?? '',
     district: addr?.district,
     postalCode: addr?.postalCode,
-    phone: user?.phone,
-    email: user?.email,
+    phone: phone || undefined,
+    email: email || undefined,
     assignedDietitians: [],
     createdAt: item.createdAt ?? '',
     updatedAt: item.updatedAt ?? '',

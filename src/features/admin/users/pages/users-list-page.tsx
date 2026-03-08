@@ -67,12 +67,9 @@ export function UsersListPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: USERS_QUERY_KEY,
-    queryFn: async () => {
-      const res = await getUsers({ page: 1, limit: 500 })
-      return res.users
-    },
+    queryFn: () => getUsers({ page: 1, limit: 500 }),
   })
-  const users = data ?? []
+  const users: User[] = Array.isArray(data?.users) ? data.users : []
 
   const verifyMutation = useMutation({
     mutationFn: verifyUser,

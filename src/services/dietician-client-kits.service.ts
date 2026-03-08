@@ -105,10 +105,10 @@ function mapApiKit(item: unknown): DieticianClientKit {
 }
 
 /** GET /dietician-client-kits */
-export async function getDieticianClientKits(page?: number): Promise<DieticianClientKit[]> {
+export async function getDieticianClientKits(page?: number, limit = 200): Promise<DieticianClientKit[]> {
   const { data } = await api.get<unknown>('/dietician-client-kits', {
     ...skipAuth,
-    params: { page: page ?? 1, limit: 200 },
+    params: { page: page ?? 1, limit },
   })
 
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null

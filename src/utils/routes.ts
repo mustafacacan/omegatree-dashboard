@@ -18,8 +18,10 @@ export const ROUTES = {
   YONETICI_STOK: '/yonetici/stok',
   YONETICI_IADELER: '/yonetici/iadeler',
   YONETICI_SIPARISLER: '/yonetici/siparisler',
-  YONETICI_CARI: '/yonetici/cari',
   YONETICI_LABORATUVARLAR: '/yonetici/laboratuvarlar',
+  YONETICI_DIYETISYENLER: '/yonetici/diyetisyenler',
+  YONETICI_DANISANLAR: '/yonetici/danisanlar',
+  YONETICI_UZMANLAR: '/yonetici/uzmanlar',
   YONETICI_RAPORLAR: '/yonetici/raporlar',
   YONETICI_SABLONLAR: '/yonetici/sablonlar',
 

@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { motion, useSpring, useTransform } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
@@ -49,12 +51,20 @@ const colorConfig = {
 
 export function StatCard({ title, value, change, icon: Icon, color, className }: StatCardProps) {
   const cfg = colorConfig[color]
+  const isNumeric = typeof value === 'number'
+  const spring = useSpring(0, { stiffness: 60, damping: 25 })
+  const display = useTransform(spring, (v) => Math.round(v))
+
+  useEffect(() => {
+    if (isNumeric) spring.set(Number(value))
+  }, [value, isNumeric, spring])
 
   return (
     <div
       className={cn(
         'rounded-2xl bg-white border border-border p-6',
         'hover-lift cursor-default',
+        'transition-transform duration-300 hover:scale-[1.02]',
         cfg.accent,
         className
       )}
@@ -75,7 +85,13 @@ export function StatCard({ title, value, change, icon: Icon, color, className }:
             {title}
           </p>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xl font-bold text-text-primary">{value}</span>
+            {isNumeric ? (
+              <motion.span className="text-xl font-bold text-text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {display}
+              </motion.span>
+            ) : (
+              <span className="text-xl font-bold text-text-primary">{value}</span>
+            )}
             {change && (
               <span
                 className={cn(

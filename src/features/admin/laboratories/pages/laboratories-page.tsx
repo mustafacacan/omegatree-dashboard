@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Button, Input,
+  Button, Input, Avatar,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
@@ -10,7 +10,7 @@ import {
 import { formatDate } from '@/lib/utils'
 import {
   Search, Plus, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone, Mail,
-  Download, Loader2, Eye,
+  Download, Loader2, Eye, TestTubes,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { Laboratory } from '@/types/laboratory.types'
@@ -432,135 +432,155 @@ export function LaboratoriesPage() {
           if (!open) setViewLabId('')
         }}
       >
-        <ModalContent className="max-w-xl">
+        <ModalContent className="max-w-lg">
           <ModalHeader>
             <ModalTitle>Laboratuvar Detayı</ModalTitle>
             <ModalDescription>
               {labDetailQuery.data?.name || 'Laboratuvar bilgileri görüntüleniyor.'}
             </ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-4">
+          <ModalBody>
             {labDetailQuery.isLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-5 w-5 animate-spin text-primary-500" />
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
               </div>
             ) : labDetailQuery.isError ? (
-              <div className="space-y-3">
+              <div className="space-y-3 py-4">
                 <p className="text-sm text-surface-700">
                   {getApiErrorMessage(labDetailQuery.error, { fallback: 'Laboratuvar detayı yüklenemedi' })}
                 </p>
-                <div>
-                  <Button variant="outline" size="sm" onClick={() => labDetailQuery.refetch()}>
-                    Tekrar Dene
-                  </Button>
-                </div>
+                <Button variant="outline" size="sm" onClick={() => labDetailQuery.refetch()}>
+                  Tekrar Dene
+                </Button>
               </div>
             ) : labDetailQuery.data ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="panel p-3 sm:col-span-2">
-                  <p className="text-[11px] font-semibold text-surface-500">Genel</p>
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Laboratuvar ID:</span> {labDetailQuery.data.id || '-'}
+              <div className="space-y-5">
+                {/* Hero kart: Avatar + isim + il/ilçe */}
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-50 dark:bg-surface-200/40 border border-surface-200">
+                  <Avatar
+                    name={labDetailQuery.data.name || 'Laboratuvar'}
+                    size="lg"
+                    className="shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-surface-900 dark:text-surface-100">
+                      {labDetailQuery.data.name || 'Laboratuvar'}
+                    </p>
+                    <p className="text-sm text-surface-500 mt-0.5">
+                      {[labDetailQuery.data.city, labDetailQuery.data.district].filter(Boolean).join(', ') || '—'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* İletişim */}
+                <div>
+                  <p className="form-section-title mb-2">İletişim</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-surface-200 dark:border-surface-300/50 p-3 bg-surface-50/50 dark:bg-surface-200/20">
+                      <p className="text-surface-500 text-xs font-medium mb-1">Telefon</p>
+                      <p className="text-sm font-medium text-surface-800 dark:text-surface-200 truncate">
+                        {labDetailQuery.data.phone || '—'}
+                      </p>
                     </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Kullanıcı ID:</span> {labDetailQuery.data.userId ?? '-'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Durum:</span> {labDetailQuery.data.isActive === false ? 'Pasif' : 'Aktif'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Oluşturulma:</span> {labDetailQuery.data.createdAt ? formatDate(labDetailQuery.data.createdAt) : '-'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Güncellenme:</span> {labDetailQuery.data.updatedAt ? formatDate(labDetailQuery.data.updatedAt) : '-'}
+                    <div className="rounded-lg border border-surface-200 dark:border-surface-300/50 p-3 bg-surface-50/50 dark:bg-surface-200/20">
+                      <p className="text-surface-500 text-xs font-medium mb-1">E-posta</p>
+                      <p className="text-sm font-medium text-surface-800 dark:text-surface-200 truncate" title={labDetailQuery.data.email || undefined}>
+                        {labDetailQuery.data.email || '—'}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="panel p-3">
-                  <p className="text-[11px] font-semibold text-surface-500">Kargo</p>
-                  <div className="mt-2 space-y-1">
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Firma:</span> {labDetailQuery.data.cargofirm || '-'}
+                {/* Kargo */}
+                <div>
+                  <p className="form-section-title mb-2">Kargo</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-surface-200 dark:border-surface-300/50 p-3 bg-surface-50/50 dark:bg-surface-200/20">
+                      <p className="text-surface-500 text-xs font-medium mb-1">Kargo Firması</p>
+                      <p className="text-sm font-medium text-surface-800 dark:text-surface-200">
+                        {labDetailQuery.data.cargofirm || '—'}
+                      </p>
                     </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Numara:</span> {labDetailQuery.data.cargoNumber || '-'}
+                    <div className="rounded-lg border border-surface-200 dark:border-surface-300/50 p-3 bg-surface-50/50 dark:bg-surface-200/20">
+                      <p className="text-surface-500 text-xs font-medium mb-1">Kargo No</p>
+                      <p className="text-sm font-medium text-surface-800 dark:text-surface-200">
+                        {labDetailQuery.data.cargoNumber || '—'}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="panel p-3 sm:col-span-2">
-                  <p className="text-[11px] font-semibold text-surface-500">Bağlı Diyetisyenler</p>
+                {/* Adres */}
+                <div>
+                  <p className="form-section-title mb-2">Adres</p>
+                  <div className="rounded-lg border border-surface-200 dark:border-surface-300/50 p-3 bg-surface-50/50 dark:bg-surface-200/20 flex gap-2">
+                    <MapPin className="h-4 w-4 text-surface-400 shrink-0 mt-0.5" />
+                    <p className="text-sm font-medium text-surface-800 dark:text-surface-200 leading-relaxed">
+                      {labDetailQuery.data.fullAddress || labDetailQuery.data.address || [
+                        labDetailQuery.data.street,
+                        labDetailQuery.data.neighborhood,
+                        labDetailQuery.data.no,
+                        labDetailQuery.data.district,
+                        labDetailQuery.data.city,
+                      ].filter(Boolean).join(', ') || '—'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bağlı Diyetisyenler */}
+                <div>
+                  <p className="form-section-title mb-2">Bağlı Diyetisyenler</p>
                   {viewedLabDietitians.length > 0 ? (
-                    <ul className="mt-2 space-y-1">
+                    <ul className="space-y-2">
                       {viewedLabDietitians.map((d) => (
-                        <li key={d.dieticianId} className="text-[12px] text-surface-700">
-                          {d.name}
+                        <li
+                          key={d.dieticianId}
+                          className="flex items-center gap-3 rounded-lg border border-surface-200 dark:border-surface-300/50 p-2.5 bg-surface-50/50 dark:bg-surface-200/20"
+                        >
+                          <Avatar name={d.name} size="sm" className="shrink-0" />
+                          <span className="text-sm font-medium text-surface-800 dark:text-surface-200">{d.name}</span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-2 text-[12px] text-surface-500">Atanmamış</p>
+                    <div className="rounded-lg border border-dashed border-surface-200 dark:border-surface-300/50 p-4 text-center">
+                      <Users className="h-8 w-8 text-surface-300 dark:text-surface-500 mx-auto mb-1.5" />
+                      <p className="text-sm text-surface-500">Atanmış diyetisyen yok</p>
+                    </div>
                   )}
                 </div>
 
-                <div className="panel p-3 sm:col-span-2">
-                  <p className="text-[11px] font-semibold text-surface-500">Adres</p>
-                  <div className="mt-2 space-y-1">
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Başlık:</span> {labDetailQuery.data.addressTitle || '-'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Ülke:</span> {labDetailQuery.data.country || '-'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Şehir/İlçe:</span> {labDetailQuery.data.city || '-'}{labDetailQuery.data.district ? ` / ${labDetailQuery.data.district}` : ''}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Mahalle:</span> {labDetailQuery.data.neighborhood || '-'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Sokak:</span> {labDetailQuery.data.street || '-'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">No:</span> {labDetailQuery.data.no || '-'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Açık Adres:</span> {labDetailQuery.data.fullAddress || labDetailQuery.data.address || '-'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Posta Kodu:</span> {labDetailQuery.data.postalCode || '-'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="panel p-3 sm:col-span-2">
-                  <p className="text-[11px] font-semibold text-surface-500">Kullanıcı</p>
-                  <div className="mt-2 space-y-1">
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">ID:</span> {labDetailQuery.data.userId ?? '-'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Ad Soyad:</span> {[labDetailQuery.data.firstName, labDetailQuery.data.lastName].filter(Boolean).join(' ') || '-'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">Telefon:</span> {labDetailQuery.data.phone || '-'}
-                    </div>
-                    <div className="text-[12px] text-surface-700">
-                      <span className="font-medium">E-posta:</span> {labDetailQuery.data.email || '-'}
-                    </div>
-                  </div>
+                {/* Footer bilgi */}
+                <div className="pt-1 border-t border-surface-200 dark:border-surface-300/50">
+                  <p className="text-xs text-surface-500">
+                    Sorumlu: {[labDetailQuery.data.firstName, labDetailQuery.data.lastName].filter(Boolean).join(' ') || '—'}
+                    {labDetailQuery.data.createdAt && ` · Kayıt: ${formatDate(labDetailQuery.data.createdAt)}`}
+                  </p>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-surface-500">Detay bulunamadı.</p>
+              <p className="text-sm text-surface-500 py-4">Detay bulunamadı.</p>
             )}
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" onClick={() => { setViewLabOpen(false); setViewLabId('') }}>
               Kapat
             </Button>
+            {labDetailQuery.data && (
+              <Button
+                variant="primary"
+                onClick={() => {
+                  const lab = labsWithDietitians.find((l) => l.id === viewLabId)
+                  if (lab) {
+                    setViewLabOpen(false)
+                    setViewLabId('')
+                    openEditLab(lab)
+                  }
+                }}
+              >
+                Düzenle
+              </Button>
+            )}
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -570,19 +590,19 @@ export function LaboratoriesPage() {
         <ModalContent className="max-w-2xl">
           <ModalHeader>
             <ModalTitle>Yeni Laboratuvar Ekle</ModalTitle>
-            <ModalDescription>Laboratuvar bilgilerini girin.</ModalDescription>
+            <ModalDescription>Lab sorumlusu, kargo ve adres bilgilerini girin.</ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-4 max-h-[60vh] overflow-y-auto">
+          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
             <p className="form-section-title">Lab Sorumlusu</p>
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Ad *"
+                label="Ad"
                 value={newLabForm.firstName}
                 onChange={(e) => setNewLabForm((s) => ({ ...s, firstName: e.target.value }))}
                 placeholder="Lab sorumlusu adı"
               />
               <Input
-                label="Soyad *"
+                label="Soyad"
                 value={newLabForm.lastName}
                 onChange={(e) => setNewLabForm((s) => ({ ...s, lastName: e.target.value }))}
                 placeholder="Lab sorumlusu soyadı"
@@ -590,10 +610,10 @@ export function LaboratoriesPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Telefon *"
+                label="Telefon"
                 value={newLabForm.phone}
                 onChange={(e) => setNewLabForm((s) => ({ ...s, phone: e.target.value }))}
-                placeholder="05xxxxxxxxx"
+                placeholder="05XX XXX XX XX"
               />
               <Input
                 label="E-posta"
@@ -603,17 +623,15 @@ export function LaboratoriesPage() {
                 placeholder="lab@ornek.com"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block text-surface-700">Cinsiyet *</label>
-                <Select value={newLabForm.gender} onValueChange={(v) => setNewLabForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">Erkek</SelectItem>
-                    <SelectItem value="female">Kadın</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-1.5">
+              <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
+              <Select value={newLabForm.gender} onValueChange={(v) => setNewLabForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Erkek</SelectItem>
+                  <SelectItem value="female">Kadın</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="panel-section">
@@ -698,7 +716,7 @@ export function LaboratoriesPage() {
             <Button variant="outline" onClick={() => { setNewLabOpen(false); resetNewLabForm() }}>
               İptal
             </Button>
-            <Button onClick={submitNewLab} disabled={createMutation.isPending}>
+            <Button variant="primary" onClick={submitNewLab} disabled={createMutation.isPending}>
               {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Laboratuvar Oluştur
             </Button>
@@ -733,7 +751,7 @@ export function LaboratoriesPage() {
             <Button variant="outline" onClick={() => { setEditLabOpen(false); setSelectedLab(null); resetNewLabForm() }}>
               İptal
             </Button>
-            <Button onClick={submitEditLab} disabled={updateMutation.isPending}>
+            <Button variant="primary" onClick={submitEditLab} disabled={updateMutation.isPending}>
               {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Kaydet
             </Button>
@@ -751,32 +769,36 @@ export function LaboratoriesPage() {
             </ModalDescription>
           </ModalHeader>
           <ModalBody className="space-y-3">
-            <Select value={selectedDietitianId} onValueChange={setSelectedDietitianId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Diyetisyen seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableDietitians.length === 0 ? (
-                  <div className="p-2 text-sm text-surface-500">Atanabilecek diyetisyen yok</div>
-                ) : (
-                  availableDietitians.map((dietitian) => (
-                    <SelectItem key={dietitian.id} value={String(dietitian.id)}>
-                      {dietitian.label}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1.5">
+              <label className="block text-[13px] font-medium text-surface-700">Diyetisyen seçin</label>
+              <Select value={selectedDietitianId} onValueChange={setSelectedDietitianId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Diyetisyen seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDietitians.length === 0 ? (
+                    <div className="p-2 text-sm text-surface-500">Atanabilecek diyetisyen yok</div>
+                  ) : (
+                    availableDietitians.map((dietitian) => (
+                      <SelectItem key={dietitian.id} value={String(dietitian.id)}>
+                        {dietitian.label}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
             {selectedLabDietitians.length > 0 && (
-              <div className="mt-4">
-                <p className="text-sm font-medium text-surface-700 mb-2">Atanan Diyetisyenler:</p>
+              <div>
+                <p className="form-section-title">Atanan Diyetisyenler</p>
                 <div className="space-y-2">
                   {selectedLabDietitians.map((d) => (
                     <div
                       key={d.dieticianId}
-                      className="flex items-center justify-between p-2 rounded-lg bg-surface-50"
+                      className="flex items-center gap-2 p-2.5 rounded-xl bg-surface-50 border border-surface-200"
                     >
-                      <span className="text-sm">{d.name}</span>
+                      <Users className="h-4 w-4 text-surface-400 shrink-0" />
+                      <span className="text-sm text-surface-700">{d.name}</span>
                     </div>
                   ))}
                 </div>
@@ -787,7 +809,7 @@ export function LaboratoriesPage() {
             <Button variant="outline" onClick={() => { setAssignDietitianOpen(false); setSelectedLab(null); setSelectedDietitianId('') }}>
               İptal
             </Button>
-            <Button onClick={submitAssignDietitian} disabled={!selectedDietitianId || assignDietitianMutation.isPending}>
+            <Button variant="primary" onClick={submitAssignDietitian} disabled={!selectedDietitianId || assignDietitianMutation.isPending}>
               {assignDietitianMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Ata
             </Button>
@@ -842,6 +864,23 @@ function LaboratoryTable({
     [laboratories, page, pageSize]
   )
 
+  const detailQueries = useQueries({
+    queries: paginatedLabs.map((lab) => ({
+      queryKey: ['laboratories', lab.id, 'detail'] as const,
+      queryFn: () => getLaboratoryById(lab.id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  })
+
+  const detailByLabId = useMemo(() => {
+    const map: Record<string, { phone?: string; email?: string }> = {}
+    paginatedLabs.forEach((lab, i) => {
+      const data = detailQueries[i]?.data
+      if (data) map[lab.id] = { phone: data.phone, email: data.email }
+    })
+    return map
+  }, [paginatedLabs, detailQueries])
+
   useEffect(() => {
     setPage(1)
   }, [laboratories.length])
@@ -860,11 +899,11 @@ function LaboratoryTable({
           <thead>
             <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Laboratuvar</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Adres</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">İletişim</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kargo</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Diyetisyenler</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Oluşturulma</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Adres (İl / İlçe)</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Telefon</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">E-posta</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kargo Firması</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kargo No</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20 text-surface-500" />
             </tr>
           </thead>
@@ -876,86 +915,60 @@ function LaboratoryTable({
                 </td>
               </tr>
             ) : (
-              paginatedLabs.map((lab) => (
+              paginatedLabs.map((lab, rowIndex) => {
+                const detail = detailByLabId[lab.id]
+                const isLoadingDetail = detailQueries[rowIndex]?.isLoading
+                const phone = lab.phone ?? detail?.phone
+                const email = lab.email ?? detail?.email
+                return (
                 <tr
                   key={lab.id}
                   className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
                 >
                   <td className="px-5 py-3.5">
-                    <div>
-                      <span className="text-[12px] block font-medium text-surface-700">{lab.name}</span>
-                      <span className="text-[11px] text-surface-500">
-                        {lab.city}{lab.district && `, ${lab.district}`}
+                    <div className="flex items-center gap-2">
+                      <Avatar name={lab.name} size="sm" className="shrink-0" />
+                      <span className="text-[12px] font-medium text-surface-700">{lab.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2 min-w-0 max-w-[180px]">
+                      <MapPin className="h-4 w-4 shrink-0 text-surface-400" />
+                      <span className="text-[12px] text-surface-700">
+                        {[lab.city, lab.district].filter(Boolean).join(', ') || '-'}
                       </span>
                     </div>
                   </td>
                   <td className="px-5 py-3.5">
-                    <div className="flex items-start gap-2">
-                      <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-surface-400" />
-                      <div className="min-w-0">
-                        <span className="text-[12px] block text-surface-700">{lab.address || '-'}</span>
-                        {lab.postalCode && (
-                          <span className="text-[11px] text-surface-500">PK: {lab.postalCode}</span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <div className="space-y-1">
-                      {lab.phone && (
+                    {isLoadingDetail ? (
+                      <span className="text-[11px] text-surface-400">Yükleniyor...</span>
+                    ) : (
+                      phone ? (
                         <div className="flex items-center gap-1.5 text-[12px] text-surface-700">
-                          <Phone className="h-3.5 w-3.5 text-surface-400" />
-                          <span>{lab.phone}</span>
+                          <Phone className="h-3.5 w-3.5 shrink-0 text-surface-400" />
+                          <span>{phone}</span>
                         </div>
-                      )}
-                      {lab.email && (
-                        <div className="flex items-center gap-1.5 text-[12px] truncate text-surface-700">
-                          <Mail className="h-3.5 w-3.5 shrink-0 text-surface-400" />
-                          <span className="truncate">{lab.email}</span>
-                        </div>
-                      )}
-                      {!lab.phone && !lab.email && (
-                        <span className="text-[11px] text-surface-500">-</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <div className="space-y-0.5">
-                      {lab.cargofirm ? (
-                        <>
-                          <span className="text-[12px] block text-surface-700">{lab.cargofirm}</span>
-                          {lab.cargoNumber && (
-                            <span className="text-[11px] text-surface-500">{lab.cargoNumber}</span>
-                          )}
-                        </>
                       ) : (
                         <span className="text-[11px] text-surface-500">-</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    {lab.assignedDietitianDetails.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {lab.assignedDietitianDetails.slice(0, 2).map((d) => (
-                          <span
-                            key={d.dieticianId}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-200 dark:bg-surface-300/50 text-surface-700"
-                          >
-                            {d.name}
-                          </span>
-                        ))}
-                        {lab.assignedDietitianDetails.length > 2 && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-200 dark:bg-surface-300/50 text-surface-700">
-                            +{lab.assignedDietitianDetails.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-[11px] text-surface-500">Atanmamış</span>
+                      )
                     )}
                   </td>
                   <td className="px-5 py-3.5">
-                    <span className="text-[12px] text-surface-500">{formatDate(lab.createdAt)}</span>
+                    {isLoadingDetail ? (
+                      <span className="text-[11px] text-surface-400">Yükleniyor...</span>
+                    ) : (
+                      email ? (
+                        <span className="text-[12px] text-surface-700 truncate max-w-[200px] block" title={email}>{email}</span>
+                      ) : (
+                        <span className="text-[11px] text-surface-500">-</span>
+                      )
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="text-[12px] text-surface-700">{lab.cargofirm || '-'}</span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="text-[12px] text-surface-700">{lab.cargoNumber || '-'}</span>
                   </td>
                   <td className="px-5 py-3.5">
                     <DropdownMenu>
@@ -987,7 +1000,8 @@ function LaboratoryTable({
                     </DropdownMenu>
                   </td>
                 </tr>
-              ))
+                )
+              })
             )}
           </tbody>
         </table>

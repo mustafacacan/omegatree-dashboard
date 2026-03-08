@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar.store'
 import { useCurrentRole, useCurrentUser } from '@/stores/auth.store'
@@ -14,7 +15,6 @@ import {
   DollarSign,
   Package,
   ShoppingCart,
-  CreditCard,
   FileText,
   UserPlus,
   FlaskConical,
@@ -59,8 +59,10 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Stok Takibi', href: ROUTES.YONETICI_STOK, icon: Package },
           { label: 'Iade Talepleri', href: ROUTES.YONETICI_IADELER, icon: RotateCcw },
           { label: 'Siparisler', href: ROUTES.YONETICI_SIPARISLER, icon: ShoppingCart },
-          { label: 'Cari Hesaplar', href: ROUTES.YONETICI_CARI, icon: CreditCard },
           { label: 'Laboratuvarlar', href: ROUTES.YONETICI_LABORATUVARLAR, icon: TestTubes },
+          { label: 'Diyetisyenler', href: ROUTES.YONETICI_DIYETISYENLER, icon: Users },
+          { label: 'Danisanlar', href: ROUTES.YONETICI_DANISANLAR, icon: UserPlus },
+          { label: 'Uzmanlar', href: ROUTES.YONETICI_UZMANLAR, icon: BookOpen },
           { label: 'Rapor Onaylari', href: ROUTES.YONETICI_RAPORLAR, icon: FileCheck },
         ]},
         { title: 'Sistem', items: [
@@ -210,12 +212,19 @@ export function Sidebar() {
                       to={item.href}
                       onClick={() => setMobileOpen(false)}
                       className={cn(
-                        'flex items-center gap-3 rounded-xl px-3 py-2 text-[12px] font-medium transition-all duration-200',
+                        'relative flex items-center gap-3 rounded-xl px-3 py-2 text-[12px] font-medium transition-colors duration-200',
                         isActive
                           ? 'bg-primary-100 text-primary-800'
                           : 'text-surface-700 hover:bg-surface-100 hover:text-surface-900'
                       )}
                     >
+                      {isActive && !collapsed && (
+                        <motion.span
+                          layoutId="sidebar-active-pill"
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-primary-500"
+                          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                        />
+                      )}
                       <item.icon
                         className={cn('h-5 w-5 shrink-0', isActive ? 'text-primary-600' : 'text-surface-500')}
                       />
