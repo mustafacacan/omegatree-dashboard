@@ -110,7 +110,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
         { title: '', items: [{ label: 'Panelim', href: ROUTES.DANISAN, icon: LayoutDashboard }] },
         { title: 'Takip', items: [
           { label: 'Kit Durumum', href: ROUTES.DANISAN_KIT, icon: Package },
-          { label: 'Raporlarim', href: ROUTES.DANISAN_RAPORLAR, icon: FileCheck },
+          { label: 'Sonuclar', href: ROUTES.DANISAN_RAPORLAR, icon: FileCheck },
         ]},
         { title: 'Hesap', items: [{ label: 'Ayarlar', href: ROUTES.DANISAN_AYARLAR, icon: Settings }] },
       ]

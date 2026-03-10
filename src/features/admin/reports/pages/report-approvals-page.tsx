@@ -7,7 +7,7 @@ import {
   Button, Badge, Avatar,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody,
 } from '@/components/ui'
-import { FileText, Check, User, Calendar, Loader2, Eye, Mail, Phone } from 'lucide-react'
+import { FileText, Check,  Calendar, Loader2, Eye, Mail, Phone } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
