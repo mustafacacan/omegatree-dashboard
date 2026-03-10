@@ -95,72 +95,33 @@ export function ClientsListPage() {
     queryFn: () => getDieticianClientKits(1),
   })
 
-  const kitClients = useMemo(() => {
+  const kitAssignments = useMemo(() => {
     const kits = kitsData ?? []
-    const map = new Map<
-      number,
-      {
-        clientId: number
-        clientName?: string
-        kitCount: number
-        activeCount: number
-        lastAssignedAt?: string
-        lastAssignmentId?: number
-        lastStatus?: (typeof kits)[number]['status']
-        lastKitBarcode?: string
-        lastKitName?: string
-      }
-    >()
-
-    for (const k of kits) {
-      if (!k.clientId) continue
-      const prev = map.get(k.clientId)
-      const next = prev ?? {
-        clientId: k.clientId,
-        clientName: k.clientName,
-        kitCount: 0,
-        activeCount: 0,
-        lastAssignedAt: k.createdAt,
-        lastAssignmentId: k.id,
-        lastStatus: k.status,
-        lastKitBarcode: k.kitBarcode,
-        lastKitName: k.kitName,
-      }
-
-      next.kitCount += 1
-      if (k.isActive) next.activeCount += 1
-      if (k.clientName && !next.clientName) next.clientName = k.clientName
-      if (k.createdAt && (!next.lastAssignedAt || k.createdAt > next.lastAssignedAt)) {
-        next.lastAssignedAt = k.createdAt
-        next.lastAssignmentId = k.id
-        next.lastStatus = k.status
-        next.lastKitBarcode = k.kitBarcode
-        next.lastKitName = k.kitName
-      }
-
-      map.set(k.clientId, next)
-    }
-
-    return Array.from(map.values()).sort((a, b) => (b.lastAssignedAt ?? '').localeCompare(a.lastAssignedAt ?? ''))
+    return kits
+      .filter((k) => !!k.clientId)
+      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
   }, [kitsData])
 
-  const filteredKitClients = useMemo(() => {
+  const filteredKitAssignments = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return kitClients
-    return kitClients.filter((c) =>
-      (c.clientName ?? '').toLowerCase().includes(q) || String(c.clientId).includes(q)
+    if (!q) return kitAssignments
+    return kitAssignments.filter((k) =>
+      (k.clientName ?? '').toLowerCase().includes(q) ||
+      String(k.clientId ?? '').includes(q) ||
+      (k.kitBarcode ?? '').toLowerCase().includes(q) ||
+      (k.kitName ?? '').toLowerCase().includes(q)
     )
-  }, [kitClients, search])
+  }, [kitAssignments, search])
 
-  const paginatedKitClients = useMemo(() => {
+  const paginatedKitAssignments = useMemo(() => {
     const start = (page - 1) * pageSize
     const end = start + pageSize
-    return filteredKitClients.slice(start, end)
-  }, [filteredKitClients, page, pageSize])
+    return filteredKitAssignments.slice(start, end)
+  }, [filteredKitAssignments, page, pageSize])
 
   const clientsItems = clientsData?.items ?? []
   const clientsTotalItems = clientsData?.totalItems ?? 0
-  const displayCount = tab === 'clients' ? clientsTotalItems : filteredKitClients.length
+  const displayCount = tab === 'clients' ? clientsTotalItems : filteredKitAssignments.length
 
   const {
     data: detail,
@@ -408,7 +369,7 @@ export function ClientsListPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedKitClients.length === 0 && (
+                      {paginatedKitAssignments.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={7} className="py-14 text-center">
                             <div className="mx-auto max-w-sm">
@@ -418,71 +379,73 @@ export function ClientsListPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                      {paginatedKitClients.map((c) => (
+                      {paginatedKitAssignments.map((k) => (
                         <TableRow
-                          key={c.clientId}
+                          key={k.id}
                           className="cursor-pointer hover:bg-surface-50/70 transition-colors"
-                          onClick={() => navigate(danisanDetayPath(String(c.clientId)))}
+                          onClick={() => k.clientId && navigate(danisanDetayPath(String(k.clientId)))}
                         >
                           <TableCell>
                             <div className="flex items-center gap-3 group/name">
-                              <Avatar name={c.clientName ?? '—'} size="sm" />
-                              <span className="font-medium text-surface-800 group-hover/name:text-primary-600 transition-colors">{c.clientName ?? '—'}</span>
+                              <Avatar name={k.clientName ?? '—'} size="sm" />
+                              <span className="font-medium text-surface-800 group-hover/name:text-primary-600 transition-colors">{k.clientName ?? '—'}</span>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <code className="text-xs font-mono bg-surface-50 px-2 py-0.5 rounded">{c.clientId}</code>
+                            <code className="text-xs font-mono bg-surface-50 px-2 py-0.5 rounded">{k.clientId ?? '—'}</code>
                           </TableCell>
                           <TableCell>
-                            {c.lastStatus ? (
+                            {k.status ? (
                               <Badge
                                 variant={
-                                  c.lastStatus === 'completed' || c.lastStatus === 'delivered'
+                                  k.status === 'completed' || k.status === 'delivered'
                                     ? 'success'
-                                    : c.lastStatus === 'cancelled'
+                                    : k.status === 'cancelled'
                                       ? 'danger'
-                                      : c.lastStatus === 'in_laboratory'
+                                      : k.status === 'in_laboratory'
                                         ? 'warning'
-                                        : c.lastStatus === 'in_expert'
+                                        : k.status === 'in_expert'
                                           ? 'info'
                                           : 'primary'
                                 }
                                 size="sm"
                               >
-                                {c.lastStatus === 'in_client'
+                                {k.status === 'in_client'
                                   ? 'Danisanda'
-                                  : c.lastStatus === 'in_laboratory'
+                                  : k.status === 'in_laboratory'
                                     ? 'Laboratuvarda'
-                                    : c.lastStatus === 'in_expert'
+                                    : k.status === 'in_expert'
                                       ? 'Uzmanda'
-                                      : c.lastStatus === 'delivered'
+                                      : k.status === 'delivered'
                                         ? 'Teslim'
-                                        : c.lastStatus === 'cancelled'
+                                        : k.status === 'cancelled'
                                           ? 'Iptal'
-                                          : c.lastStatus === 'completed'
+                                          : k.status === 'completed'
                                             ? 'Tamamlandi'
-                                            : c.lastStatus}
+                                            : k.status}
                               </Badge>
                             ) : (
                               <span className="text-xs text-surface-400">—</span>
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{c.kitCount} Kit</Badge>
-                            {c.lastKitBarcode ? (
+                            <Badge variant="outline">{k.kitName ?? 'Kit'}</Badge>
+                            {k.kitBarcode ? (
                               <div className="mt-1 text-[11px] text-surface-500">
-                                {c.lastKitName ? `${c.lastKitName} • ${c.lastKitBarcode}` : c.lastKitBarcode}
+                                {k.kitBarcode}
                               </div>
-                            ) : null}
-                          </TableCell>
-                          <TableCell>
-                            {c.activeCount > 0 ? (
-                              <Badge variant="success" size="sm">{c.activeCount} Aktif</Badge>
                             ) : (
-                              <span className="text-xs text-surface-400">—</span>
+                              <div className="mt-1 text-[11px] text-surface-400">—</div>
                             )}
                           </TableCell>
-                          <TableCell className="text-sm text-surface-500">{c.lastAssignedAt ? formatDate(c.lastAssignedAt) : '—'}</TableCell>
+                          <TableCell>
+                            {k.isActive ? (
+                              <Badge variant="success" size="sm">Aktif</Badge>
+                            ) : (
+                              <Badge variant="outline" size="sm">Pasif</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-surface-500">{k.createdAt ? formatDate(k.createdAt) : '—'}</TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -491,17 +454,17 @@ export function ClientsListPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openKitDetail(c.lastAssignmentId ?? null)}>
+                                <DropdownMenuItem onClick={() => openKitDetail(k.id)}>
                                   <Eye className="h-4 w-4 mr-2" /> Goruntule
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() =>
                                     openEdit({
-                                      assignmentId: c.lastAssignmentId,
-                                      clientName: c.clientName,
-                                      kitName: c.lastKitName,
-                                      kitBarcode: c.lastKitBarcode,
-                                      status: c.lastStatus,
+                                      assignmentId: k.id,
+                                      clientName: k.clientName,
+                                      kitName: k.kitName,
+                                      kitBarcode: k.kitBarcode,
+                                      status: k.status,
                                     })
                                   }
                                 >
@@ -515,7 +478,7 @@ export function ClientsListPage() {
                     </TableBody>
                   </Table>
                   <TablePagination
-                    totalItems={filteredKitClients.length}
+                    totalItems={filteredKitAssignments.length}
                     page={page}
                     pageSize={pageSize}
                     onPageChange={setPage}
@@ -841,6 +804,13 @@ export function ClientsListPage() {
                     <div className="text-xs text-surface-500">
                       Aktif: {kitDetail.isActive ? 'Evet' : 'Hayir'}
                     </div>
+
+                    {kitDetail.description && kitDetail.description.trim() ? (
+                      <div className="pt-3 border-t border-surface-200">
+                        <p className="text-[11px] font-semibold text-surface-500">Aciklama</p>
+                        <p className="text-[13px] mt-1 text-surface-700 leading-snug">{kitDetail.description}</p>
+                      </div>
+                    ) : null}
                   </CardContent>
                 </Card>
 

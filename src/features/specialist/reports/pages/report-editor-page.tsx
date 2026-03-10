@@ -72,11 +72,11 @@ export function ReportEditorPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Link
-            to={ROUTES.UZMAN_RAPORLAR}
+            to={ROUTES.UZMAN_ATAMALAR}
             className="inline-flex items-center gap-1.5 text-sm text-surface-600 hover:text-surface-900 mb-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            Raporlarima don
+            Atanan İşlere dön
           </Link>
           <PageHeader
             title="Rapor duzenle"

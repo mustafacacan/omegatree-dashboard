@@ -82,7 +82,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Stogum', href: ROUTES.DIYETISYEN_STOK, icon: Boxes },
           { label: 'Siparis Ver', href: ROUTES.DIYETISYEN_SIPARISLER, icon: Truck },
         ]},
-        { title: 'Sonuclar', items: [{ label: 'Raporlar', href: ROUTES.DIYETISYEN_RAPORLAR, icon: BarChart3 }] },
+        { title: 'Sonuclar', items: [{ label: 'Sonuclar', href: ROUTES.DIYETISYEN_RAPORLAR, icon: BarChart3 }] },
         { title: 'Hesap', items: [{ label: 'Ayarlar', href: ROUTES.DIYETISYEN_AYARLAR, icon: Settings }] },
       ]
     case UserRole.LAB:
@@ -99,8 +99,9 @@ function getNavGroups(role: UserRole): NavGroup[] {
       return [
         { title: '', items: [{ label: 'Dashboard', href: ROUTES.UZMAN, icon: LayoutDashboard }] },
         { title: 'Raporlama', items: [
+          { label: 'Analizler', href: ROUTES.UZMAN_ANALIZLER, icon: FlaskConical },
           { label: 'Atanan Analizler', href: ROUTES.UZMAN_ATAMALAR, icon: BookOpen },
-          { label: 'Raporlarim', href: ROUTES.UZMAN_RAPORLAR, icon: FileCheck },
+          { label: 'Sonuclar', href: ROUTES.UZMAN_SONUCLAR, icon: ClipboardList },
         ]},
         { title: 'Hesap', items: [{ label: 'Ayarlar', href: ROUTES.UZMAN_AYARLAR, icon: Settings }] },
       ]

@@ -1,58 +1,152 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
+import { PageLoader } from '@/components/shared/page-loader'
 import { ReportViewModal } from '@/components/shared/report-view-modal'
+import { PdfViewer } from '@/components/shared/pdf-viewer'
 import {
   Card, CardContent, Button, Badge,
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
   Tabs, TabsList, TabsTrigger, TabsContent,
+  Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
+  Spinner,
 } from '@/components/ui'
 import { PenTool, Eye } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
 import { raporDuzenleyiciPath } from '@/utils/routes'
-import { useWorkflowStore } from '@/stores/workflow.store'
 import { TablePagination } from '@/components/shared/table-pagination'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { getExpertById, getExperts, updateExpert } from '@/services/experts.service'
 
 type AssignmentRow = {
+  expertId: number
   barcode: string
-  assignedAt: string
+  assignedAt?: string
   status: 'pending' | 'in_progress' | 'completed'
+}
+
+function statusBadgeVariant(status: AssignmentRow['status']): 'warning' | 'info' | 'success' {
+  if (status === 'pending') return 'warning'
+  if (status === 'in_progress') return 'info'
+  return 'success'
+}
+
+function statusLabel(status: AssignmentRow['status']) {
+  if (status === 'pending') return 'Bekliyor'
+  if (status === 'in_progress') return 'Hazirlaniyor'
+  return 'Tamamlandi'
+}
+
+function normalizeStatus(v: unknown): AssignmentRow['status'] {
+  if (v === 'pending' || v === 'in_progress' || v === 'completed') return v
+  return 'pending'
+}
+
+function isProbablyPdf(url?: string | null) {
+  if (!url) return false
+  return url.toLowerCase().includes('.pdf')
+}
+
+function isProbablyImage(url?: string | null) {
+  if (!url) return false
+  const u = url.toLowerCase()
+  return u.includes('.png') || u.includes('.jpg') || u.includes('.jpeg') || u.includes('.webp') || u.includes('.gif')
 }
 
 export function AssignmentsPage() {
   const navigate = useNavigate()
-  const { kits } = useWorkflowStore()
+  const queryClient = useQueryClient()
+
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+
+  const expertsQuery = useQuery({
+    queryKey: ['experts', 'assignments', 'pending', page, pageSize],
+    queryFn: () => getExperts({ page, limit: pageSize, status: 'pending' }),
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
+
+  useEffect(() => {
+    if (expertsQuery.isError) {
+      toast.error(getApiErrorMessage(expertsQuery.error, { fallback: 'Atamalar yuklenemedi' }))
+    }
+  }, [expertsQuery.isError, expertsQuery.error])
 
   const assignments = useMemo(() => {
-    return kits
-      .filter(
-        (k) =>
-          k.reportStatus === 'SPECIALIST_POOL' ||
-          k.reportStatus === 'ADMIN_APPROVAL' ||
-          k.reportStatus === 'APPROVED'
-      )
-      .map((k): AssignmentRow => ({
-        barcode: k.barcode,
-        assignedAt: k.createdAt,
-        status:
-          k.reportStatus === 'SPECIALIST_POOL'
-            ? 'pending'
-            : k.reportStatus === 'ADMIN_APPROVAL'
-              ? 'in_progress'
-              : 'completed',
-      }))
-  }, [kits])
+    const list = expertsQuery.data?.experts ?? []
+    return list
+      .filter((e) => !!e.kitBarcode && e.status !== 'cancelled')
+      .map((e): AssignmentRow | null => {
+        if (!e.kitBarcode) return null
+        if (e.status !== 'pending' && e.status !== 'in_progress' && e.status !== 'completed') return null
+        return {
+          expertId: e.id,
+          barcode: e.kitBarcode,
+          assignedAt: e.assignedAt,
+          status: e.status,
+        }
+      })
+      .filter((x): x is AssignmentRow => x != null)
+      .sort((a, b) => {
+        const at = new Date(a.assignedAt ?? 0).getTime()
+        const bt = new Date(b.assignedAt ?? 0).getTime()
+        return bt - at
+      })
+  }, [expertsQuery.data?.experts])
 
-  const pendingCount = assignments.filter((a) => a.status === 'pending').length
-  const progressCount = assignments.filter((a) => a.status === 'in_progress').length
-  const completedCount = assignments.filter((a) => a.status === 'completed').length
+  const pendingCount = expertsQuery.data?.totalItems ?? assignments.filter((a) => a.status === 'pending').length
+  const progressCount = 0
+  const completedCount = 0
 
   const pendingList = useMemo(() => assignments.filter((a) => a.status === 'pending'), [assignments])
   const progressList = useMemo(() => assignments.filter((a) => a.status === 'in_progress'), [assignments])
   const completedList = useMemo(() => assignments.filter((a) => a.status === 'completed'), [assignments])
 
   const [viewBarcode, setViewBarcode] = useState<string | null>(null)
+
+  const [dataExpertId, setDataExpertId] = useState<number | null>(null)
+  const [dataBarcode, setDataBarcode] = useState<string | null>(null)
+  const [approvingExpertId, setApprovingExpertId] = useState<number | null>(null)
+  const expertDetailQuery = useQuery({
+    queryKey: ['expert', dataExpertId],
+    queryFn: () => {
+      if (dataExpertId == null) throw new Error('Expert id is required')
+      return getExpertById(dataExpertId)
+    },
+    enabled: dataExpertId != null,
+    retry: 1,
+  })
+
+  useEffect(() => {
+    if (expertDetailQuery.isError) {
+      toast.error(getApiErrorMessage(expertDetailQuery.error, { fallback: 'Detay yuklenemedi' }))
+    }
+  }, [expertDetailQuery.isError, expertDetailQuery.error])
+
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => updateExpert(id, { status: 'in_progress' }),
+    onMutate: (id) => {
+      setApprovingExpertId(id)
+    },
+    onSuccess: async (_res, id) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['experts', 'assignments', 'pending'] }),
+        queryClient.invalidateQueries({ queryKey: ['expert', id] }),
+      ])
+      toast.success('Analiz onaylandi')
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Onay islemi basarisiz' }))
+    },
+    onSettled: () => {
+      setApprovingExpertId(null)
+    },
+  })
+
+  if (expertsQuery.isLoading) return <PageLoader />
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -77,15 +171,41 @@ export function AssignmentsPage() {
         <TabsContent value="pending" className="mt-4">
           <AssignmentList
             rows={pendingList}
+            totalItems={pendingCount}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(next) => {
+              setPageSize(next)
+              setPage(1)
+            }}
             statusLabel="Bekliyor"
             statusBadge={<Badge variant="warning" dot>Bekliyor</Badge>}
             renderAction={(a) => (
               <>
-                <Button variant="ghost" size="sm" onClick={() => toast.success(`${a.barcode} verileri goruntuleniyor`)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setDataExpertId(a.expertId)
+                    setDataBarcode(a.barcode)
+                  }}
+                >
                   <Eye className="h-4 w-4" /> Verileri Gor
                 </Button>
-                <Button variant="default" size="sm" onClick={() => navigate(raporDuzenleyiciPath(a.barcode))}>
-                  <PenTool className="h-4 w-4" /> Basla
+                <Button
+                  variant="default"
+                  size="sm"
+                  disabled={approveMutation.isPending && approvingExpertId === a.expertId}
+                  onClick={() => approveMutation.mutate(a.expertId)}
+                >
+                  {(approveMutation.isPending && approvingExpertId === a.expertId) ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Spinner size="sm" className="text-white" /> Onaylaniyor...
+                    </span>
+                  ) : (
+                    'Onayla'
+                  )}
                 </Button>
               </>
             )}
@@ -95,6 +215,14 @@ export function AssignmentsPage() {
         <TabsContent value="progress" className="mt-4">
           <AssignmentList
             rows={progressList}
+            totalItems={progressList.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(next) => {
+              setPageSize(next)
+              setPage(1)
+            }}
             statusLabel="Hazirlaniyor"
             statusBadge={<Badge variant="info" dot pulse>Hazirlaniyor</Badge>}
             renderAction={(a) => (
@@ -108,6 +236,14 @@ export function AssignmentsPage() {
         <TabsContent value="completed" className="mt-4">
           <AssignmentList
             rows={completedList}
+            totalItems={completedList.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(next) => {
+              setPageSize(next)
+              setPage(1)
+            }}
             statusLabel="Tamamlandi"
             statusBadge={<Badge variant="success" dot>Tamamlandi</Badge>}
             renderAction={(a) => (
@@ -125,35 +261,155 @@ export function AssignmentsPage() {
         title={viewBarcode ?? ''}
         barcode={viewBarcode ?? undefined}
       />
+
+      <Modal
+        open={dataExpertId != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDataExpertId(null)
+            setDataBarcode(null)
+          }
+        }}
+      >
+        <ModalContent className={expertDetailQuery.data?.resultMediaUrl ? 'max-w-4xl w-full' : 'max-w-lg'}>
+          <ModalHeader>
+            <ModalTitle>Analiz Verileri</ModalTitle>
+            <ModalDescription>{dataBarcode ? `Barkod: ${dataBarcode}` : ''}</ModalDescription>
+          </ModalHeader>
+          <ModalBody>
+            {expertDetailQuery.isLoading ? (
+              <div className="flex items-center gap-2 text-sm text-surface-500">
+                <Spinner size="sm" /> Yukleniyor...
+              </div>
+            ) : expertDetailQuery.data ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-surface-200 bg-panel p-3">
+                    <p className="text-xs text-surface-500">Durum</p>
+                    <div className="mt-2">
+                      <Badge variant={statusBadgeVariant(normalizeStatus(expertDetailQuery.data.status))} dot>
+                        {statusLabel(normalizeStatus(expertDetailQuery.data.status))}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-surface-200 bg-panel p-3">
+                    <p className="text-xs text-surface-500">Atanma Tarihi</p>
+                    <p className="mt-2 text-sm font-medium text-surface-800">
+                      {formatDate(expertDetailQuery.data.assignedAt)}
+                    </p>
+                  </div>
+                </div>
+
+                {expertDetailQuery.data.resultMediaUrl ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <p className="text-sm font-medium text-surface-700">Sonuc Dosyasi</p>
+                      <Button
+                        variant="link"
+                        onClick={() => window.open(expertDetailQuery.data!.resultMediaUrl!, '_blank', 'noopener,noreferrer')}
+                      >
+                        Rapor Goster
+                      </Button>
+                    </div>
+
+                    {isProbablyPdf(expertDetailQuery.data.resultMediaUrl) ? (
+                      <PdfViewer file={expertDetailQuery.data.resultMediaUrl} maxHeight="55vh" className="flex-1" />
+                    ) : isProbablyImage(expertDetailQuery.data.resultMediaUrl) ? (
+                      <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
+                        <img
+                          src={expertDetailQuery.data.resultMediaUrl}
+                          alt="Sonuc Dosyasi"
+                          className="w-full max-h-[55vh] object-contain rounded-lg"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                        <p className="text-sm text-surface-600">Dosya onizlemesi sadece PDF ve resimler icin destekleniyor.</p>
+                        <p className="text-xs text-surface-500 mt-1 break-all">
+                          {expertDetailQuery.data.resultMediaUrl}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                    <p className="text-sm text-surface-600">Sonuc dosyasi bulunamadi.</p>
+                    <p className="text-xs text-surface-500 mt-1">Bu kayit icin medya yuklenmemis olabilir.</p>
+                  </div>
+                )}
+
+                <div className="rounded-xl border border-surface-200 bg-panel p-3">
+                  <p className="text-xs text-surface-500">Laboratuvar Durumu</p>
+                  <p className="mt-2 text-sm font-medium text-surface-800">
+                    {expertDetailQuery.data.laboratoryKitStatus ?? '—'}
+                  </p>
+                </div>
+
+                {expertDetailQuery.data.reason ? (
+                  <div className="rounded-xl border border-surface-200 bg-panel p-3">
+                    <p className="text-xs text-surface-500">Aciklama</p>
+                    <p className="mt-2 text-sm text-surface-700">{expertDetailQuery.data.reason}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="text-sm text-surface-500">Detay bulunamadi.</div>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            {dataExpertId != null && normalizeStatus(expertDetailQuery.data?.status) === 'pending' ? (
+              <Button
+                variant="default"
+                disabled={approveMutation.isPending}
+                onClick={() => approveMutation.mutate(dataExpertId)}
+              >
+                {approveMutation.isPending ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Spinner size="sm" className="text-white" /> Onaylaniyor...
+                  </span>
+                ) : (
+                  'Onayla'
+                )}
+              </Button>
+            ) : null}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDataExpertId(null)
+                setDataBarcode(null)
+              }}
+            >
+              Kapat
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   )
 }
 
 function AssignmentList({
   rows,
+  totalItems,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
   statusBadge,
   renderAction,
 }: {
   rows: AssignmentRow[]
+  totalItems: number
+  page: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
   statusLabel: string
   statusBadge: ReactNode
   renderAction: (row: AssignmentRow) => ReactNode
 }) {
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const paginated = useMemo(
-    () => rows.slice((page - 1) * pageSize, page * pageSize),
-    [rows, page, pageSize]
-  )
-
-  useEffect(() => {
-    setPage(1)
-  }, [rows.length])
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize))
-    if (page > totalPages) setPage(totalPages)
-  }, [rows.length, page])
+  const paginated = useMemo(() => rows, [rows])
 
   return (
     <Card>
@@ -195,14 +451,11 @@ function AssignmentList({
             </TableBody>
           </Table>
           <TablePagination
-            totalItems={rows.length}
+            totalItems={totalItems}
             page={page}
             pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(next) => {
-              setPageSize(next)
-              setPage(1)
-            }}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
           />
         </div>
 
@@ -234,31 +487,13 @@ function AssignmentList({
               ))}
             </div>
           )}
-          {rows.length > pageSize && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-surface-100 text-sm text-surface-500">
-              <span>
-                {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, rows.length)} / {rows.length}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Önceki
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= Math.ceil(rows.length / pageSize)}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Sonraki
-                </Button>
-              </div>
-            </div>
-          )}
+          <TablePagination
+            totalItems={totalItems}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
         </div>
       </CardContent>
     </Card>

@@ -7,8 +7,9 @@ import {
   TrendingUp, CheckCircle,
 } from 'lucide-react'
 import { ROUTES, raporDuzenleyiciPath } from '@/utils/routes'
-import { useWorkflowStore } from '@/stores/workflow.store'
 import { formatDate } from '@/lib/utils'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { getExperts } from '@/services/experts.service'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar,
@@ -24,56 +25,212 @@ const W = {
   text: '#4A4640', textLight: '#9C968D', warmGrayLight: '#B5AFA5',
 }
 
-const monthlyReports = [
-  { month: 'Oca', rapor: 4 }, { month: 'Sub', rapor: 5 }, { month: 'Mar', rapor: 6 },
-  { month: 'Nis', rapor: 3 }, { month: 'May', rapor: 7 }, { month: 'Haz', rapor: 5 },
-]
-
 const statusPieFrom = (pending: number, inProgress: number, completed: number) => [
   { name: 'Bekleyen', value: Math.max(0, pending), color: W.amber },
   { name: 'Onay Bekliyor', value: Math.max(0, inProgress), color: W.orange },
   { name: 'Tamamlanan', value: Math.max(0, completed), color: W.green },
 ].filter((i) => i.value > 0)
 
-const performanceData = [{ name: 'Performans', value: 94, fill: W.olive }]
 
-const recentCompleted = [
-  { barcode: 'OT-2025-00120', date: 'Bugun', duration: '1.5 gun', score: 4.9 },
-  { barcode: 'OT-2025-00118', date: 'Dun', duration: '2.0 gun', score: 4.8 },
-  { barcode: 'OT-2025-00115', date: '2 gun once', duration: '1.8 gun', score: 5.0 },
-]
+function toMonthKey(d: Date) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  return `${y}-${m}`
+}
 
-const weeklyActivity = [
-  { icon: CheckCircle, color: W.green, bg: W.greenLight, text: 'OT-2025-00120 raporu onaylandi', time: '3 saat once' },
-  { icon: PenTool, color: W.orange, bg: W.orangeLight, text: 'OT-2025-00128 raporu baslatildi', time: '5 saat once' },
-  { icon: BookOpen, color: W.olive, bg: W.oliveLight, text: 'Yeni analiz atandi: OT-2025-00130', time: 'Dun' },
-]
+function monthLabelTr(d: Date) {
+  const label = d.toLocaleString('tr-TR', { month: 'short' })
+  // Safari bazı durumlarda nokta ekleyebiliyor (örn: "Oca.")
+  const cleaned = label.replace('.', '')
+  return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : cleaned
+}
+
+function relativeDayLabel(dateStr?: string) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  const now = new Date()
+  const startNow = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const startD = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const diffDays = Math.round((startNow - startD) / 864e5)
+  if (diffDays === 0) return 'Bugün'
+  if (diffDays === 1) return 'Dün'
+  if (diffDays > 1) return `${diffDays} gün önce`
+  return formatDate(dateStr)
+}
+
+function relativeTimeLabel(dateStr?: string) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr).getTime()
+  const now = Date.now()
+  const diffMin = Math.max(0, Math.round((now - d) / 6e4))
+  if (diffMin < 60) return `${diffMin} dk önce`
+  const diffH = Math.round(diffMin / 60)
+  if (diffH < 24) return `${diffH} saat önce`
+  const diffD = Math.round(diffH / 24)
+  return `${diffD} gün önce`
+}
+
+function durationDaysLabel(from?: string) {
+  if (!from) return '—'
+  const ms = Date.now() - new Date(from).getTime()
+  if (!Number.isFinite(ms) || ms <= 0) return '—'
+  const days = ms / 864e5
+  return `${days.toFixed(1)} gün`
+}
 
 const tooltipStyle = { background: 'var(--color-panel)', border: '1px solid var(--color-border)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', fontSize: '12px', padding: '10px 14px' }
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function SpecialistDashboardPage() {
   const navigate = useNavigate()
-  const { kits } = useWorkflowStore()
 
-  const byStatus = useMemo(() => {
-    const pending = kits.filter((k) => k.reportStatus === 'SPECIALIST_POOL')
-    const inProgress = kits.filter((k) => k.reportStatus === 'ADMIN_APPROVAL')
-    const completed = kits.filter((k) => k.reportStatus === 'APPROVED')
-    return { pending, inProgress, completed, total: pending.length + inProgress.length + completed.length }
-  }, [kits])
+  const pendingCountQuery = useQuery({
+    queryKey: ['experts', 'dashboard', 'count', 'pending'],
+    queryFn: () => getExperts({ status: 'pending', page: 1, limit: 1 }),
+    retry: 1,
+  })
+  const inProgressCountQuery = useQuery({
+    queryKey: ['experts', 'dashboard', 'count', 'in_progress'],
+    queryFn: () => getExperts({ status: 'in_progress', page: 1, limit: 1 }),
+    retry: 1,
+  })
+  const completedCountQuery = useQuery({
+    queryKey: ['experts', 'dashboard', 'count', 'completed'],
+    queryFn: () => getExperts({ status: 'completed', page: 1, limit: 1 }),
+    retry: 1,
+  })
+
+  const pendingListQuery = useQuery({
+    queryKey: ['experts', 'dashboard', 'list', 'pending'],
+    queryFn: () => getExperts({ status: 'pending', page: 1, limit: 5 }),
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
+
+  const completedListQuery = useQuery({
+    queryKey: ['experts', 'dashboard', 'list', 'completed'],
+    queryFn: () => getExperts({ status: 'completed', page: 1, limit: 50 }),
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
+
+  const inProgressListQuery = useQuery({
+    queryKey: ['experts', 'dashboard', 'list', 'in_progress'],
+    queryFn: () => getExperts({ status: 'in_progress', page: 1, limit: 1 }),
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
+
+  const pendingCount = pendingCountQuery.data?.totalItems ?? 0
+  const inProgressCount = inProgressCountQuery.data?.totalItems ?? 0
+  const completedCount = completedCountQuery.data?.totalItems ?? 0
+  const totalCount = pendingCount + inProgressCount + completedCount
 
   const statusPie = useMemo(
-    () => statusPieFrom(byStatus.pending.length, byStatus.inProgress.length, byStatus.completed.length),
-    [byStatus.pending.length, byStatus.inProgress.length, byStatus.completed.length]
+    () => statusPieFrom(pendingCount, inProgressCount, completedCount),
+    [pendingCount, inProgressCount, completedCount]
   )
-  const pendingList = useMemo(
-    () =>
-      byStatus.pending
-        .slice(0, 5)
-        .map((k) => ({ barcode: k.barcode, assignedAt: formatDate(k.createdAt), clientName: k.assignedClientName })),
-    [byStatus.pending]
-  )
+
+  const pendingList = useMemo(() => {
+    const list = pendingListQuery.data?.experts ?? []
+    return list
+      .filter((e) => !!e.kitBarcode)
+      .map((e) => ({
+        barcode: e.kitBarcode!,
+        assignedAt: e.assignedAt ? formatDate(e.assignedAt) : '—',
+        clientName: e.userName,
+      }))
+  }, [pendingListQuery.data?.experts])
+
+  const recentCompleted = useMemo(() => {
+    const list = (completedListQuery.data?.experts ?? [])
+      .filter((e) => !!e.kitBarcode)
+      .slice(0, 3)
+    return list.map((e) => ({
+      barcode: e.kitBarcode!,
+      date: relativeDayLabel(e.assignedAt),
+      duration: durationDaysLabel(e.assignedAt),
+      score: null as number | null,
+      assignedAt: e.assignedAt,
+    }))
+  }, [completedListQuery.data?.experts])
+
+  const weeklyActivity = useMemo(() => {
+    const pending = pendingListQuery.data?.experts?.[0]
+    const inProgress = inProgressListQuery.data?.experts?.[0]
+    const completed = completedListQuery.data?.experts?.[0]
+
+    const items: Array<{ icon: typeof CheckCircle; color: string; bg: string; text: string; time: string }> = []
+
+    if (completed?.kitBarcode) {
+      items.push({
+        icon: CheckCircle,
+        color: W.green,
+        bg: W.greenLight,
+        text: `${completed.kitBarcode} raporu tamamlandı`,
+        time: relativeTimeLabel(completed.assignedAt),
+      })
+    }
+
+    if (inProgress?.kitBarcode) {
+      items.push({
+        icon: PenTool,
+        color: W.orange,
+        bg: W.orangeLight,
+        text: `${inProgress.kitBarcode} raporu başlatıldı`,
+        time: relativeTimeLabel(inProgress.assignedAt),
+      })
+    }
+
+    if (pending?.kitBarcode) {
+      items.push({
+        icon: BookOpen,
+        color: W.olive,
+        bg: W.oliveLight,
+        text: `Yeni analiz atandı: ${pending.kitBarcode}`,
+        time: relativeTimeLabel(pending.assignedAt),
+      })
+    }
+
+    return items.slice(0, 3)
+  }, [completedListQuery.data?.experts, inProgressListQuery.data?.experts, pendingListQuery.data?.experts])
+
+  const monthlyReports = useMemo(() => {
+    const base = new Date()
+    const months = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date(base.getFullYear(), base.getMonth() - (5 - i), 1)
+      return { key: toMonthKey(d), month: monthLabelTr(d) }
+    })
+
+    const map = new Map<string, number>()
+    for (const m of months) map.set(m.key, 0)
+
+    for (const e of (completedListQuery.data?.experts ?? [])) {
+      if (!e.assignedAt) continue
+      const k = toMonthKey(new Date(e.assignedAt))
+      if (!map.has(k)) continue
+      map.set(k, (map.get(k) ?? 0) + 1)
+    }
+
+    return months.map((m) => ({ month: m.month, rapor: map.get(m.key) ?? 0 }))
+  }, [completedListQuery.data?.experts])
+
+  const performanceValue = useMemo(() => {
+    if (totalCount <= 0) return 0
+    return Math.max(0, Math.min(100, Math.round((completedCount / totalCount) * 100)))
+  }, [completedCount, totalCount])
+
+  const performanceData = useMemo(() => [{ name: 'Performans', value: performanceValue, fill: W.olive }], [performanceValue])
+
+  const avgSpeedDays = useMemo(() => {
+    const completed = (completedListQuery.data?.experts ?? []).filter((e) => e.assignedAt)
+    if (completed.length === 0) return null
+    const days = completed
+      .map((e) => (Date.now() - new Date(e.assignedAt!).getTime()) / 864e5)
+      .filter((n) => Number.isFinite(n) && n > 0)
+    if (days.length === 0) return null
+    return (days.reduce((a, b) => a + b, 0) / days.length)
+  }, [completedListQuery.data?.experts])
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -87,10 +244,10 @@ export function SpecialistDashboardPage() {
       {/* ═══ STAT CARDS ═══ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: 'Bekleyen', value: String(byStatus.pending.length), icon: BookOpen, iconColor: W.amber, iconBg: W.amberLight },
-          { title: 'Onay Bekliyor', value: String(byStatus.inProgress.length), icon: PenTool, iconColor: W.orange, iconBg: W.orangeLight },
-          { title: 'Tamamlanan', value: String(byStatus.completed.length), icon: FileCheck, iconColor: W.green, iconBg: W.greenLight },
-          { title: 'Toplam', value: String(byStatus.total), icon: Clock, iconColor: W.olive, iconBg: W.oliveLight },
+          { title: 'Bekleyen', value: String(pendingCount), icon: BookOpen, iconColor: W.amber, iconBg: W.amberLight },
+          { title: 'Onay Bekliyor', value: String(inProgressCount), icon: PenTool, iconColor: W.orange, iconBg: W.orangeLight },
+          { title: 'Tamamlanan', value: String(completedCount), icon: FileCheck, iconColor: W.green, iconBg: W.greenLight },
+          { title: 'Toplam', value: String(totalCount), icon: Clock, iconColor: W.olive, iconBg: W.oliveLight },
         ].map((s, i) => {
           const Icon = s.icon
           return (
@@ -122,7 +279,7 @@ export function SpecialistDashboardPage() {
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary-100 dark:bg-primary-900/30">
                 <TrendingUp className="h-3.5 w-3.5 text-primary-600" />
-                <span className="text-[12px] font-bold text-primary-700 dark:text-primary-400">30 rapor (YTD)</span>
+                <span className="text-[12px] font-bold text-primary-700 dark:text-primary-400">{completedCount} rapor (YTD)</span>
               </div>
             </div>
             <div className="h-[220px]">
@@ -149,7 +306,7 @@ export function SpecialistDashboardPage() {
           <div className="rounded-2xl p-5 h-full bg-panel border border-surface-200">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[15px] font-semibold text-surface-900">Rapor Dagilimi</h3>
-              <span className="text-xl font-black text-surface-900">{byStatus.total}</span>
+              <span className="text-xl font-black text-surface-900">{totalCount}</span>
             </div>
             <div className="relative h-[150px] flex items-center justify-center">
               {statusPie.length > 0 ? (
@@ -163,7 +320,7 @@ export function SpecialistDashboardPage() {
               ) : null}
               <div className="absolute inset-0 flex items-center justify-center text-center">
                 <div>
-                  <p className="text-lg font-black text-surface-900">{byStatus.total}</p>
+                  <p className="text-lg font-black text-surface-900">{totalCount}</p>
                   <p className="text-[9px] text-surface-500">Toplam</p>
                 </div>
               </div>
@@ -231,7 +388,7 @@ export function SpecialistDashboardPage() {
                   </div>
                   <div className="flex-1">
                     <code className="text-[12px] font-mono font-bold text-green-800 dark:text-green-200">{r.barcode}</code>
-                    <p className="text-[10px] text-green-700 dark:text-green-300">{r.date} · {r.duration} · Puan: {r.score}</p>
+                    <p className="text-[10px] text-green-700 dark:text-green-300">{r.date} · {r.duration} · Puan: {r.score ?? '—'}</p>
                   </div>
                 </div>
               ))}
@@ -265,7 +422,7 @@ export function SpecialistDashboardPage() {
                   </RadialBarChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <p className="text-2xl font-black text-surface-900">94<span className="text-xs text-surface-500">%</span></p>
+                  <p className="text-2xl font-black text-surface-900">{performanceValue}<span className="text-xs text-surface-500">%</span></p>
                 </div>
               </div>
               <p className="text-[10px] text-center mt-1 text-surface-500">Zamaninda teslim</p>
@@ -282,7 +439,7 @@ export function SpecialistDashboardPage() {
                 <div>
                   <div className="flex justify-between mb-1">
                     <span className="text-[10px] text-surface-500">Hiz</span>
-                    <span className="text-[10px] font-bold text-primary-600">1.8 gun</span>
+                    <span className="text-[10px] font-bold text-primary-600">{avgSpeedDays != null ? `${avgSpeedDays.toFixed(1)} gün` : '—'}</span>
                   </div>
                   <div className="w-full h-1.5 rounded-full overflow-hidden bg-surface-200">
                     <div className="h-full rounded-full bg-primary-500" style={{ width: '85%' }} />

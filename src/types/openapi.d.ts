@@ -2159,111 +2159,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/experts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all experts */
-        get: {
-            parameters: {
-                query?: {
-                    page?: components["schemas"]["Pagination"];
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Experts retrieved successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            data?: components["schemas"]["ExpertResponse"][];
-                            meta?: {
-                                /**
-                                 * @description Total number of experts
-                                 * @example 100
-                                 */
-                                totalItems?: number;
-                                /**
-                                 * @description Total number of pages
-                                 * @example 10
-                                 */
-                                totalPages?: number;
-                                /**
-                                 * @description Current page number
-                                 * @example 1
-                                 */
-                                currentPage?: number;
-                            };
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create a new expert */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * @description ID of the laboratory kit to be associated with the expert
-                         * @example 1
-                         */
-                        laboratoryKitId?: number;
-                    };
-                };
-            };
-            responses: {
-                /** @description Expert created successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ExpertResponse"];
-                    };
-                };
-                /** @description Bad request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BadRequestResponse"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UnauthorizedResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/experts/{id}": {
         parameters: {
             query?: never;
@@ -2369,6 +2264,111 @@ export interface paths {
             };
         };
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/experts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get all experts */
+        get: {
+            parameters: {
+                query?: {
+                    page?: components["schemas"]["Pagination"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Experts retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["ExpertResponse"][];
+                            meta?: {
+                                /**
+                                 * @description Total number of experts
+                                 * @example 100
+                                 */
+                                totalItems?: number;
+                                /**
+                                 * @description Total number of pages
+                                 * @example 10
+                                 */
+                                totalPages?: number;
+                                /**
+                                 * @description Current page number
+                                 * @example 1
+                                 */
+                                currentPage?: number;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a new expert */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * @description ID of the laboratory kit to be associated with the expert
+                         * @example 1
+                         */
+                        laboratoryKitId?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Expert created successfully */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExpertResponse"];
+                    };
+                };
+                /** @description Bad request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BadRequestResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UnauthorizedResponse"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -3550,6 +3550,232 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get results (admin sees all; dietician/client sees approved/completed) */
+        get: {
+            parameters: {
+                query?: {
+                    "undefined"?: components["schemas"]["Pagination"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Results retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["ResultResponse"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a result (admin) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": components["schemas"]["CreateResult"];
+                };
+            };
+            responses: {
+                /** @description Result created successfully */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ResultResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/results/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get pending results (admin) */
+        get: {
+            parameters: {
+                query?: {
+                    "undefined"?: components["schemas"]["Pagination"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Pending results retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data?: components["schemas"]["ResultResponse"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/results/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get result by ID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Result retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ResultResponse"];
+                    };
+                };
+            };
+        };
+        /** Update a result (admin) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": components["schemas"]["UpdateResult"];
+                };
+            };
+            responses: {
+                /** @description Result updated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ResultResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Delete a result (admin) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Result deleted successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/results/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Approve a pending result (admin) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Result approved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ResultResponse"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -6040,7 +6266,7 @@ export interface components {
              * @example completed
              * @enum {string}
              */
-            status?: "pending" | "completed" | "cancelled";
+            status?: "pending" | "completed" | "cancelled" | "in_progress";
             /**
              * @description Reason for cancellation of the laboratory kit
              * @example Kit is not available
@@ -6092,7 +6318,7 @@ export interface components {
              * @example completed
              * @enum {string}
              */
-            status?: "pending" | "completed" | "cancelled";
+            status?: "pending" | "completed" | "cancelled" | "in_progress";
             /** @description Media result associated with the laboratory kit */
             resultMediaId?: {
                 /**
@@ -6562,7 +6788,7 @@ export interface components {
                  * @example completed
                  * @enum {string}
                  */
-                status?: "pending" | "completed" | "cancelled";
+                status?: "pending" | "completed" | "cancelled" | "in_progress";
             };
             /**
              * @description Status of the expert
@@ -6580,6 +6806,138 @@ export interface components {
              * @example true
              */
             isActive?: boolean;
+        };
+        CreateResult: {
+            /**
+             * @description Dietician-client relationship ID
+             * @example 1
+             */
+            dieticianClientId: number;
+            /**
+             * @description Overall evaluation
+             * @example inconclusive
+             * @enum {string}
+             */
+            overall_evaluation: "positive" | "negative" | "inconclusive";
+            /**
+             * @description Nutrition suggestions
+             * @example Increase fiber intake
+             */
+            nutrition_suggestions?: string | null;
+            /**
+             * @description Reinforcement suggestions
+             * @example Maintain hydration
+             */
+            reinforcement_suggestions?: string | null;
+            /**
+             * @description Result media URL
+             * @example https://example.com/uploads/result.pdf
+             */
+            resultMedia?: string | null;
+            /**
+             * @description Optional result file (pdf/image)
+             * @example result.pdf
+             */
+            file?: unknown;
+        };
+        UpdateResult: {
+            /**
+             * @description Overall evaluation
+             * @example positive
+             * @enum {string}
+             */
+            overall_evaluation?: "positive" | "negative" | "inconclusive";
+            /**
+             * @description Nutrition suggestions
+             * @example Reduce sugar
+             */
+            nutrition_suggestions?: string | null;
+            /**
+             * @description Reinforcement suggestions
+             * @example Add probiotics
+             */
+            reinforcement_suggestions?: string | null;
+            /**
+             * @description Result media URL
+             * @example https://example.com/uploads/result.pdf
+             */
+            resultMedia?: string | null;
+            /**
+             * @description Optional result file (pdf/image)
+             * @example result.pdf
+             */
+            file?: unknown;
+            /**
+             * @description Result status
+             * @example completed
+             * @enum {string}
+             */
+            status?: "pending" | "completed" | "approved" | "rejected";
+        };
+        ResultResponse: {
+            /**
+             * @description Result ID
+             * @example 1
+             */
+            id?: number;
+            /**
+             * @description Overall evaluation
+             * @example inconclusive
+             * @enum {string}
+             */
+            overall_evaluation?: "positive" | "negative" | "inconclusive";
+            /**
+             * @description Nutrition suggestions
+             * @example Increase fiber intake
+             */
+            nutrition_suggestions?: string | null;
+            /**
+             * @description Reinforcement suggestions
+             * @example Maintain hydration
+             */
+            reinforcement_suggestions?: string | null;
+            /**
+             * @description Dietician-client relationship ID
+             * @example 1
+             */
+            dieticianClientId?: number;
+            /**
+             * @description Result status
+             * @example pending
+             * @enum {string}
+             */
+            status?: "pending" | "completed" | "approved" | "rejected";
+            /**
+             * @description Result media URL
+             * @example https://example.com/uploads/result.pdf
+             */
+            resultMedia?: string | null;
+            /**
+             * @description Media ID linked to this result
+             * @example 10
+             */
+            resultMediaId?: number | null;
+            /** @description Linked media object */
+            mediaResult?: {
+                /** @example 10 */
+                id?: number;
+                /** @example https://example.com/uploads/result.pdf */
+                url?: string;
+                /** @example file-123456.pdf */
+                filename?: string;
+                /** @example application/pdf */
+                mimetype?: string;
+            } | null;
+            /**
+             * Format: date-time
+             * @description Created at
+             */
+            createdAt?: string;
+            /**
+             * Format: date-time
+             * @description Updated at
+             */
+            updatedAt?: string;
         };
         CreateClientRequest: components["schemas"]["CreateClient"];
         DamagedKit: components["schemas"]["DamageKitResponse"];

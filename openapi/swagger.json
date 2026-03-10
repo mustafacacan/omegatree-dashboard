@@ -2561,7 +2561,8 @@
                         "enum": [
                             "pending",
                             "completed",
-                            "cancelled"
+                            "cancelled",
+                            "in_progress"
                         ],
                         "description": "Status of the laboratory kit",
                         "example": "completed"
@@ -2632,7 +2633,8 @@
                         "enum": [
                             "pending",
                             "completed",
-                            "cancelled"
+                            "cancelled",
+                            "in_progress"
                         ],
                         "description": "Status of the laboratory kit",
                         "example": "completed"
@@ -3382,7 +3384,8 @@
                                 "enum": [
                                     "pending",
                                     "completed",
-                                    "cancelled"
+                                    "cancelled",
+                                    "in_progress"
                                 ],
                                 "description": "Status of the laboratory kit",
                                 "example": "completed"
@@ -3411,6 +3414,197 @@
                         "type": "boolean",
                         "description": "Indicates if the expert is active",
                         "example": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CreateResult": {
+                "type": "object",
+                "properties": {
+                    "dieticianClientId": {
+                        "type": "integer",
+                        "description": "Dietician-client relationship ID",
+                        "example": 1
+                    },
+                    "overall_evaluation": {
+                        "type": "string",
+                        "enum": [
+                            "positive",
+                            "negative",
+                            "inconclusive"
+                        ],
+                        "description": "Overall evaluation",
+                        "example": "inconclusive"
+                    },
+                    "nutrition_suggestions": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Nutrition suggestions",
+                        "example": "Increase fiber intake"
+                    },
+                    "reinforcement_suggestions": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Reinforcement suggestions",
+                        "example": "Maintain hydration"
+                    },
+                    "resultMedia": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Result media URL",
+                        "example": "https://example.com/uploads/result.pdf"
+                    },
+                    "file": {
+                        "description": "Optional result file (pdf/image)",
+                        "example": "result.pdf"
+                    }
+                },
+                "required": [
+                    "dieticianClientId",
+                    "overall_evaluation"
+                ],
+                "additionalProperties": false
+            },
+            "UpdateResult": {
+                "type": "object",
+                "properties": {
+                    "overall_evaluation": {
+                        "type": "string",
+                        "enum": [
+                            "positive",
+                            "negative",
+                            "inconclusive"
+                        ],
+                        "description": "Overall evaluation",
+                        "example": "positive"
+                    },
+                    "nutrition_suggestions": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Nutrition suggestions",
+                        "example": "Reduce sugar"
+                    },
+                    "reinforcement_suggestions": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Reinforcement suggestions",
+                        "example": "Add probiotics"
+                    },
+                    "resultMedia": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Result media URL",
+                        "example": "https://example.com/uploads/result.pdf"
+                    },
+                    "file": {
+                        "description": "Optional result file (pdf/image)",
+                        "example": "result.pdf"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "completed",
+                            "approved",
+                            "rejected"
+                        ],
+                        "description": "Result status",
+                        "example": "completed"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "ResultResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Result ID",
+                        "example": 1
+                    },
+                    "overall_evaluation": {
+                        "type": "string",
+                        "enum": [
+                            "positive",
+                            "negative",
+                            "inconclusive"
+                        ],
+                        "description": "Overall evaluation",
+                        "example": "inconclusive"
+                    },
+                    "nutrition_suggestions": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Nutrition suggestions",
+                        "example": "Increase fiber intake"
+                    },
+                    "reinforcement_suggestions": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Reinforcement suggestions",
+                        "example": "Maintain hydration"
+                    },
+                    "dieticianClientId": {
+                        "type": "integer",
+                        "description": "Dietician-client relationship ID",
+                        "example": 1
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "completed",
+                            "approved",
+                            "rejected"
+                        ],
+                        "description": "Result status",
+                        "example": "pending"
+                    },
+                    "resultMedia": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Result media URL",
+                        "example": "https://example.com/uploads/result.pdf"
+                    },
+                    "resultMediaId": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "Media ID linked to this result",
+                        "example": 10
+                    },
+                    "mediaResult": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer",
+                                "example": 10
+                            },
+                            "url": {
+                                "type": "string",
+                                "example": "https://example.com/uploads/result.pdf"
+                            },
+                            "filename": {
+                                "type": "string",
+                                "example": "file-123456.pdf"
+                            },
+                            "mimetype": {
+                                "type": "string",
+                                "example": "application/pdf"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "nullable": true,
+                        "description": "Linked media object"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Created at"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Updated at"
                     }
                 },
                 "additionalProperties": false
@@ -5858,118 +6052,6 @@
                 }
             }
         },
-        "/experts": {
-            "post": {
-                "summary": "Create a new expert",
-                "tags": [
-                    "Experts"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "laboratoryKitId": {
-                                        "type": "integer",
-                                        "description": "ID of the laboratory kit to be associated with the expert",
-                                        "example": 1
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Expert created successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ExpertResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/BadRequestResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UnauthorizedResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "get": {
-                "summary": "Get all experts",
-                "tags": [
-                    "Experts"
-                ],
-                "parameters": [
-                    {
-                        "in": "query",
-                        "name": "page",
-                        "schema": {
-                            "$ref": "#/components/schemas/Pagination"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Experts retrieved successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/ExpertResponse"
-                                            }
-                                        },
-                                        "meta": {
-                                            "type": "object",
-                                            "properties": {
-                                                "totalItems": {
-                                                    "type": "integer",
-                                                    "description": "Total number of experts",
-                                                    "example": 100
-                                                },
-                                                "totalPages": {
-                                                    "type": "integer",
-                                                    "description": "Total number of pages",
-                                                    "example": 10
-                                                },
-                                                "currentPage": {
-                                                    "type": "integer",
-                                                    "description": "Current page number",
-                                                    "example": 1
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/experts/{id}": {
             "get": {
                 "summary": "Get expert by ID",
@@ -6083,6 +6165,118 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/NotFoundResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/experts": {
+            "post": {
+                "summary": "Create a new expert",
+                "tags": [
+                    "Experts"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "laboratoryKitId": {
+                                        "type": "integer",
+                                        "description": "ID of the laboratory kit to be associated with the expert",
+                                        "example": 1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Expert created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExpertResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BadRequestResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UnauthorizedResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Get all experts",
+                "tags": [
+                    "Experts"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": {
+                            "$ref": "#/components/schemas/Pagination"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Experts retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ExpertResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "totalItems": {
+                                                    "type": "integer",
+                                                    "description": "Total number of experts",
+                                                    "example": 100
+                                                },
+                                                "totalPages": {
+                                                    "type": "integer",
+                                                    "description": "Total number of pages",
+                                                    "example": 10
+                                                },
+                                                "currentPage": {
+                                                    "type": "integer",
+                                                    "description": "Current page number",
+                                                    "example": 1
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -7404,6 +7598,225 @@
                 }
             }
         },
+        "/results": {
+            "post": {
+                "summary": "Create a result (admin)",
+                "tags": [
+                    "Results"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateResult"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Result created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Get results (admin sees all; dietician/client sees approved/completed)",
+                "tags": [
+                    "Results"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "schema": {
+                            "$ref": "#/components/schemas/Pagination"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Results retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ResultResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/results/pending": {
+            "get": {
+                "summary": "Get pending results (admin)",
+                "tags": [
+                    "Results"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "schema": {
+                            "$ref": "#/components/schemas/Pagination"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pending results retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ResultResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/results/{id}": {
+            "get": {
+                "summary": "Get result by ID",
+                "tags": [
+                    "Results"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Result retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update a result (admin)",
+                "tags": [
+                    "Results"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateResult"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Result updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a result (admin)",
+                "tags": [
+                    "Results"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Result deleted successfully"
+                    }
+                }
+            }
+        },
+        "/results/{id}/approve": {
+            "put": {
+                "summary": "Approve a pending result (admin)",
+                "tags": [
+                    "Results"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Result approved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ResultResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/sales-kits/{id}": {
             "get": {
                 "summary": "Get a sales kit by ID",
@@ -8163,6 +8576,10 @@
         {
             "name": "Orders",
             "description": "Order management"
+        },
+        {
+            "name": "Results",
+            "description": "API endpoints for managing results"
         },
         {
             "name": "Sales Kits",

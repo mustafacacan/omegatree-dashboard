@@ -56,9 +56,10 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith(ROUTES.LABORATUVAR_BILDIRIMLER)) return 'Bildirimler'
 
   if (pathname === ROUTES.UZMAN) return 'Uzman Paneli'
+  if (pathname.startsWith(ROUTES.UZMAN_ANALIZLER)) return 'Analizler'
   if (pathname.startsWith(ROUTES.UZMAN_ATAMALAR)) return 'Atanan Analizler'
   if (pathname.startsWith(ROUTES.UZMAN_RAPORLAR_DUZENLEYICI)) return 'Rapor Editoru'
-  if (pathname.startsWith(ROUTES.UZMAN_RAPORLAR)) return 'Raporlarim'
+  if (pathname.startsWith(ROUTES.UZMAN_SONUCLAR)) return 'Sonuclar'
   if (pathname.startsWith(ROUTES.UZMAN_BILDIRIMLER)) return 'Bildirimler'
 
   if (pathname === ROUTES.DANISAN) return 'Danisan Paneli'

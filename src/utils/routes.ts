@@ -48,9 +48,10 @@ export const ROUTES = {
   UZMAN_PROFIL: '/uzman/profil',
   UZMAN_AYARLAR: '/uzman/ayarlar',
   UZMAN_BILDIRIMLER: '/uzman/bildirimler',
+  UZMAN_ANALIZLER: '/uzman/analizler',
   UZMAN_ATAMALAR: '/uzman/atamalar',
-  UZMAN_RAPORLAR: '/uzman/raporlar',
   UZMAN_RAPORLAR_DUZENLEYICI: '/uzman/raporlar/duzenleyici',
+  UZMAN_SONUCLAR: '/uzman/sonuclar',
 
   DANISAN: '/danisan',
   DANISAN_PROFIL: '/danisan/profil',

@@ -55,9 +55,10 @@ const ResultsPage = lazy(() => import('@/features/laboratory/results/pages/resul
 
 // Specialist
 const SpecialistDashboardPage = lazy(() => import('@/features/specialist/dashboard/specialist-dashboard-page').then(m => ({ default: m.SpecialistDashboardPage })))
+const SpecialistAnalysesPage = lazy(() => import('@/features/specialist/analyses/pages/analyses-page').then(m => ({ default: m.SpecialistAnalysesPage })))
 const AssignmentsPage = lazy(() => import('@/features/specialist/assignments/pages/assignments-page').then(m => ({ default: m.AssignmentsPage })))
-const SpecialistReportsListPage = lazy(() => import('@/features/specialist/reports/pages/reports-list-page').then(m => ({ default: m.SpecialistReportsListPage })))
 const ReportEditorPage = lazy(() => import('@/features/specialist/reports/pages/report-editor-page').then(m => ({ default: m.ReportEditorPage })))
+const SpecialistResultsPage = lazy(() => import('@/features/specialist/results/pages/results-page').then(m => ({ default: m.SpecialistResultsPage })))
 
 // Danisan
 const DanisanPortalPage = lazy(() => import('@/features/danisan/pages/danisan-portal-page').then(m => ({ default: m.DanisanPortalPage })))
@@ -175,9 +176,10 @@ export const router = createBrowserRouter([
       { path: ROUTES.UZMAN_PROFIL, element: <SuspensePage><ProfilePage /></SuspensePage> },
       { path: ROUTES.UZMAN_AYARLAR, element: <SuspensePage><SettingsPage /></SuspensePage> },
       { path: ROUTES.UZMAN_BILDIRIMLER, element: <SuspensePage><NotificationsPage /></SuspensePage> },
+      { path: ROUTES.UZMAN_ANALIZLER, element: <SuspensePage><SpecialistAnalysesPage /></SuspensePage> },
       { path: ROUTES.UZMAN_ATAMALAR, element: <SuspensePage><AssignmentsPage /></SuspensePage> },
-      { path: ROUTES.UZMAN_RAPORLAR, element: <SuspensePage><SpecialistReportsListPage /></SuspensePage> },
       { path: ROUTES.UZMAN_RAPORLAR_DUZENLEYICI, element: <SuspensePage><ReportEditorPage /></SuspensePage> },
+      { path: ROUTES.UZMAN_SONUCLAR, element: <SuspensePage><SpecialistResultsPage /></SuspensePage> },
     ],
   },
 
