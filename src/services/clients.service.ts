@@ -5,6 +5,7 @@ const skipAuth: ApiRequestConfig = { skipAuthRedirect: true }
 
 type ApiClientResponse = components['schemas']['ClientResponse']
 type ApiCreateClient = components['schemas']['CreateClient']
+type ApiCreateClientLoose = Omit<ApiCreateClient, 'dieticianId'> & { dieticianId?: number }
 
 export interface AppClient {
   id: number
@@ -20,21 +21,75 @@ export interface AppClient {
   dieticianName?: string
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object'
+}
+
+function toNumber(v: unknown): number | undefined {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v)
+    return Number.isFinite(n) ? n : undefined
+  }
+  return undefined
+}
+
 function mapApiClientToApp(item: ApiClientResponse): AppClient {
-  const user = item.userId
-  const dietician = item.dieticianId
+  const rec = item as unknown as Record<string, unknown>
+
+  const idValue = rec.id
+  const id =
+    typeof idValue === 'number'
+      ? idValue
+      : typeof idValue === 'string' && idValue.trim() !== '' && Number.isFinite(Number(idValue))
+        ? Number(idValue)
+        : typeof item.id === 'number'
+          ? item.id
+          : 0
+
+  // Backwards/forwards compatible mapping:
+  // - some APIs return `user` object + `userId` number
+  // - older openapi types may model `userId` as an embedded object
+  const userCandidate = (rec.user ?? rec.userId) as unknown
+  const user = isRecord(userCandidate) ? userCandidate : undefined
+
+  // Dietician shape variants:
+  // - `dieticianClient: { dietician: { id, user: { firstName, lastName, ... }}}`
+  // - `dietician: { user: {...} }`
+  // - `dieticianId: number`
+  const dieticianClientCandidate = rec.dieticianClient as unknown
+  const dieticianClient = isRecord(dieticianClientCandidate) ? dieticianClientCandidate : undefined
+  const dieticianFromRelationCandidate = dieticianClient?.dietician as unknown
+  const dieticianFromRelation = isRecord(dieticianFromRelationCandidate) ? dieticianFromRelationCandidate : undefined
+
+  const dieticianCandidate = (rec.dietician ?? rec.dieticianId) as unknown
+  const dietician = isRecord(dieticianCandidate) ? dieticianCandidate : undefined
+
+  const dieticianUserCandidate = (dieticianFromRelation?.user ?? dietician?.user ?? dieticianFromRelation ?? dietician) as unknown
+  const dieticianUser = isRecord(dieticianUserCandidate) ? dieticianUserCandidate : undefined
+
+  const createdAt = (rec.createdAt ?? user?.createdAt) as string | undefined
+  const updatedAt = (rec.updatedAt ?? user?.updatedAt) as string | undefined
+
+  const dieticianId =
+    toNumber(rec.dieticianId) ??
+    toNumber(dieticianFromRelation?.id) ??
+    toNumber(dietician?.id)
+
   return {
-    id: item.id,
-    firstName: user?.firstName ?? '',
-    lastName: user?.lastName ?? '',
-    phone: user?.phone ?? '',
-    email: user?.email ?? '',
-    gender: user?.gender,
-    identityNumber: user?.identityNumber,
-    createdAt: user?.createdAt ?? '',
-    updatedAt: user?.updatedAt ?? '',
-    dieticianId: dietician?.id,
-    dieticianName: dietician ? `${dietician.firstName ?? ''} ${dietician.lastName ?? ''}`.trim() : undefined,
+    id,
+    firstName: (user?.firstName as string | undefined) ?? '',
+    lastName: (user?.lastName as string | undefined) ?? '',
+    phone: (user?.phone as string | undefined) ?? '',
+    email: (user?.email as string | undefined) ?? '',
+    gender: user?.gender as string | undefined,
+    identityNumber: user?.identityNumber as string | undefined,
+    createdAt: typeof createdAt === 'string' ? createdAt : '',
+    updatedAt: typeof updatedAt === 'string' ? updatedAt : '',
+    dieticianId,
+    dieticianName: dieticianUser
+      ? `${(dieticianUser.firstName as string | undefined) ?? ''} ${(dieticianUser.lastName as string | undefined) ?? ''}`.trim() || undefined
+      : undefined,
   }
 }
 
@@ -47,6 +102,9 @@ export interface GetClientsParams {
 export interface GetClientsResponse {
   clients: AppClient[]
   total?: number
+  totalItems?: number
+  totalPages?: number
+  currentPage?: number
 }
 
 export interface ClientDetail {
@@ -183,6 +241,19 @@ export async function getClients(params?: GetClientsParams): Promise<GetClientsR
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
   const payload = top && 'data' in top ? top.data : data
 
+  // Common pagination shape: { totalItems, totalPages, currentPage, items: [...] }
+  if (payload && typeof payload === 'object' && 'items' in (payload as Record<string, unknown>)) {
+    const obj = payload as Record<string, unknown>
+    const list = Array.isArray(obj.items) ? (obj.items as ApiClientResponse[]) : []
+    return {
+      clients: list.map(mapApiClientToApp),
+      total: list.length,
+      totalItems: asNumber(obj.totalItems),
+      totalPages: asNumber(obj.totalPages),
+      currentPage: asNumber(obj.currentPage),
+    }
+  }
+
   if (payload && typeof payload === 'object' && 'clients' in (payload as Record<string, unknown>)) {
     const list = ((payload as Record<string, unknown>).clients as ApiClientResponse[]) ?? []
     return { clients: list.map(mapApiClientToApp), total: list.length }
@@ -219,9 +290,9 @@ export async function createClient(payload: {
     profession?: string
     education?: string
   }
-  dieticianId: number
+  dieticianId?: number
 }): Promise<AppClient> {
-  const body: ApiCreateClient = {
+  const body: ApiCreateClientLoose = {
     userId: {
       firstName: payload.firstName,
       lastName: payload.lastName,
@@ -231,7 +302,7 @@ export async function createClient(payload: {
       gender: payload.gender,
       identityNumber: payload.identityNumber,
     },
-    dieticianId: payload.dieticianId,
+    ...(typeof payload.dieticianId === 'number' ? { dieticianId: payload.dieticianId } : {}),
   }
 
   if (payload.anamnezForm) {
@@ -251,7 +322,7 @@ export async function createClient(payload: {
     }
   }
 
-  const { data } = await api.post<unknown>('/clients', body, skipAuth)
+  const { data } = await api.post<unknown>('/clients', body as unknown as ApiCreateClient, skipAuth)
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
   const item = (top && 'data' in top ? top.data : data) as ApiClientResponse
   return mapApiClientToApp(item)

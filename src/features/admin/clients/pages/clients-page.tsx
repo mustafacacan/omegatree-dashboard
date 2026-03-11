@@ -13,27 +13,32 @@ import {
   Users,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { UserRole } from '@/utils/constants'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { getClients, createClient, getClientDetail } from '@/services/clients.service'
 import type { AppClient } from '@/services/clients.service'
 import type { ClientDetail } from '@/services/clients.service'
-import { getUsers } from '@/services/users.service'
+import { useCurrentUser } from '@/stores/auth.store'
+import { getDieticians, type DieticianOption } from '@/services/kits.service'
+import { addDieticianToClient, updateDieticianClient } from '@/services/dietician-clients.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 const CLIENTS_QUERY_KEY = ['admin', 'clients'] as const
-const USERS_QUERY_KEY = ['users'] as const
 
 export function ClientsPage() {
   const queryClient = useQueryClient()
+  const currentUser = useCurrentUser()
   const [search, setSearch] = useState('')
   const [newOpen, setNewOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
   const [viewClientId, setViewClientId] = useState<number | null>(null)
   const [step, setStep] = useState<1 | 2>(1)
+
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [assignClient, setAssignClient] = useState<AppClient | null>(null)
+  const [assignDieticianId, setAssignDieticianId] = useState('')
 
   const [form, setForm] = useState({
     firstName: '',
@@ -41,7 +46,6 @@ export function ClientsPage() {
     email: '',
     phone: '',
     gender: 'male' as 'male' | 'female',
-    dieticianId: '',
     chronicIllness: '',
     medicationUsed: '',
     foodAllergy: '',
@@ -59,16 +63,17 @@ export function ClientsPage() {
     retry: 1,
   })
 
-  const { data: usersRes } = useQuery({
-    queryKey: USERS_QUERY_KEY,
-    queryFn: () => getUsers({ page: 1, limit: 500 }),
+  const { data: dieticiansRes, isLoading: dieticiansLoading } = useQuery({
+    queryKey: ['dieticians', 'options'],
+    queryFn: getDieticians,
+    enabled: assignOpen,
+    staleTime: 60_000,
+    retry: 1,
   })
 
+  const dieticianOptions: DieticianOption[] = Array.isArray(dieticiansRes) ? dieticiansRes : []
+
   const clientsList = Array.isArray(clientsRes?.clients) ? clientsRes.clients : []
-  const dietitians = useMemo(() => {
-    const list = Array.isArray(usersRes) ? usersRes : (usersRes?.users ?? [])
-    return list.filter((u) => u.role === UserRole.DIETITIAN)
-  }, [usersRes])
 
   const filtered = useMemo(
     () =>
@@ -104,6 +109,36 @@ export function ClientsPage() {
     },
   })
 
+  const assignMutation = useMutation({
+    mutationFn: async (args: { dieticianId: number; clientId: number }) => {
+      try {
+        return await addDieticianToClient(args.dieticianId, args.clientId)
+      } catch (err: unknown) {
+        const status = (() => {
+          if (!err || typeof err !== 'object') return undefined
+          const resp = (err as Record<string, unknown>).response
+          if (!resp || typeof resp !== 'object') return undefined
+          const st = (resp as Record<string, unknown>).status
+          return typeof st === 'number' ? st : undefined
+        })()
+        if (status === 400 || status === 409) {
+          return await updateDieticianClient(args.dieticianId, args.clientId)
+        }
+        throw err
+      }
+    },
+    onSuccess: async () => {
+      toast.success('Diyetisyen atandı')
+      setAssignOpen(false)
+      setAssignClient(null)
+      setAssignDieticianId('')
+      await queryClient.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY })
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Diyetisyen atanamadı' }))
+    },
+  })
+
   const resetForm = () => {
     setForm({
       firstName: '',
@@ -111,7 +146,6 @@ export function ClientsPage() {
       email: '',
       phone: '',
       gender: 'male',
-      dieticianId: '',
       chronicIllness: '',
       medicationUsed: '',
       foodAllergy: '',
@@ -130,16 +164,18 @@ export function ClientsPage() {
     setViewOpen(true)
   }
 
+  const openAssignDietician = (c: AppClient) => {
+    setAssignClient(c)
+    setAssignDieticianId(c.dieticianId ? String(c.dieticianId) : '')
+    setAssignOpen(true)
+  }
+
   const submitNew = () => {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim()) {
       toast.error('Ad, soyad ve telefon zorunludur')
       return
     }
-    const dieticianId = form.dieticianId ? Number(form.dieticianId) : undefined
-    if (!dieticianId || !dietitians.some((d) => String(d.id) === form.dieticianId)) {
-      toast.error('Lütfen bir diyetisyen seçin')
-      return
-    }
+    const dieticianId = currentUser?.role === 'dietician' && currentUser?.id ? Number(currentUser.id) : undefined
 
     const anamnezForm = (() => {
       const h = form.bodyHeight.trim() ? Number(form.bodyHeight) : undefined
@@ -175,7 +211,7 @@ export function ClientsPage() {
       phone: form.phone.trim(),
       email: form.email.trim() || undefined,
       gender: form.gender,
-      dieticianId,
+      ...(dieticianId ? { dieticianId } : {}),
       ...(anamnezForm ? { anamnezForm } : {}),
     })
   }
@@ -247,7 +283,7 @@ export function ClientsPage() {
               </Button>
             </div>
           ) : (
-            <ClientsTable clients={filtered} onView={openView} />
+            <ClientsTable clients={filtered} onView={openView} onAssignDietician={openAssignDietician} />
           )}
         </div>
       </motion.div>
@@ -324,19 +360,6 @@ export function ClientsPage() {
                       <SelectContent>
                         <SelectItem value="male">Erkek</SelectItem>
                         <SelectItem value="female">Kadın</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[13px] font-medium text-surface-700">Diyetisyen *</label>
-                    <Select value={form.dieticianId} onValueChange={(v) => setForm((s) => ({ ...s, dieticianId: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
-                      <SelectContent>
-                        {dietitians.map((d) => (
-                          <SelectItem key={d.id} value={String(d.id)}>
-                            {[d.firstName, d.lastName].filter(Boolean).join(' ')}
-                          </SelectItem>
-                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -439,7 +462,7 @@ export function ClientsPage() {
         <ModalContent className="max-w-lg">
           <ModalHeader>
             <ModalTitle>Danışan Detayı</ModalTitle>
-            <ModalDescription>
+            <ModalDescription className="text-surface-700 dark:text-surface-700 font-medium">
               {detailData?.user ? `${detailData.user.firstName ?? ''} ${detailData.user.lastName ?? ''}`.trim() || '—' : 'Detay yükleniyor...'}
             </ModalDescription>
           </ModalHeader>
@@ -459,6 +482,60 @@ export function ClientsPage() {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* Diyetisyen Ata Modal */}
+      <Modal
+        open={assignOpen}
+        onOpenChange={(o) => {
+          setAssignOpen(o)
+          if (!o) {
+            setAssignClient(null)
+            setAssignDieticianId('')
+          }
+        }}
+      >
+        <ModalContent className="max-w-md">
+          <ModalHeader>
+            <ModalTitle>Diyetisyen Ata</ModalTitle>
+            <ModalDescription>
+              {assignClient ? `${[assignClient.firstName, assignClient.lastName].filter(Boolean).join(' ') || 'Danışan'}` : 'Danışan seçin'}
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="block text-[13px] font-medium text-surface-700">Diyetisyen</label>
+              <Select value={assignDieticianId} onValueChange={setAssignDieticianId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={dieticiansLoading ? 'Yükleniyor...' : 'Seçin...'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {dieticianOptions.map((d) => (
+                    <SelectItem key={d.id} value={String(d.id)}>
+                      {d.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setAssignOpen(false)}>İptal</Button>
+            <Button
+              variant="primary"
+              disabled={!assignClient || !assignDieticianId || assignMutation.isPending}
+              onClick={() => {
+                if (!assignClient) return
+                const dieticianId = Number(assignDieticianId)
+                if (!Number.isFinite(dieticianId)) return
+                assignMutation.mutate({ dieticianId, clientId: assignClient.id })
+              }}
+            >
+              {assignMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Ata
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   )
 }
@@ -473,7 +550,7 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
           className="shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-surface-900 dark:text-surface-100">
+          <p className="font-semibold text-surface-900 dark:text-surface-900">
             {`${detail.user?.firstName ?? ''} ${detail.user?.lastName ?? ''}`.trim() || '—'}
           </p>
           <div className="flex items-center gap-2 mt-2">
@@ -490,12 +567,12 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
         <p className="form-section-title mb-2">İletişim</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50">
-            <p className="text-surface-500 text-xs font-medium mb-1">Telefon</p>
-            <p className="text-sm font-medium text-surface-800">{detail.user?.phone ?? '—'}</p>
+            <p className="text-surface-500 dark:text-surface-500 text-xs font-medium mb-1">Telefon</p>
+            <p className="text-sm font-medium text-surface-800 dark:text-surface-900">{detail.user?.phone ?? '—'}</p>
           </div>
           <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50">
-            <p className="text-surface-500 text-xs font-medium mb-1">E-posta</p>
-            <p className="text-sm font-medium text-surface-800 truncate" title={detail.user?.email}>{detail.user?.email ?? '—'}</p>
+            <p className="text-surface-500 dark:text-surface-500 text-xs font-medium mb-1">E-posta</p>
+            <p className="text-sm font-medium text-surface-800 dark:text-surface-900 truncate" title={detail.user?.email}>{detail.user?.email ?? '—'}</p>
           </div>
         </div>
       </div>
@@ -506,8 +583,8 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
           <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50 flex items-center gap-3">
             <Avatar name={`${detail.dietician.firstName ?? ''} ${detail.dietician.lastName ?? ''}`.trim()} size="sm" />
             <div>
-              <p className="text-sm font-medium text-surface-800">{`${detail.dietician.firstName ?? ''} ${detail.dietician.lastName ?? ''}`.trim() || '—'}</p>
-              <p className="text-xs text-surface-500">{detail.dietician.email ?? ''}</p>
+              <p className="text-sm font-medium text-surface-800 dark:text-surface-900">{`${detail.dietician.firstName ?? ''} ${detail.dietician.lastName ?? ''}`.trim() || '—'}</p>
+              <p className="text-xs text-surface-500 dark:text-surface-500">{detail.dietician.email ?? ''}</p>
             </div>
           </div>
         </div>
@@ -533,7 +610,7 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
       )}
 
       {detail.createdAt && (
-        <div className="pt-1 border-t border-surface-200 text-xs text-surface-500">
+        <div className="pt-1 border-t border-surface-200 text-xs text-surface-500 dark:text-surface-600">
           Kayıt: {formatDateTime(detail.createdAt)}
         </div>
       )}
@@ -544,9 +621,11 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
 function ClientsTable({
   clients,
   onView,
+  onAssignDietician,
 }: {
   clients: AppClient[]
   onView: (c: AppClient) => void
+  onAssignDietician: (c: AppClient) => void
 }) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -618,6 +697,9 @@ function ClientsTable({
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onView(c)}>
                           <Eye className="h-4 w-4 mr-2" /> Görüntüle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onAssignDietician(c)}>
+                          <Users className="h-4 w-4 mr-2" /> Diyetisyen Ata
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
