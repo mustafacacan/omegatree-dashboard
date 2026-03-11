@@ -6,6 +6,19 @@ import type { components } from '@/types/openapi'
 /** API'den gelen kullanıcı tipi (openapi UserResponse) */
 type ApiUser = components['schemas']['UserResponse']
 
+function unwrapApiUser(payload: unknown): ApiUser {
+  if (payload && typeof payload === 'object') {
+    if ('data' in payload) {
+      const inner = (payload as { data?: unknown }).data
+      if (inner && typeof inner === 'object' && 'data' in inner) {
+        return (inner as { data?: ApiUser }).data as ApiUser
+      }
+      return inner as ApiUser
+    }
+  }
+  return payload as ApiUser
+}
+
 /** API rol string'ini uygulama UserRole tipine çevirir */
 function mapApiRoleToAppRole(apiRole: string | undefined): UserRole {
   const roleMap: Record<string, UserRole> = {
@@ -19,6 +32,22 @@ function mapApiRoleToAppRole(apiRole: string | undefined): UserRole {
   return roleMap[normalized] ?? UserRole.DANISAN
 }
 
+function mapAppRoleToApiRole(role: UserRole): 'admin' | 'dietician' | 'client' | 'laboratory' | 'expert' {
+  switch (role) {
+    case UserRole.ADMIN:
+      return 'admin'
+    case UserRole.DIETITIAN:
+      return 'dietician'
+    case UserRole.LAB:
+      return 'laboratory'
+    case UserRole.SPECIALIST:
+      return 'expert'
+    case UserRole.DANISAN:
+    default:
+      return 'client'
+  }
+}
+
 /** API UserResponse → uygulama User tipine dönüştürür */
 function mapApiUserToAppUser(apiUser: ApiUser): User {
   return {
@@ -27,12 +56,15 @@ function mapApiUserToAppUser(apiUser: ApiUser): User {
     firstName: apiUser.firstName ?? '',
     lastName: apiUser.lastName ?? '',
     phone: apiUser.phone,
+    identityNumber: apiUser.identityNumber,
     role: mapApiRoleToAppRole(apiUser.role),
     status: UserStatus.ACTIVE,
     createdAt: apiUser.createdAt ?? new Date().toISOString(),
     updatedAt: apiUser.updatedAt ?? new Date().toISOString(),
   }
 }
+
+type UpdateUserPayload = components['schemas']['UpdateUser']
 
 /** Login API cevabı: { success, message, data: { user, token } } */
 export interface LoginResponse {
@@ -63,11 +95,8 @@ export async function login(loginKey: string, password: string): Promise<{ user:
   let apiUser: ApiUser | undefined = payload?.user
 
   if (!apiUser) {
-    const profileRes = await api.get<ApiUser | { data?: ApiUser }>('/users/profile')
-    const profileData = profileRes.data
-    apiUser = (profileData && typeof profileData === 'object' && 'data' in profileData)
-      ? (profileData as { data: ApiUser }).data
-      : (profileData as ApiUser)
+    const profileRes = await api.get<ApiUser | { data?: ApiUser } | { data?: { data?: ApiUser } }>('/users/profile')
+    apiUser = unwrapApiUser(profileRes.data)
   }
 
   const user = mapApiUserToAppUser(apiUser)
@@ -79,8 +108,22 @@ export async function login(loginKey: string, password: string): Promise<{ user:
  * API: GET /users/profile
  */
 export async function getProfile(): Promise<User> {
-  const { data } = await api.get<ApiUser>('/users/profile')
-  return mapApiUserToAppUser(data)
+  const { data } = await api.get<ApiUser | { data?: ApiUser } | { data?: { data?: ApiUser } }>('/users/profile')
+  return mapApiUserToAppUser(unwrapApiUser(data))
+}
+
+/**
+ * Giriş yapmış kullanıcının profilini günceller.
+ * API: PUT /users/profile
+ */
+export async function updateProfile(payload: UpdateUserPayload, currentRole: UserRole): Promise<User> {
+  const body: UpdateUserPayload = {
+    ...payload,
+    // Backend bazı ortamlarda role bekliyor olabileceği için, mevcut rolü güvenle gönderiyoruz.
+    role: mapAppRoleToApiRole(currentRole),
+  }
+  const { data } = await api.put<ApiUser | { data?: ApiUser } | { data?: { data?: ApiUser } }>('/users/profile', body)
+  return mapApiUserToAppUser(unwrapApiUser(data))
 }
 
 /** Kayıt isteği: API sadece dietician | client kabul ediyor; şifre backend'de sonra belirlenebilir */

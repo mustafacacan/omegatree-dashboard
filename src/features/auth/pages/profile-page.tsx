@@ -1,19 +1,57 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useCurrentUser, useAuthStore } from '@/stores/auth.store'
-import { getProfile, changePassword } from '@/services/auth.service'
+import { getProfile, changePassword, updateProfile } from '@/services/auth.service'
 import { PageHeader } from '@/components/shared/page-header'
-import { Button, Avatar, Input } from '@/components/ui'
+import {
+  Button,
+  Avatar,
+  Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+} from '@/components/ui'
 import { USER_ROLE_LABELS } from '@/utils/constants'
+import type { UserRole } from '@/utils/constants'
 import { formatDate } from '@/lib/utils'
 import { Mail, Shield, Calendar, Edit2, Lock, Phone, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
+import { useMutation } from '@tanstack/react-query'
+import type { components } from '@/types/openapi'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
+
+function toDigits(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+function limitDigits(value: string, max: number): string {
+  const digits = toDigits(value)
+  return digits.length > max ? digits.slice(0, max) : digits
+}
+
+function validate11Digits(value: string): string | null {
+  if (!value) return null
+  if (value.length !== 11) return '11 haneli olmalidir'
+  return null
+}
 
 export function ProfilePage() {
   const user = useCurrentUser()
   const updateUser = useAuthStore((s) => s.updateUser)
+
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+    identityNumber: '',
+  })
 
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -26,9 +64,61 @@ export function ProfilePage() {
         updateUser(freshUser)
       })
       .catch(() => {})
-  }, [])
+  }, [updateUser])
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async ({ payload, role }: { payload: components['schemas']['UpdateUser']; role: UserRole }) =>
+      updateProfile(payload, role),
+    onSuccess: (updated) => {
+      updateUser(updated)
+      toast.success('Profil bilgileri guncellendi')
+      setEditModalOpen(false)
+    },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : 'Profil guncellenemedi'
+      toast.error(msg)
+    },
+  })
+
+  const phoneError = useMemo(() => validate11Digits(editForm.phone), [editForm.phone])
+  const identityError = useMemo(() => validate11Digits(editForm.identityNumber), [editForm.identityNumber])
 
   if (!user) return null
+
+  const openEditModal = () => {
+    setEditForm({
+      firstName: user.firstName ?? '',
+      lastName: user.lastName ?? '',
+      phone: limitDigits(user.phone ?? '', 11),
+      email: user.email ?? '',
+      identityNumber: limitDigits(user.identityNumber ?? '', 11),
+    })
+    setEditModalOpen(true)
+  }
+
+  const canSaveProfile =
+    editForm.firstName.trim().length > 0 &&
+    editForm.lastName.trim().length > 0 &&
+    (editForm.phone.trim().length > 0 || editForm.email.trim().length > 0) &&
+    phoneError == null &&
+    identityError == null
+
+  const submitProfileUpdate = () => {
+    if (!canSaveProfile) {
+      toast.error('Ad, soyad ve en az bir iletisim bilgisi girin')
+      return
+    }
+
+    const payload: components['schemas']['UpdateUser'] = {
+      firstName: editForm.firstName.trim(),
+      lastName: editForm.lastName.trim(),
+      phone: editForm.phone.trim() || undefined,
+      email: editForm.email.trim() || undefined,
+      identityNumber: editForm.identityNumber.trim() || undefined,
+    }
+
+    updateProfileMutation.mutate({ payload, role: user.role })
+  }
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !rePassword) {
@@ -62,6 +152,7 @@ export function ProfilePage() {
   const infoRows = [
     { icon: Mail, label: 'E-posta', value: user.email },
     { icon: Phone, label: 'Telefon', value: user.phone || '—' },
+    { icon: User, label: 'T.C. Kimlik No', value: user.identityNumber || '—' },
     { icon: Shield, label: 'Rol', value: USER_ROLE_LABELS[user.role] },
     { icon: Calendar, label: 'Kayıt tarihi', value: user.createdAt ? formatDate(user.createdAt) : '—' },
   ]
@@ -113,7 +204,7 @@ export function ProfilePage() {
                 variant="outline"
                 size="sm"
                 className="gap-2"
-                onClick={() => toast.success('Profil düzenleme modu açıldı')}
+                onClick={openEditModal}
               >
                 <Edit2 className="h-3.5 w-3.5" />
                 Bilgileri düzenle
@@ -174,6 +265,88 @@ export function ProfilePage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Profil düzenleme modali */}
+      <Modal
+        open={editModalOpen}
+        onOpenChange={(open) => {
+          if (!updateProfileMutation.isPending) setEditModalOpen(open)
+        }}
+      >
+        <ModalContent className="max-w-lg">
+          <ModalHeader>
+            <ModalTitle>Profil bilgilerini duzenle</ModalTitle>
+            <ModalDescription>
+              Bilgilerinizi guncelleyip kaydedebilirsiniz.
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                label="Ad"
+                value={editForm.firstName}
+                onChange={(e) => setEditForm((p) => ({ ...p, firstName: e.target.value }))}
+              />
+              <Input
+                label="Soyad"
+                value={editForm.lastName}
+                onChange={(e) => setEditForm((p) => ({ ...p, lastName: e.target.value }))}
+              />
+            </div>
+
+            <Input
+              label="Telefon"
+              value={editForm.phone}
+              onChange={(e) => setEditForm((p) => ({ ...p, phone: limitDigits(e.target.value, 11) }))}
+              placeholder="0555 555 55 55"
+              inputMode="numeric"
+              maxLength={11}
+              error={phoneError ?? undefined}
+            />
+
+            <Input
+              label="E-posta"
+              type="email"
+              value={editForm.email}
+              onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+              placeholder="ornek@site.com"
+            />
+
+            <Input
+              label="T.C. Kimlik No"
+              value={editForm.identityNumber}
+              onChange={(e) => setEditForm((p) => ({ ...p, identityNumber: limitDigits(e.target.value, 11) }))}
+              placeholder="(opsiyonel)"
+              inputMode="numeric"
+              maxLength={11}
+              error={identityError ?? undefined}
+            />
+
+            <Input
+              label="Rol"
+              value={USER_ROLE_LABELS[user.role]}
+              disabled
+            />
+          </ModalBody>
+          <ModalFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditModalOpen(false)}
+              disabled={updateProfileMutation.isPending}
+            >
+              Iptal
+            </Button>
+            <Button
+              variant="primary"
+              onClick={submitProfileUpdate}
+              loading={updateProfileMutation.isPending}
+              disabled={!canSaveProfile}
+            >
+              Kaydet
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   )
 }

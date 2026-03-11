@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { Timeline } from '@/components/shared/timeline'
@@ -5,14 +6,21 @@ import { Avatar, Button } from '@/components/ui'
 import { KitStatus } from '@/utils/constants'
 import { ROUTES, danisanDetayPath } from '@/utils/routes'
 import { useCurrentUser } from '@/stores/auth.store'
+import { useDietitianSettingsStore } from '@/stores/dietitian-settings.store'
 import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { getDietitiansAssignedLaboratory } from '@/services/laboratories.service'
+import { getClientsByDietician } from '@/services/dietician-clients.service'
+import { type DieticianClientKit, getDieticianClientKits } from '@/services/dietician-client-kits.service'
+import { getMyStockList } from '@/services/stocks.service'
+import { formatDate, formatDateTime } from '@/lib/utils'
 import {
   Users, FlaskConical, Package, FileCheck, TrendingUp, TrendingDown,
   ArrowUpRight, Clock, MapPin,
   CheckCircle, AlertTriangle,
 } from 'lucide-react'
+
+import type { LucideIcon } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -28,40 +36,64 @@ const W = {
   text: '#4A4640', textLight: '#9C968D', warmGrayLight: '#B5AFA5',
 }
 
-const monthlyClients = [
-  { month: 'Oca', yeni: 3 }, { month: 'Sub', yeni: 5 }, { month: 'Mar', yeni: 4 },
-  { month: 'Nis', yeni: 2 }, { month: 'May', yeni: 6 }, { month: 'Haz', yeni: 4 },
-]
+const MONTH_LABELS_TR = ['Oca', 'Sub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Agu', 'Eyl', 'Eki', 'Kas', 'Ara']
 
-const myKitPie = [
-  { name: 'Tamamlanan', value: 16, color: W.olive },
-  { name: 'Analizde', value: 5, color: W.orange },
-  { name: 'Kargoda', value: 3, color: W.amber },
-  { name: 'Stokta', value: 5, color: W.green },
-]
+function toTs(input: string | null | undefined): number | null {
+  if (!input) return null
+  const d = new Date(input)
+  const t = d.getTime()
+  return Number.isNaN(t) ? null : t
+}
 
-const recentClients = [
-  { id: '1', name: 'Ahmet Yildiz', kitStatus: KitStatus.IN_ANALYSIS, lastVisit: '15 Haz 2025' },
-  { id: '2', name: 'Selin Kara', kitStatus: KitStatus.COMPLETED, lastVisit: '14 Haz 2025' },
-  { id: '3', name: 'Emre Demir', kitStatus: KitStatus.SAMPLE_SENT, lastVisit: '13 Haz 2025' },
-  { id: '4', name: 'Deniz Ak', kitStatus: KitStatus.DELIVERED, lastVisit: '12 Haz 2025' },
-  { id: '5', name: 'Zeynep Koc', kitStatus: KitStatus.IN_STOCK, lastVisit: '11 Haz 2025' },
-]
+function formatRelativeTimeTR(nowTs: number, dateTs: number | null): string {
+  if (!dateTs) return '—'
+  const diffMs = Math.max(0, nowTs - dateTs)
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return 'Az once'
+  if (mins < 60) return `${mins} dk once`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} saat once`
+  const days = Math.floor(hours / 24)
+  return `${days} gun once`
+}
 
-const activeKitTimeline = [
-  { label: 'Kit Teslim Alindi', description: 'OT-2025-00142', date: '13 Haz 09:30', status: 'completed' as const },
-  { label: 'Danisana Atandi', description: 'Ahmet Yildiz', date: '13 Haz 10:15', status: 'completed' as const },
-  { label: 'Numune Gonderildi', description: 'Kargo: YK-12345', date: '14 Haz 11:00', status: 'completed' as const },
-  { label: 'Laboratuvar Analizi', description: 'Analiz devam ediyor', status: 'current' as const },
-  { label: 'Uzman Raporu', status: 'upcoming' as const },
-  { label: 'Sonuc Teslimi', status: 'upcoming' as const },
-]
+function mapDieticianKitStatusToKitStatus(status: DieticianClientKit['status'] | undefined): KitStatus {
+  switch (status) {
+    case 'in_client':
+      return KitStatus.CLIENT_RECEIVED
+    case 'delivered':
+      return KitStatus.DELIVERED
+    case 'in_laboratory':
+      return KitStatus.IN_ANALYSIS
+    case 'in_expert':
+      return KitStatus.SPECIALIST_POOL
+    case 'completed':
+      return KitStatus.COMPLETED
+    case 'cancelled':
+      return KitStatus.REJECTED
+    default:
+      return KitStatus.ASSIGNED
+  }
+}
 
-const recentActivities = [
-  { icon: CheckCircle, color: W.green, bg: W.greenLight, text: 'Selin Kara analizi tamamlandi', time: '2 saat once' },
-  { icon: Package, color: W.olive, bg: W.oliveLight, text: 'Emre Demir numunesi kargolandi', time: '5 saat once' },
-  { icon: AlertTriangle, color: W.amber, bg: W.amberLight, text: 'Stok uyarisi: 5 kit kaldi', time: 'Dun' },
-]
+function getKitTimelineStepIndex(status: DieticianClientKit['status'] | undefined): number {
+  switch (status) {
+    case 'in_client':
+      return 1
+    case 'delivered':
+      return 2
+    case 'in_laboratory':
+      return 3
+    case 'in_expert':
+      return 4
+    case 'completed':
+      return 5
+    case 'cancelled':
+      return 0
+    default:
+      return 0
+  }
+}
 
 const tooltipStyle = { background: 'var(--color-panel)', border: '1px solid var(--color-border)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', fontSize: '12px', padding: '10px 14px' }
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
@@ -69,6 +101,11 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 export function DietitianDashboardPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
+  const { minStockAlert } = useDietitianSettingsStore()
+
+  const [now] = useState(() => new Date())
+  const nowTs = now.getTime()
+
   const {
     data: assignedLab,
     isLoading: assignedLabLoading,
@@ -76,8 +113,248 @@ export function DietitianDashboardPage() {
     queryKey: ['laboratory-dietician', 'dieticians-view-laboratory', 'laboratory'],
     queryFn: getDietitiansAssignedLaboratory,
   })
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Gunaydin' : hour < 18 ? 'Iyi gunler' : 'Iyi aksamlar'
+
+  const { data: clientsPage } = useQuery({
+    queryKey: ['dieticians', 'get-clients-by-dietician', { page: 1, limit: 200 }],
+    queryFn: () => getClientsByDietician({ page: 1, limit: 200 }),
+  })
+
+  const { data: kits } = useQuery({
+    queryKey: ['dietician-client-kits', { page: 1, limit: 500 }],
+    queryFn: () => getDieticianClientKits(1, 500),
+  })
+
+  const { data: myStockList } = useQuery({
+    queryKey: ['stocks', 'my-stock'],
+    queryFn: () => getMyStockList(),
+  })
+
+  const greeting = useMemo(() => {
+    const hour = now.getHours()
+    return hour < 12 ? 'Gunaydin' : hour < 18 ? 'Iyi gunler' : 'Iyi aksamlar'
+  }, [now])
+
+  const clientsItems = useMemo(() => clientsPage?.items ?? [], [clientsPage])
+  const clientsTotal = clientsPage?.totalItems ?? clientsItems.length
+
+  const stockList = useMemo(() => myStockList ?? [], [myStockList])
+
+  const availableStockCount = useMemo(() => {
+    return stockList.filter((s) => s.status === 'available').length
+  }, [stockList])
+
+  const kitList = useMemo(() => kits ?? [], [kits])
+  const assignedKits = useMemo(() => kitList.filter((k) => !!k.clientId), [kitList])
+  const activeKits = useMemo(
+    () => assignedKits.filter((k) => (k.status ?? 'in_client') !== 'completed' && (k.status ?? 'in_client') !== 'cancelled'),
+    [assignedKits]
+  )
+  const completedKitsCount = useMemo(() => kitList.filter((k) => k.status === 'completed').length, [kitList])
+
+  const deltaLast30Days = useMemo(() => {
+    const DAY = 24 * 60 * 60 * 1000
+    const nowMs = nowTs
+    const lastStart = nowMs - 30 * DAY
+    const prevStart = nowMs - 60 * DAY
+
+    const countInRange = (timestamps: Array<number | null>, start: number, end: number): number =>
+      timestamps.reduce<number>((acc, t) => (t != null && t >= start && t < end ? acc + 1 : acc), 0)
+
+    const clientCreatedTs = clientsItems.map((c) => toTs(c.createdAt))
+    const kitsCreatedTs = kitList.map((k) => toTs(k.createdAt ?? k.kitCreatedAt ?? k.kitUpdatedAt))
+    const stockCreatedTs = stockList.map((s) => toTs(s.createdAt))
+    const completedUpdatedTs = kitList
+      .filter((k) => k.status === 'completed')
+      .map((k) => toTs(k.updatedAt ?? k.kitUpdatedAt ?? k.createdAt))
+
+    return {
+      clients: countInRange(clientCreatedTs, lastStart, nowMs) - countInRange(clientCreatedTs, prevStart, lastStart),
+      activeKits: countInRange(kitsCreatedTs, lastStart, nowMs) - countInRange(kitsCreatedTs, prevStart, lastStart),
+      stock: countInRange(stockCreatedTs, lastStart, nowMs) - countInRange(stockCreatedTs, prevStart, lastStart),
+      completed: countInRange(completedUpdatedTs, lastStart, nowMs) - countInRange(completedUpdatedTs, prevStart, lastStart),
+    }
+  }, [clientsItems, kitList, nowTs, stockList])
+
+  const monthlyClients = useMemo(() => {
+    const points = Array.from({ length: 6 }, (_, idx) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - idx), 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      return {
+        key,
+        month: MONTH_LABELS_TR[d.getMonth()] ?? String(d.getMonth() + 1),
+        yeni: 0,
+      }
+    })
+
+    const map = new Map(points.map((p) => [p.key, p]))
+
+    for (const c of clientsItems) {
+      const ts = toTs(c.createdAt)
+      if (!ts) continue
+      const d = new Date(ts)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const point = map.get(key)
+      if (point) point.yeni += 1
+    }
+
+    return points.map((p) => ({ month: p.month, yeni: p.yeni }))
+  }, [clientsItems, now])
+
+  const newClientsInWindow = useMemo(() => monthlyClients.reduce((acc, p) => acc + p.yeni, 0), [monthlyClients])
+
+  const myKitPie = useMemo(() => {
+    const tamamlanan = completedKitsCount
+    const analizde = kitList.filter((k) => k.status === 'in_laboratory' || k.status === 'in_expert').length
+    const kargoda = kitList.filter((k) => k.status === 'delivered').length
+    const stokta = availableStockCount
+
+    return [
+      { name: 'Tamamlanan', value: tamamlanan, color: W.olive },
+      { name: 'Analizde', value: analizde, color: W.orange },
+      { name: 'Kargoda', value: kargoda, color: W.amber },
+      { name: 'Stokta', value: stokta, color: W.green },
+    ]
+  }, [availableStockCount, completedKitsCount, kitList])
+
+  const totalForPie = useMemo(() => myKitPie.reduce((acc, it) => acc + it.value, 0), [myKitPie])
+
+  const kitsByClientId = useMemo(() => {
+    const map = new Map<number, DieticianClientKit[]>()
+    for (const k of kitList) {
+      if (!k.clientId) continue
+      const list = map.get(k.clientId) ?? []
+      list.push(k)
+      map.set(k.clientId, list)
+    }
+
+    for (const [clientId, list] of map.entries()) {
+      list.sort((a, b) => (toTs(b.updatedAt ?? b.createdAt) ?? 0) - (toTs(a.updatedAt ?? a.createdAt) ?? 0))
+      map.set(clientId, list)
+    }
+    return map
+  }, [kitList])
+
+  const recentClients = useMemo(() => {
+    const list = [...clientsItems]
+      .filter((c) => c.clientId != null)
+      .sort((a, b) => (toTs(b.createdAt) ?? 0) - (toTs(a.createdAt) ?? 0))
+      .slice(0, 5)
+
+    return list.map((c) => {
+      const clientId = c.clientId ?? 0
+      const topKit = clientId ? kitsByClientId.get(clientId)?.[0] : undefined
+      return {
+        id: String(clientId),
+        name: c.clientName ?? `#${clientId}`,
+        kitStatus: mapDieticianKitStatusToKitStatus(topKit?.status),
+        lastVisit: formatDate(c.createdAt),
+      }
+    })
+  }, [clientsItems, kitsByClientId])
+
+  const activeKit = useMemo(() => {
+    const list = [...activeKits]
+    list.sort((a, b) => (toTs(b.updatedAt ?? b.createdAt) ?? 0) - (toTs(a.updatedAt ?? a.createdAt) ?? 0))
+    return list[0]
+  }, [activeKits])
+
+  const activeKitTimeline = useMemo(() => {
+    const kitBarcode = activeKit?.kitBarcode
+    const kitCreatedAt = activeKit?.kitCreatedAt ?? activeKit?.kitUpdatedAt ?? activeKit?.createdAt
+    const assignmentCreatedAt = activeKit?.createdAt
+    const updatedAt = activeKit?.updatedAt
+    const clientName = activeKit?.clientName
+
+    const currentIndex = getKitTimelineStepIndex(activeKit?.status)
+
+    const steps = [
+      {
+        label: 'Kit Teslim Alindi',
+        description: kitBarcode ?? '—',
+        date: kitCreatedAt ? formatDateTime(kitCreatedAt) : undefined,
+      },
+      {
+        label: 'Danisana Atandi',
+        description: clientName ?? (activeKit ? '—' : 'Aktif kit bulunmuyor'),
+        date: assignmentCreatedAt ? formatDateTime(assignmentCreatedAt) : undefined,
+      },
+      {
+        label: 'Numune Gonderildi',
+        description: assignedLab?.cargofirm ? `Kargo: ${assignedLab.cargofirm}` : undefined,
+        date: activeKit?.status === 'delivered' || activeKit?.status === 'in_laboratory' || activeKit?.status === 'in_expert' || activeKit?.status === 'completed'
+          ? (updatedAt ? formatDateTime(updatedAt) : undefined)
+          : undefined,
+      },
+      {
+        label: 'Laboratuvar Analizi',
+        description: activeKit?.status === 'in_laboratory' ? 'Analiz devam ediyor' : undefined,
+        date: activeKit?.status === 'in_laboratory' ? (updatedAt ? formatDateTime(updatedAt) : undefined) : undefined,
+      },
+      {
+        label: 'Uzman Raporu',
+        description: activeKit?.status === 'in_expert' ? 'Uzman sureci devam ediyor' : undefined,
+        date: activeKit?.status === 'in_expert' ? (updatedAt ? formatDateTime(updatedAt) : undefined) : undefined,
+      },
+      {
+        label: 'Sonuc Teslimi',
+        description: activeKit?.status === 'completed' ? 'Tamamlandi' : undefined,
+        date: activeKit?.status === 'completed' ? (updatedAt ? formatDateTime(updatedAt) : undefined) : undefined,
+      },
+    ]
+
+    return steps.map((s, idx) => ({
+      ...s,
+      status: idx < currentIndex ? ('completed' as const) : idx === currentIndex ? ('current' as const) : ('upcoming' as const),
+    }))
+  }, [activeKit, assignedLab])
+
+  const recentActivities = useMemo(() => {
+    const activities: Array<{ icon: LucideIcon; color: string; bg: string; text: string; time: string }> = []
+
+    const latestCompleted = [...kitList]
+      .filter((k) => k.status === 'completed')
+      .sort((a, b) => (toTs(b.updatedAt ?? b.createdAt) ?? 0) - (toTs(a.updatedAt ?? a.createdAt) ?? 0))[0]
+
+    if (latestCompleted) {
+      activities.push({
+        icon: CheckCircle,
+        color: W.green,
+        bg: W.greenLight,
+        text: `${latestCompleted.clientName ?? 'Danisan'} analizi tamamlandi`,
+        time: formatRelativeTimeTR(nowTs, toTs(latestCompleted.updatedAt ?? latestCompleted.createdAt)),
+      })
+    }
+
+    const latestDelivery = [...kitList]
+      .filter((k) => k.status === 'delivered')
+      .sort((a, b) => (toTs(b.updatedAt ?? b.createdAt) ?? 0) - (toTs(a.updatedAt ?? a.createdAt) ?? 0))[0]
+
+    if (latestDelivery) {
+      activities.push({
+        icon: Package,
+        color: W.olive,
+        bg: W.oliveLight,
+        text: `${latestDelivery.clientName ?? 'Danisan'} numunesi kargolandi`,
+        time: formatRelativeTimeTR(nowTs, toTs(latestDelivery.updatedAt ?? latestDelivery.createdAt)),
+      })
+    }
+
+    const threshold = minStockAlert > 0 ? minStockAlert : 5
+    if (availableStockCount <= threshold) {
+      activities.push({
+        icon: AlertTriangle,
+        color: W.amber,
+        bg: W.amberLight,
+        text: `Stok uyarisi: ${availableStockCount} kit kaldi`,
+        time: 'Bugun',
+      })
+    }
+
+    return activities.slice(0, 3)
+  }, [availableStockCount, kitList, minStockAlert, nowTs])
+
+  const stockThreshold = minStockAlert > 0 ? minStockAlert : 5
+  const showStockWarning = availableStockCount <= stockThreshold
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -130,10 +407,10 @@ export function DietitianDashboardPage() {
       {/* ═══ STAT CARDS ═══ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { title: 'Danisanlarim', value: '24', change: 4, icon: Users, iconColor: W.olive, iconBg: W.oliveLight },
-          { title: 'Aktif Kit', value: '8', change: 2, icon: FlaskConical, iconColor: W.orange, iconBg: W.orangeLight },
-          { title: 'Stogumdaki Kit', value: '5', change: -3, icon: Package, iconColor: W.amber, iconBg: W.amberLight },
-          { title: 'Tamamlanan', value: '16', change: 5, icon: FileCheck, iconColor: W.green, iconBg: W.greenLight },
+          { title: 'Danisanlarim', value: clientsTotal, change: deltaLast30Days.clients, icon: Users, iconColor: W.olive, iconBg: W.oliveLight },
+          { title: 'Aktif Kit', value: activeKits.length, change: deltaLast30Days.activeKits, icon: FlaskConical, iconColor: W.orange, iconBg: W.orangeLight },
+          { title: 'Stogumdaki Kit', value: availableStockCount, change: deltaLast30Days.stock, icon: Package, iconColor: W.amber, iconBg: W.amberLight },
+          { title: 'Tamamlanan', value: completedKitsCount, change: deltaLast30Days.completed, icon: FileCheck, iconColor: W.green, iconBg: W.greenLight },
         ].map((s, i) => {
           const Icon = s.icon
           const up = s.change >= 0
@@ -174,7 +451,7 @@ export function DietitianDashboardPage() {
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary-100">
                 <TrendingUp className="h-3.5 w-3.5 text-primary-600" />
-                <span className="text-[12px] font-bold text-primary-600">+24 danisan</span>
+                <span className="text-[12px] font-bold text-primary-600">+{newClientsInWindow} danisan</span>
               </div>
             </div>
             <div className="h-[220px]">
@@ -205,7 +482,7 @@ export function DietitianDashboardPage() {
                 <h3 className="text-[15px] font-semibold text-surface-900">Kit Durumlarim</h3>
                 <p className="text-[12px] mt-0.5 text-surface-500">Tum kitlerin dagilimi</p>
               </div>
-              <span className="text-xl font-black text-surface-900">29</span>
+              <span className="text-xl font-black text-surface-900">{totalForPie}</span>
             </div>
             <div className="relative h-[150px] flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
@@ -217,7 +494,7 @@ export function DietitianDashboardPage() {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-lg font-black text-surface-900">29</p>
+                  <p className="text-lg font-black text-surface-900">{totalForPie}</p>
                   <p className="text-[9px] text-surface-500">Toplam</p>
                 </div>
               </div>
@@ -248,7 +525,7 @@ export function DietitianDashboardPage() {
               </button>
             </div>
             <div className="space-y-2">
-              {recentClients.map((c) => (
+              {recentClients.length > 0 ? recentClients.map((c) => (
                 <button key={c.id} type="button" onClick={() => navigate(danisanDetayPath(c.id))} className="flex items-center justify-between w-full p-3 rounded-xl text-left transition-colors bg-surface-50 hover:bg-surface-100">
                   <div className="flex items-center gap-3">
                     <Avatar name={c.name} size="sm" />
@@ -259,7 +536,9 @@ export function DietitianDashboardPage() {
                   </div>
                   <StatusBadge status={c.kitStatus} size="sm" />
                 </button>
-              ))}
+              )) : (
+                <div className="rounded-xl p-3 bg-surface-50 text-[12px] text-surface-500">Henuz danisan yok.</div>
+              )}
             </div>
           </div>
         </motion.div>
@@ -273,7 +552,7 @@ export function DietitianDashboardPage() {
                 Kitlerim <ArrowUpRight className="h-3 w-3" />
               </button>
             </div>
-            <code className="text-[11px] font-mono block mb-4 text-surface-500">OT-2025-00142</code>
+            <code className="text-[11px] font-mono block mb-4 text-surface-500">{activeKit?.kitBarcode ?? '—'}</code>
             <Timeline steps={activeKitTimeline} />
           </div>
         </motion.div>
@@ -291,7 +570,7 @@ export function DietitianDashboardPage() {
             <div className="relative">
               <div className="absolute left-[15px] top-3 bottom-3 w-px bg-gradient-to-b from-surface-200 to-transparent" />
               <div className="space-y-1">
-                {recentActivities.map((a, i) => (
+                {recentActivities.length > 0 ? recentActivities.map((a, i) => (
                   <div key={i} className="relative flex items-start gap-3 p-2 rounded-xl hover:bg-surface-50 transition-colors">
                     <div className="relative z-10 h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ring-[3px] ring-panel" style={{ background: a.bg }}>
                       <a.icon className="h-3.5 w-3.5" style={{ color: a.color }} />
@@ -303,7 +582,9 @@ export function DietitianDashboardPage() {
                       </p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="rounded-xl p-3 bg-surface-50 text-[12px] text-surface-500">Aktivite yok.</div>
+                )}
               </div>
             </div>
           </div>
@@ -311,24 +592,26 @@ export function DietitianDashboardPage() {
       </div>
 
       {/* ═══ STOCK WARNING ═══ */}
-      <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.35 }}>
-        <div className="rounded-2xl p-5 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="flex items-center gap-6">
-              <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-amber-200 dark:bg-amber-800/50">
-                <Package className="h-6 w-6 text-amber-700 dark:text-amber-400" />
+      {showStockWarning && (
+        <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.35 }}>
+          <div className="rounded-2xl p-5 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              <div className="flex items-center gap-6">
+                <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-amber-200 dark:bg-amber-800/50">
+                  <Package className="h-6 w-6 text-amber-700 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-amber-800 dark:text-amber-200">Stok Uyarisi</p>
+                  <p className="text-[13px] text-amber-700 dark:text-amber-300">Stogunuzda {availableStockCount} kit kaldi (limit: {stockThreshold}). Yeni siparis vermenizi oneririz.</p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-amber-800 dark:text-amber-200">Stok Uyarisi</p>
-                <p className="text-[13px] text-amber-700 dark:text-amber-300">Stogunuzda 5 kit kaldi. Yeni siparis vermenizi oneririz.</p>
-              </div>
+              <Button variant="outline" size="sm" className="shrink-0 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)}>
+                Siparis Ver
+              </Button>
             </div>
-            <Button variant="outline" size="sm" className="shrink-0 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)}>
-              Siparis Ver
-            </Button>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   )
 }

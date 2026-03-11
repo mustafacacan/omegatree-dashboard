@@ -3,6 +3,46 @@ import type { components } from '@/types/openapi'
 
 type StockResponse = components['schemas']['StockResponse']
 
+export interface StockAlertSettings {
+  limit: number
+}
+
+function asObj(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : null
+}
+
+function toNumber(value: unknown, fallback: number): number {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
+  return Number.isFinite(n) ? n : fallback
+}
+
+function unwrapData(payload: unknown): unknown {
+  const top = asObj(payload)
+  const data = top && 'data' in top ? top.data : payload
+  const nested = asObj(data)
+  return nested && 'data' in nested ? nested.data : data
+}
+
+/** GET /stocks/alert-settings — authenticated dietician stock alert limit */
+export async function getStockAlertSettings(): Promise<StockAlertSettings> {
+  const { data } = await api.get<unknown>('/stocks/alert-settings')
+  const payload = unwrapData(data)
+  const obj = asObj(payload) ?? {}
+  return {
+    limit: Math.max(0, toNumber(obj.limit, 0)),
+  }
+}
+
+/** PUT /stocks/alert-settings — update authenticated dietician stock alert limit */
+export async function updateStockAlertSettings(limit: number): Promise<StockAlertSettings> {
+  const safe = Math.max(0, Math.floor(limit))
+  const { data } = await api.put<unknown>('/stocks/alert-settings', { limit: safe })
+  const payload = unwrapData(data)
+  const obj = asObj(payload)
+  const returnedLimit = obj && 'limit' in obj ? toNumber(obj.limit, safe) : safe
+  return { limit: Math.max(0, returnedLimit) }
+}
+
 /** Stok durumu: backend yeni status'lar döndürebilir (örn: damaged-pending) */
 export type StockStatus =
   | 'available'
@@ -74,10 +114,10 @@ function mapStockApiItem(item: StockApiItem | null | undefined): Stock {
   const kit = item.kit
   const user = item.user
   return {
-    id: Number(item.id) ?? 0,
+    id: toNumber(item.id, 0),
     kitId: kit
       ? {
-        id: Number(kit.id) ?? 0,
+        id: toNumber(kit.id, 0),
         barcode: kit.barcode ?? '',
         name: kit.name ?? '',
         isActive: kit.isActive ?? true,
@@ -87,7 +127,7 @@ function mapStockApiItem(item: StockApiItem | null | undefined): Stock {
       : undefined,
     userId: user
       ? {
-        id: Number(user.id) ?? 0,
+        id: toNumber(user.id, 0),
         firstName: user.firstName,
         lastName: user.lastName,
         phone: user.phone,
@@ -113,10 +153,10 @@ function mapStockResponse(res: StockResponse | null | undefined): Stock {
   const kitObj = kit && typeof kit === 'object' ? kit : undefined
   const userObj = user && typeof user === 'object' ? user : undefined
   return {
-    id: Number(res.id) ?? 0,
+    id: toNumber(res.id, 0),
     kitId: kitObj
       ? {
-        id: Number(kitObj.id) ?? 0,
+        id: toNumber((kitObj as StockApiItem['kit'])?.id, 0),
         barcode: (kitObj as StockApiItem['kit'])?.barcode ?? '',
         name: (kitObj as StockApiItem['kit'])?.name ?? '',
         isActive: (kitObj as StockApiItem['kit'])?.isActive ?? true,
@@ -126,7 +166,7 @@ function mapStockResponse(res: StockResponse | null | undefined): Stock {
       : undefined,
     userId: userObj
       ? {
-        id: Number(userObj.id) ?? 0,
+        id: toNumber((userObj as StockApiItem['user'])?.id, 0),
         firstName: (userObj as StockApiItem['user'])?.firstName,
         lastName: (userObj as StockApiItem['user'])?.lastName,
         phone: (userObj as StockApiItem['user'])?.phone,

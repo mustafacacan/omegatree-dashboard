@@ -301,4 +301,74 @@ export async function getDietitiansAssignedLaboratory(): Promise<Laboratory | nu
   return mapApiLabToLab(assignment.laboratory)
 }
 
+/* ─── Statistics ─── */
+
+export interface LaboratoryStatisticsItem {
+  laboratoryId: number
+  laboratoryUser?: {
+    id?: number
+    firstName?: string
+    lastName?: string
+    email?: string
+  }
+  totals?: {
+    totalKits?: number
+    pendingKits?: number
+    inProgressKits?: number
+    completedKits?: number
+    cancelledKits?: number
+    reportCount?: number
+    lastReportAt?: string
+  }
+  interest?: {
+    windowDays?: number
+    recentCompletedKits?: number
+    completedPerWeek?: number
+    completionRate?: number
+    avgCompletionSeconds?: number
+    recentAvgCompletionSeconds?: number
+  }
+}
+
+export type LaboratoriesStatisticsResponse = LaboratoryStatisticsItem[]
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+/**
+ * GET /laboratories/statistics
+ * Swagger'da 200 response schema tanimsiz oldugu icin unknown olarak alinir.
+ */
+export async function getLaboratoriesStatistics(params?: { days?: number }): Promise<LaboratoriesStatisticsResponse> {
+  const { data } = await api.get<unknown>('/laboratories/statistics', {
+    params: params?.days != null ? { days: params.days } : undefined,
+  })
+  const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
+  const payload = top && 'data' in top ? top.data : data
+
+  if (Array.isArray(payload)) return payload as LaboratoriesStatisticsResponse
+  if (isRecord(payload) && Array.isArray(payload.items)) return payload.items as LaboratoriesStatisticsResponse
+  return []
+}
+
+/**
+ * GET /laboratories/{id}/statistics
+ * Swagger'da 200 response schema tanimsiz oldugu icin unknown olarak alinir.
+ */
+export async function getLaboratoryStatisticsById(
+  id: string | number,
+  params?: { days?: number }
+): Promise<LaboratoryStatisticsItem | null> {
+  const { data } = await api.get<unknown>(`/laboratories/${id}/statistics`, {
+    params: params?.days != null ? { days: params.days } : undefined,
+  })
+  const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
+  const payload = top && 'data' in top ? top.data : data
+
+  if (Array.isArray(payload)) return (payload[0] as LaboratoryStatisticsItem | undefined) ?? null
+  if (isRecord(payload)) return payload as LaboratoryStatisticsItem
+  return null
+}
+
 export type { ApiLabDietician }

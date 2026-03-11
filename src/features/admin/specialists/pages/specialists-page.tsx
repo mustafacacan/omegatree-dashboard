@@ -23,7 +23,7 @@ import { getUsers, createUser, updateUser, deleteUser } from '@/services/users.s
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
-const USERS_QUERY_KEY = ['users'] as const
+const EXPERTS_QUERY_KEY = ['users', { role: 'expert' }] as const
 
 const statusLabels: Record<UserStatus, string> = {
   [UserStatus.ACTIVE]: 'Aktif',
@@ -49,15 +49,12 @@ function SpecialistsPage() {
   })
 
   const { data: usersRes, isLoading, isError } = useQuery({
-    queryKey: USERS_QUERY_KEY,
-    queryFn: () => getUsers({ page: 1, limit: 500 }),
+    queryKey: EXPERTS_QUERY_KEY,
+    queryFn: () => getUsers({ page: 1, limit: 500, role: 'expert' }),
     retry: 1,
   })
 
-  const specialists = useMemo(() => {
-    const list = Array.isArray(usersRes) ? usersRes : (usersRes?.users ?? [])
-    return list.filter((u) => u.role === UserRole.SPECIALIST)
-  }, [usersRes])
+  const specialists = useMemo(() => usersRes?.users ?? [], [usersRes])
 
   const filtered = useMemo(
     () =>
@@ -76,7 +73,8 @@ function SpecialistsPage() {
   const createMutation = useMutation({
     mutationFn: createUser,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: EXPERTS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success('Uzman başarıyla oluşturuldu')
       setNewOpen(false)
       resetForm()
@@ -90,7 +88,8 @@ function SpecialistsPage() {
     mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateUser>[1] }) =>
       updateUser(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: EXPERTS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success('Uzman güncellendi')
       setEditOpen(false)
       setSelected(null)
@@ -104,7 +103,8 @@ function SpecialistsPage() {
   const deleteMutation = useMutation({
     mutationFn: deleteUser,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: EXPERTS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success('Uzman silindi')
       setDeleteOpen(false)
       setSelected(null)
@@ -239,7 +239,7 @@ function SpecialistsPage() {
           ) : isError ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <p className="text-sm text-surface-700">Liste yüklenirken hata oluştu.</p>
-              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })}>
+              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: EXPERTS_QUERY_KEY })}>
                 Tekrar Dene
               </Button>
             </div>

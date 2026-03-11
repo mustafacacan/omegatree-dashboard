@@ -255,48 +255,7 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* Diyetisyen: Atanan laboratuvar adresi (her sayfada görünür) */}
-        {role === UserRole.DIETITIAN && (
-          <div className="px-3 pb-2 border-t border-surface-200">
-            {collapsed ? (
-              assignedLab && (
-                <Tooltip
-                  content={
-                    <span className="block max-w-[220px] text-left">
-                      <strong>{assignedLab.name}</strong>
-                      <br />
-                      {assignedLab.address}, {assignedLab.district ?? ''} {assignedLab.city}
-                    </span>
-                  }
-                  side="right"
-                >
-                  <div className="flex justify-center py-2 rounded-xl bg-primary-100">
-                    <MapPin className="h-5 w-5 shrink-0 text-primary-600" />
-                  </div>
-                </Tooltip>
-              )
-            ) : assignedLab ? (
-              <div className="rounded-xl p-3 border border-surface-200 bg-primary-50 dark:bg-primary-100/30">
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-primary-600" />
-                  <div className="min-w-0">
-                    <p className="text-[8px] font-semibold uppercase tracking-wider text-surface-500">Laboratuvarim</p>
-                    <p className="text-[10px] font-semibold mt-0.5 truncate text-surface-900" title={assignedLab.name}>{assignedLab.name}</p>
-                    <p className="text-[9px] mt-1 leading-snug line-clamp-2 text-surface-700" title={`${assignedLab.address}${assignedLab.district ? `, ${assignedLab.district}` : ''} / ${assignedLab.city}`}>
-                      {assignedLab.address}
-                      {assignedLab.district ? `, ${assignedLab.district}` : ''} / {assignedLab.city}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-xl p-3 border border-surface-200 bg-surface-50">
-                <p className="text-[9px] text-surface-500">Atanmis laboratuvar yok.</p>
-              </div>
-            )}
-          </div>
-        )}
-
+       
         {/* Collapse toggle */}
         <div className="p-3 border-t border-surface-200">
           <button

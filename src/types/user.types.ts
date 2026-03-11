@@ -6,6 +6,7 @@ export interface User {
   firstName: string
   lastName: string
   phone?: string
+  identityNumber?: string
   role: UserRole
   status: UserStatus
   avatarUrl?: string

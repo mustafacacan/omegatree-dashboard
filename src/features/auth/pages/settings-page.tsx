@@ -371,28 +371,7 @@ export function SettingsPage() {
     <div className="space-y-5 animate-fade-in">
       <PageHeader />
 
-      {/* 1. Bildirimler */}
-      <div className="panel p-5">
-        <h2 className="text-card-title text-surface-800 flex items-center gap-2 mb-4">
-          <Bell className="h-4 w-4 text-primary-500" /> Bildirimler
-        </h2>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-4 rounded-xl bg-surface-50 border border-surface-200">
-            <div>
-              <p className="text-sm font-medium text-surface-800">E-posta bildirimleri</p>
-              <p className="text-xs text-surface-500">Kit durumu ve rapor bildirimleri</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-          <div className="flex items-center justify-between p-4 rounded-xl bg-surface-50 border border-surface-200">
-            <div>
-              <p className="text-sm font-medium text-surface-800">SMS bildirimleri</p>
-              <p className="text-xs text-surface-500">Kritik durum uyarıları</p>
-            </div>
-            <Switch />
-          </div>
-        </div>
-      </div>
+      
 
       {/* 2. Görünüm */}
       <div className="panel p-5">

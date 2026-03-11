@@ -1,6 +1,8 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
+import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import {
   Badge,
   Button,
@@ -11,6 +13,10 @@ import {
   ModalBody,
   ModalFooter,
   ModalDescription,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Select,
   SelectTrigger,
   SelectContent,
@@ -28,7 +34,13 @@ import { ROUTES } from '@/utils/routes'
 import { useDietitianSettingsStore } from '@/stores/dietitian-settings.store'
 import { formatDate } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { getMyStockList, approveToStock, type StockStatus } from '@/services/stocks.service'
+import {
+  approveToStock,
+  getMyStockList,
+  getStockAlertSettings,
+  type StockStatus,
+  updateStockAlertSettings,
+} from '@/services/stocks.service'
 import { createDamagedKit } from '@/services/damaged-kits.service'
 import { toast } from 'sonner'
 
@@ -49,11 +61,12 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 export function MyStockPage() {
   const navigate = useNavigate()
   const { minStockAlert, setMinStockAlert } = useDietitianSettingsStore()
-  const [stockList, setStockList] = useState<Awaited<ReturnType<typeof getMyStockList>>>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [minStockInput, setMinStockInput] = useState('')
+  const [confirmLimit, setConfirmLimit] = useState<number | null>(null)
   const [receiveKitModalOpen, setReceiveKitModalOpen] = useState(false)
+  const [kitsTab, setKitsTab] = useState<'in-stock' | 'used'>('in-stock')
   const [barcodeInput, setBarcodeInput] = useState('')
   const [barcodeState, setBarcodeState] = useState<BarcodeState>('idle')
   const [errorMessage, setErrorMessage] = useState('')
@@ -65,17 +78,46 @@ export function MyStockPage() {
   const [returnFile, setReturnFile] = useState<File | null>(null)
   const [returnSubmitting, setReturnSubmitting] = useState(false)
 
-  const fetchMyStock = () => {
-    setLoading(true)
-    getMyStockList()
-      .then(setStockList)
-      .catch(() => setStockList([]))
-      .finally(() => setLoading(false))
-  }
+  const {
+    data: stockList = [],
+    isLoading: loading,
+  } = useQuery({
+    queryKey: ['stocks', 'my-stock-list'],
+    queryFn: () => getMyStockList(),
+  })
+
+  const { data: alertSettings } = useQuery({
+    queryKey: ['stocks', 'alert-settings'],
+    queryFn: getStockAlertSettings,
+  })
 
   useEffect(() => {
-    fetchMyStock()
-  }, [])
+    if (alertSettings && typeof alertSettings.limit === 'number') {
+      setMinStockAlert(alertSettings.limit)
+    }
+  }, [alertSettings, setMinStockAlert])
+
+  const updateAlertLimitMutation = useMutation({
+    mutationFn: (limit: number) => updateStockAlertSettings(limit),
+    onSuccess: (res) => {
+      queryClient.setQueryData(['stocks', 'alert-settings'], res)
+      setMinStockAlert(res.limit)
+      toast.success('Minimum stok limiti guncellendi')
+    },
+    onError: (err) => {
+      toast.error(getApiErrorMessage(err as { response?: { data?: { message?: string } }; message?: string }, { fallback: 'Minimum stok limiti guncellenemedi.' }))
+    },
+  })
+
+  const draftLimit = useMemo(() => {
+    const raw = minStockInput.trim()
+    if (raw === '') return minStockAlert
+    const n = parseInt(raw, 10)
+    if (Number.isNaN(n) || n < 0) return null
+    return n
+  }, [minStockAlert, minStockInput])
+
+  const canSaveLimit = draftLimit != null && draftLimit !== minStockAlert
 
   const handleBarcodeSubmit = () => {
     const trimmed = barcodeInput.trim()
@@ -85,7 +127,7 @@ export function MyStockPage() {
     approveToStock(trimmed)
       .then(() => {
         setBarcodeState('success')
-        fetchMyStock()
+        queryClient.invalidateQueries({ queryKey: ['stocks', 'my-stock-list'] })
       })
       .catch((err: { response?: { data?: { message?: string } }; message?: string }) => {
         setBarcodeState('error')
@@ -176,7 +218,7 @@ export function MyStockPage() {
       })
       toast.success('Iade talebiniz alindi')
       closeReturnModal()
-      fetchMyStock()
+      queryClient.invalidateQueries({ queryKey: ['stocks', 'my-stock-list'] })
     } catch (err) {
       toast.error(getApiErrorMessage(err as { response?: { data?: { message?: string } }; message?: string }, { fallback: 'Iade talebi olusturulamadi.' }))
       setReturnSubmitting(false)
@@ -185,16 +227,23 @@ export function MyStockPage() {
 
   const availableKits = useMemo(() => myKits.filter((k) => k.uiStatus === 'available'), [myKits])
   const assignedKits = useMemo(() => myKits.filter((k) => k.uiStatus === 'assigned'), [myKits])
-  const damagedPendingKits = useMemo(
-    () => myKits.filter((k) => k.uiStatus === 'damaged' && k.kitStatus === 'damaged-pending'),
-    [myKits]
-  )
+  const usedKits = useMemo(() => myKits.filter((k) => k.uiStatus !== 'available'), [myKits])
 
   const filtered = useMemo(() => {
     return myKits.filter(
       (k) => !searchQuery || k.barcode.toLowerCase().includes(searchQuery.toLowerCase())
     )
   }, [myKits, searchQuery])
+
+  const filteredAvailable = useMemo(
+    () => filtered.filter((k) => k.uiStatus === 'available'),
+    [filtered]
+  )
+
+  const filteredUsed = useMemo(
+    () => filtered.filter((k) => k.uiStatus !== 'available'),
+    [filtered]
+  )
 
   const badgeForKit = (kit: { uiStatus: 'available' | 'assigned' | 'damaged'; kitStatus?: unknown }) => {
     if (kit.uiStatus === 'assigned') {
@@ -256,13 +305,53 @@ export function MyStockPage() {
             min={0}
             value={minStockInput !== '' ? minStockInput : minStockAlert}
             onChange={(e) => setMinStockInput(e.target.value)}
-            onBlur={() => { const n = parseInt(minStockInput, 10); if (!Number.isNaN(n) && n >= 0) setMinStockAlert(n); setMinStockInput('') }}
+            onBlur={() => {
+              if (minStockInput.trim() !== '' && draftLimit == null) {
+                setMinStockInput('')
+              }
+            }}
             placeholder={String(minStockAlert || 0)}
             className="w-20 rounded-lg border border-surface-200 px-2 py-1.5 text-sm"
           />
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!canSaveLimit}
+            onClick={() => {
+              if (draftLimit == null) return
+              setConfirmLimit(draftLimit)
+            }}
+          >
+            Kaydet
+          </Button>
           <span className="text-xs text-surface-500">Stok bu sayinin altina dustugunde uyari alirsiniz.</span>
         </div>
       </motion.div>
+
+      <ConfirmDialog
+        open={confirmLimit != null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmLimit(null)
+        }}
+        title="Minimum stok limiti"
+        description={
+          confirmLimit != null
+            ? `Minimum stok uyari limitini ${confirmLimit} olarak guncellemek istiyor musunuz?`
+            : 'Devam etmek istiyor musunuz?'
+        }
+        confirmLabel="Onayla"
+        cancelLabel="Vazgec"
+        loading={updateAlertLimitMutation.isPending}
+        onConfirm={() => {
+          if (confirmLimit == null) return
+          updateAlertLimitMutation.mutate(confirmLimit, {
+            onSuccess: () => {
+              setConfirmLimit(null)
+              setMinStockInput('')
+            },
+          })
+        }}
+      />
 
       {/* ═══ STOCK WARNING ═══ */}
       {minStockAlert > 0 && availableKits.length < minStockAlert && (
@@ -288,7 +377,7 @@ export function MyStockPage() {
 
           {/* Header — tablonun ustunde Kit Teslim Al butonu */}
           <div className="p-5 flex items-center justify-between gap-3 flex-wrap" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
-            <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Stoktaki Kitler</h3>
+            <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kitler</h3>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
@@ -321,101 +410,124 @@ export function MyStockPage() {
             </div>
           </div>
 
-          {/* Available kits */}
           <div className="p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-2 w-2 rounded-full" style={{ background: W.green }} />
-              <span className="text-[12px] font-semibold" style={{ color: W.dark }}>Kullanilabilir</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: W.greenLight, color: '#3D8B3D' }}>{availableKits.length}</span>
-            </div>
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-12 text-surface-500 text-sm">
-                <Loader2 className="h-8 w-8 animate-spin mb-2" style={{ color: W.olive }} />
-                <p>Stok listesi yükleniyor...</p>
-              </div>
-            ) : availableKits.length === 0 ? (
-              <div className="text-center py-8 text-surface-500 text-sm">
-                <Package className="h-8 w-8 mx-auto mb-2 text-surface-300" />
-                <p>Kullanilabilir kit bulunmuyor</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filtered.filter(k => k.uiStatus === 'available').map((kit) => (
-                <div
-                  key={kit.barcode}
-                  className="flex items-center justify-between p-4 rounded-xl transition-all cursor-pointer"
-                  style={{ background: W.cream, border: `1.5px solid transparent` }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = W.olive; e.currentTarget.style.background = W.oliveLight }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = W.cream }}
-                >
-                  <div>
-                    <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
-                    <p className="text-[10px] mt-0.5" style={{ color: W.textLight }}>Teslim: {formatDate(kit.receivedAt)}</p>
-                  </div>
-                  {badgeForKit(kit)}
-                </div>
-              ))}
-              </div>
-            )}
+            <Tabs value={kitsTab} onValueChange={(v) => setKitsTab(v as 'in-stock' | 'used')}>
+              <TabsList>
+                <TabsTrigger value="in-stock">Stoktaki Kitler</TabsTrigger>
+                <TabsTrigger value="used">Kullanilan Kitler</TabsTrigger>
+              </TabsList>
 
-            {/* Damaged pending kits */}
-            {damagedPendingKits.length > 0 && (
-              <>
-                <div className="flex items-center gap-2 mt-6 mb-3">
-                  <div className="h-2 w-2 rounded-full" style={{ background: '#E87070' }} />
-                  <span className="text-[12px] font-semibold" style={{ color: W.dark }}>Hasarli (Bekliyor)</span>
-                  <span
-                    className="text-[10px] px-1.5 py-0.5 rounded-md font-bold"
-                    style={{ background: '#FDE8E8', color: '#C53030' }}
-                  >
-                    {damagedPendingKits.length}
-                  </span>
+              <TabsContent value="in-stock">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-2 w-2 rounded-full" style={{ background: W.green }} />
+                  <span className="text-[12px] font-semibold" style={{ color: W.dark }}>Kullanilabilir</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: W.greenLight, color: '#3D8B3D' }}>{availableKits.length}</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {filtered
-                    .filter((k) => k.uiStatus === 'damaged' && k.kitStatus === 'damaged-pending')
-                    .map((kit) => (
+
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-surface-500 text-sm">
+                    <Loader2 className="h-8 w-8 animate-spin mb-2" style={{ color: W.olive }} />
+                    <p>Stok listesi yükleniyor...</p>
+                  </div>
+                ) : filteredAvailable.length === 0 ? (
+                  <div className="text-center py-8 text-surface-500 text-sm">
+                    <Package className="h-8 w-8 mx-auto mb-2 text-surface-300" />
+                    <p>Kullanilabilir kit bulunmuyor</p>
+                  </div>
+                ) : (
+                  <div
+                    className="rounded-xl overflow-hidden"
+                    style={{ border: `1px solid ${W.warmBorder}`, background: '#fff' }}
+                  >
+                    {filteredAvailable.map((kit, idx, arr) => (
                       <div
                         key={kit.barcode}
-                        className="flex items-center justify-between p-4 rounded-xl"
-                        style={{ background: '#FDE8E8', border: '1.5px solid transparent' }}
+                        className="flex items-center justify-between px-4 py-3 transition-colors cursor-pointer"
+                        style={{
+                          background: W.cream,
+                          borderBottom: idx === arr.length - 1 ? 'none' : `1px solid ${W.warmBorder}`,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = W.oliveLight
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = W.cream
+                        }}
                       >
-                        <div>
+                        <div className="min-w-0">
                           <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
-                          <p className="text-[10px] mt-0.5" style={{ color: '#C53030' }}>Teslim: {formatDate(kit.receivedAt)}</p>
+                          <p className="text-[10px] mt-0.5" style={{ color: W.textLight }}>Teslim: {formatDate(kit.receivedAt)}</p>
                         </div>
-                        {badgeForKit(kit)}
+                        <div className="shrink-0">{badgeForKit(kit)}</div>
                       </div>
                     ))}
-                </div>
-              </>
-            )}
+                  </div>
+                )}
+              </TabsContent>
 
-            {/* Assigned kits */}
-            {assignedKits.length > 0 && (
-              <>
-                <div className="flex items-center gap-2 mt-6 mb-3">
+              <TabsContent value="used">
+                <div className="flex items-center gap-2 mb-3">
                   <div className="h-2 w-2 rounded-full" style={{ background: W.orange }} />
-                  <span className="text-[12px] font-semibold" style={{ color: W.dark }}>Danisana Atanmis</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: W.orangeLight, color: W.orange }}>{assignedKits.length}</span>
+                  <span className="text-[12px] font-semibold" style={{ color: W.dark }}>Kullanilan</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: W.orangeLight, color: W.orange }}>{usedKits.length}</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {filtered.filter(k => k.uiStatus === 'assigned').map((kit) => (
-                    <div
-                      key={kit.barcode}
-                      className="flex items-center justify-between p-4 rounded-xl"
-                      style={{ background: W.orangeLight, border: '1.5px solid transparent' }}
-                    >
-                      <div>
-                        <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
-                        <p className="text-[10px] mt-0.5" style={{ color: W.orange }}>{kit.client}</p>
+
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-surface-500 text-sm">
+                    <Loader2 className="h-8 w-8 animate-spin mb-2" style={{ color: W.olive }} />
+                    <p>Stok listesi yükleniyor...</p>
+                  </div>
+                ) : filteredUsed.length === 0 ? (
+                  <div className="text-center py-8 text-surface-500 text-sm">
+                    <Boxes className="h-8 w-8 mx-auto mb-2 text-surface-300" />
+                    <p>Kullanilan kit bulunmuyor</p>
+                  </div>
+                ) : (
+                  <div
+                    className="rounded-xl overflow-hidden"
+                    style={{ border: `1px solid ${W.warmBorder}`, background: '#fff' }}
+                  >
+                    {filteredUsed.map((kit, idx, arr) => (
+                      <div
+                        key={kit.barcode}
+                        className="flex items-center justify-between px-4 py-3 transition-colors"
+                        style={{
+                          background:
+                            kit.uiStatus === 'assigned'
+                              ? W.orangeLight
+                              : kit.kitStatus === 'damaged-pending'
+                                ? '#FDE8E8'
+                                : W.cream,
+                          borderBottom: idx === arr.length - 1 ? 'none' : `1px solid ${W.warmBorder}`,
+                        }}
+                      >
+                        <div className="min-w-0">
+                          <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
+                          <p
+                            className="text-[10px] mt-0.5"
+                            style={{
+                              color:
+                                kit.uiStatus === 'assigned'
+                                  ? W.orange
+                                  : kit.kitStatus === 'damaged-pending'
+                                    ? '#C53030'
+                                    : W.textLight,
+                            }}
+                          >
+                            {kit.uiStatus === 'assigned'
+                              ? 'Danisana atanmis'
+                              : kit.uiStatus === 'damaged'
+                                ? `Hasarli${kit.kitStatus === 'damaged-pending' ? ' (Bekliyor)' : ''}`
+                                : `Teslim: ${formatDate(kit.receivedAt)}`}
+                          </p>
+                        </div>
+                        <div className="shrink-0">{badgeForKit(kit)}</div>
                       </div>
-                      {badgeForKit(kit)}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Info */}

@@ -6715,6 +6715,65 @@
                 }
             }
         },
+        "/laboratories/statistics": {
+            "get": {
+                "summary": "Get laboratory statistics",
+                "tags": [
+                    "Laboratories"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "days",
+                        "schema": {
+                            "type": "integer",
+                            "example": 30
+                        },
+                        "description": "Activity window in days for interest metrics"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Laboratory statistics retrieved successfully"
+                    }
+                }
+            }
+        },
+        "/laboratories/{id}/statistics": {
+            "get": {
+                "summary": "Get laboratory statistics by laboratory ID",
+                "tags": [
+                    "Laboratories"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "days",
+                        "schema": {
+                            "type": "integer",
+                            "example": 30
+                        },
+                        "description": "Activity window in days for interest metrics"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Laboratory statistics retrieved successfully"
+                    },
+                    "404": {
+                        "description": "Laboratory not found"
+                    }
+                }
+            }
+        },
         "/laboratories/{id}": {
             "get": {
                 "summary": "Get a laboratory by ID",
@@ -8188,6 +8247,46 @@
                 }
             }
         },
+        "/stocks/alert-settings": {
+            "get": {
+                "summary": "Get dietician stock alert settings",
+                "tags": [
+                    "Stocks"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Stock alert settings retrieved successfully"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update dietician stock alert limit",
+                "tags": [
+                    "Stocks"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "limit": {
+                                        "type": "integer",
+                                        "example": 10
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Stock alert limit updated successfully"
+                    }
+                }
+            }
+        },
         "/stocks": {
             "get": {
                 "summary": "Get all stocks with pagination, search, and sorting",
@@ -8259,6 +8358,49 @@
                     },
                     "400": {
                         "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update the profile of the authenticated user",
+                "tags": [
+                    "Users"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateUser"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "User profile updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input data",
                         "content": {
                             "application/json": {
                                 "schema": {

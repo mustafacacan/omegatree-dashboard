@@ -1,11 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar } from '@/components/ui'
+import { Avatar, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { KitStatus } from '@/utils/constants'
 import { ROUTES } from '@/utils/routes'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { useCurrentUser } from '@/stores/auth.store'
 import { motion } from 'framer-motion'
 import {
@@ -21,6 +21,12 @@ import { getUsers } from '@/services/users.service'
 import { getOrders } from '@/services/orders.service'
 import { getDieticianClientKits } from '@/services/dietician-client-kits.service'
 import { UserRole } from '@/utils/constants'
+import {
+  getLaboratories,
+  getLaboratoriesStatistics,
+  getLaboratoryStatisticsById,
+  type LaboratoryStatisticsItem,
+} from '@/services/laboratories.service'
 
 /** API dietician-client-kit status → KitStatus (StatusBadge) */
 function mapKitStatusToDisplay(
@@ -110,9 +116,39 @@ const tooltipStyle = {
   background: 'var(--color-panel)',
 }
 
+function formatSecondsToHours(seconds: number | undefined) {
+  if (seconds == null || Number.isNaN(seconds)) return '—'
+  const hours = seconds / 3600
+  const rounded = Math.round(hours * 10) / 10
+  return `${rounded.toLocaleString('tr-TR')} saat`
+}
+
+function formatRate(rate: number | undefined) {
+  if (rate == null || Number.isNaN(rate)) return '—'
+  return `${Math.round(rate * 100)}%`
+}
+
+function formatNumber(value: number | undefined, digits: number = 1) {
+  if (value == null || Number.isNaN(value)) return '—'
+  const rounded = Math.round(value * 10 ** digits) / 10 ** digits
+  return rounded.toLocaleString('tr-TR')
+}
+
 export function AdminDashboardPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
+
+  const [statsDays, setStatsDays] = useState('30')
+  const [selectedLabId, setSelectedLabId] = useState('all')
+
+  const statsDaysLabel = useMemo(() => {
+    const map: Record<string, string> = {
+      '7': '7 gün',
+      '30': '30 gün',
+      '90': '90 gün',
+    }
+    return map[statsDays] ?? `${statsDays} gün`
+  }, [statsDays])
 
   const { data: usersRes } = useQuery({
     queryKey: ['users'],
@@ -127,7 +163,57 @@ export function AdminDashboardPage() {
     queryFn: () => getDieticianClientKits(1, 500),
   })
 
-  const usersList = Array.isArray(usersRes) ? usersRes : (usersRes?.users ?? [])
+  const { data: labs = [] } = useQuery({
+    queryKey: ['laboratories', 'dashboard', 'list'],
+    queryFn: () => getLaboratories({ page: 1, limit: 200 }),
+    retry: 1,
+  })
+
+  const {
+    data: labsStats,
+    isLoading: labsStatsLoading,
+    isError: labsStatsError,
+  } = useQuery({
+    queryKey: ['laboratories', 'statistics', { days: Number(statsDays) }],
+    queryFn: () => getLaboratoriesStatistics({ days: Number(statsDays) }),
+    retry: 1,
+  })
+
+  const {
+    data: labStats,
+    isLoading: labStatsLoading,
+    isError: labStatsError,
+  } = useQuery({
+    queryKey: ['laboratories', 'statistics', { id: selectedLabId, days: Number(statsDays) }],
+    queryFn: () => getLaboratoryStatisticsById(Number(selectedLabId), { days: Number(statsDays) }),
+    enabled: selectedLabId !== 'all',
+    retry: 1,
+  })
+
+  const summary = useMemo(() => {
+    const list = labsStats ?? []
+    return list.reduce(
+      (acc, item) => {
+        const t = item.totals
+        acc.totalKits += Number(t?.totalKits ?? 0)
+        acc.inProgressKits += Number(t?.inProgressKits ?? 0)
+        acc.completedKits += Number(t?.completedKits ?? 0)
+        acc.reportCount += Number(t?.reportCount ?? 0)
+        return acc
+      },
+      { totalKits: 0, inProgressKits: 0, completedKits: 0, reportCount: 0 }
+    )
+  }, [labsStats])
+
+  const selectedFromList: LaboratoryStatisticsItem | undefined = useMemo(() => {
+    if (selectedLabId === 'all') return undefined
+    const idNum = Number(selectedLabId)
+    return (labsStats ?? []).find((x) => Number(x.laboratoryId) === idNum)
+  }, [labsStats, selectedLabId])
+
+  const usersList = useMemo(() => {
+    return Array.isArray(usersRes) ? usersRes : (usersRes?.users ?? [])
+  }, [usersRes])
   const dietitiansCount = useMemo(
     () => usersList.filter((u) => u.role === UserRole.DIETITIAN).length,
     [usersList]
@@ -176,7 +262,9 @@ export function AdminDashboardPage() {
       const d = k.updatedAt ?? k.createdAt
       const dateStr = d ? new Date(d).toLocaleDateString('tr-TR') : ''
       const today = new Date().toLocaleDateString('tr-TR')
-      const yesterday = new Date(Date.now() - 864e5).toLocaleDateString('tr-TR')
+      const yesterdayDate = new Date()
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+      const yesterday = yesterdayDate.toLocaleDateString('tr-TR')
       let dateLabel = dateStr
       if (dateStr === today) dateLabel = 'Bugün'
       else if (dateStr === yesterday) dateLabel = 'Dün'
@@ -283,6 +371,266 @@ export function AdminDashboardPage() {
 
           {/* ═══════ MAIN GRID ═══════ */}
           <div className="grid grid-cols-12 gap-5">
+
+            {/* ── Laboratuvar Istatistikleri ── */}
+            <motion.div className="col-span-12" {...fadeUp} transition={{ duration: 0.35, delay: 0.08 }}>
+              <div className="panel p-5">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                  <div className="min-w-0">
+                    <h3 className="text-card-title">Laboratuvar İstatistikleri</h3>
+                    <p className="text-[12px] mt-0.5 text-text-secondary">
+                      Seçilen zaman aralığında laboratuvar bazlı kit süreç metrikleri ve rapor özetleri.
+                    </p>
+                  </div>
+
+                  <div className="flex items-end gap-3 flex-wrap">
+                    <div className="min-w-[160px]">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-surface-500 mb-1">
+                        Zaman Aralığı
+                      </p>
+                      <Select value={statsDays} onValueChange={setStatsDays}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Gün seç" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="7">7 gün</SelectItem>
+                          <SelectItem value="30">30 gün</SelectItem>
+                          <SelectItem value="90">90 gün</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="min-w-[260px]">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-surface-500 mb-1">
+                        Laboratuvar
+                      </p>
+                      <Select value={selectedLabId} onValueChange={setSelectedLabId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Laboratuvar seç" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Tüm laboratuvarlar (genel)</SelectItem>
+                          {labs.map((l) => (
+                            <SelectItem key={l.id} value={l.id}>
+                              {l.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div className="rounded-2xl border border-surface-200 bg-panel p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-[12px] font-semibold text-surface-800">Genel Özet</p>
+                        <p className="text-[11px] text-surface-500 mt-0.5">Son {statsDaysLabel} toplamı</p>
+                      </div>
+                      {labsStatsLoading && <Loader2 className="h-4 w-4 animate-spin text-primary-500" />}
+                    </div>
+
+                    {labsStatsError ? (
+                      <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
+                        <p className="text-[12px] font-semibold text-surface-800">İstatistikler yüklenemedi</p>
+                        <p className="text-[12px] text-surface-600 mt-1">Lütfen internet bağlantınızı kontrol edin ve tekrar deneyin.</p>
+                      </div>
+                    ) : (labsStats?.length ?? 0) === 0 ? (
+                      <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
+                        <p className="text-[12px] font-semibold text-surface-800">Veri bulunamadı</p>
+                        <p className="text-[12px] text-surface-600 mt-1">Seçili zaman aralığında laboratuvar istatistiği yok.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                            <p className="text-[10px] uppercase tracking-wider text-surface-500">Toplam Kit</p>
+                            <p className="text-[16px] font-black text-surface-900 mt-1">{summary.totalKits.toLocaleString('tr-TR')}</p>
+                          </div>
+                          <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                            <p className="text-[10px] uppercase tracking-wider text-surface-500">Devam Eden</p>
+                            <p className="text-[16px] font-black text-surface-900 mt-1">{summary.inProgressKits.toLocaleString('tr-TR')}</p>
+                          </div>
+                          <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                            <p className="text-[10px] uppercase tracking-wider text-surface-500">Tamamlanan</p>
+                            <p className="text-[16px] font-black text-surface-900 mt-1">{summary.completedKits.toLocaleString('tr-TR')}</p>
+                          </div>
+                          <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                            <p className="text-[10px] uppercase tracking-wider text-surface-500">Rapor</p>
+                            <p className="text-[16px] font-black text-surface-900 mt-1">{summary.reportCount.toLocaleString('tr-TR')}</p>
+                          </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <caption className="text-left text-[11px] text-surface-500 pb-2">
+                              Son {statsDaysLabel} içinde laboratuvar bazlı metrikler (toplam {(labsStats ?? []).length.toLocaleString('tr-TR')} kayıt).
+                            </caption>
+                            <thead>
+                              <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                                <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 py-2.5 text-surface-500">Laboratuvar</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2.5 text-surface-500">Toplam</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2.5 text-surface-500">Bekleyen</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2.5 text-surface-500">Devam</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2.5 text-surface-500">Tamam</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2.5 text-surface-500">İptal</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2.5 text-surface-500">Rapor</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2.5 text-surface-500">Tamamlama Oranı</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2.5 text-surface-500">Ort. Süre</th>
+                                <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2.5 text-surface-500">Son Rapor</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(labsStats ?? []).map((item) => {
+                                const name = [item.laboratoryUser?.firstName, item.laboratoryUser?.lastName].filter(Boolean).join(' ') || `#${item.laboratoryId}`
+                                const totals = item.totals
+                                const interest = item.interest
+                                return (
+                                  <tr
+                                    key={item.laboratoryId}
+                                    className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
+                                  >
+                                    <td className="px-3 py-2.5">
+                                      <div className="min-w-0">
+                                        <p className="text-[12px] font-semibold text-surface-800 truncate">{name}</p>
+                                        <p className="text-[11px] text-surface-500 truncate">{item.laboratoryUser?.email ?? '—'}</p>
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-right text-[12px] text-surface-700">{Number(totals?.totalKits ?? 0).toLocaleString('tr-TR')}</td>
+                                    <td className="px-3 py-2.5 text-right text-[12px] text-surface-700">{Number(totals?.pendingKits ?? 0).toLocaleString('tr-TR')}</td>
+                                    <td className="px-3 py-2.5 text-right text-[12px] text-surface-700">{Number(totals?.inProgressKits ?? 0).toLocaleString('tr-TR')}</td>
+                                    <td className="px-3 py-2.5 text-right text-[12px] text-surface-700">{Number(totals?.completedKits ?? 0).toLocaleString('tr-TR')}</td>
+                                    <td className="px-3 py-2.5 text-right text-[12px] text-surface-700">{Number(totals?.cancelledKits ?? 0).toLocaleString('tr-TR')}</td>
+                                    <td className="px-3 py-2.5 text-right text-[12px] text-surface-700">{Number(totals?.reportCount ?? 0).toLocaleString('tr-TR')}</td>
+                                    <td className="px-3 py-2.5 text-right text-[12px] text-surface-700">{formatRate(interest?.completionRate)}</td>
+                                    <td className="px-3 py-2.5 text-right text-[12px] text-surface-700">{formatSecondsToHours(interest?.avgCompletionSeconds)}</td>
+                                    <td className="px-3 py-2.5 text-right text-[12px] text-surface-700">{formatDateTime(totals?.lastReportAt)}</td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-surface-200 bg-panel p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-[12px] font-semibold text-surface-800">Seçili Laboratuvar</p>
+                        <p className="text-[11px] text-surface-500 mt-0.5">Son {statsDaysLabel} detayı</p>
+                      </div>
+                      {labStatsLoading && <Loader2 className="h-4 w-4 animate-spin text-primary-500" />}
+                    </div>
+
+                    {selectedLabId === 'all' ? (
+                      <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
+                        <p className="text-[12px] font-semibold text-surface-800">Detay için laboratuvar seçin</p>
+                        <p className="text-[12px] text-surface-600 mt-1">Genel özet tüm laboratuvarların toplamını gösterir.</p>
+                      </div>
+                    ) : labStatsError ? (
+                      <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
+                        <p className="text-[12px] font-semibold text-surface-800">Laboratuvar istatistikleri yüklenemedi</p>
+                        <p className="text-[12px] text-surface-600 mt-1">Lütfen tekrar deneyin.</p>
+                      </div>
+                    ) : labStats ? (
+                      (() => {
+                        const fallbackName =
+                          [selectedFromList?.laboratoryUser?.firstName, selectedFromList?.laboratoryUser?.lastName]
+                            .filter(Boolean)
+                            .join(' ') || `#${selectedLabId}`
+                        const name =
+                          [labStats.laboratoryUser?.firstName, labStats.laboratoryUser?.lastName]
+                            .filter(Boolean)
+                            .join(' ') || fallbackName
+                        const email = labStats.laboratoryUser?.email ?? selectedFromList?.laboratoryUser?.email
+                        const totals = labStats.totals
+                        const interest = labStats.interest
+
+                        return (
+                          <div className="space-y-3">
+                            <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                              <p className="text-[12px] font-semibold text-surface-900">{name}</p>
+                              <p className="text-[11px] text-surface-500 mt-0.5">{email ?? '—'}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-surface-500">Toplam Kit</p>
+                                <p className="text-[16px] font-black text-surface-900 mt-1">{Number(totals?.totalKits ?? 0).toLocaleString('tr-TR')}</p>
+                              </div>
+                              <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-surface-500">Rapor</p>
+                                <p className="text-[16px] font-black text-surface-900 mt-1">{Number(totals?.reportCount ?? 0).toLocaleString('tr-TR')}</p>
+                              </div>
+                              <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-surface-500">Tamamlama Orani</p>
+                                <p className="text-[16px] font-black text-surface-900 mt-1">{formatRate(interest?.completionRate)}</p>
+                              </div>
+                              <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-surface-500">Ort. Tamamlama</p>
+                                <p className="text-[16px] font-black text-surface-900 mt-1">{formatSecondsToHours(interest?.avgCompletionSeconds)}</p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-surface-500">Son {interest?.windowDays ?? Number(statsDays)} Gündeki Tamamlanan</p>
+                                <p className="text-[16px] font-black text-surface-900 mt-1">{Number(interest?.recentCompletedKits ?? 0).toLocaleString('tr-TR')}</p>
+                              </div>
+                              <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-surface-500">Haftalik Tamamlama</p>
+                                <p className="text-[16px] font-black text-surface-900 mt-1">{formatNumber(interest?.completedPerWeek)} / hafta</p>
+                              </div>
+                              <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-surface-500">Son Dönem Ort. Tamamlama</p>
+                                <p className="text-[16px] font-black text-surface-900 mt-1">{formatSecondsToHours(interest?.recentAvgCompletionSeconds)}</p>
+                              </div>
+                              <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                                <p className="text-[10px] uppercase tracking-wider text-surface-500">Gozlem Penceresi</p>
+                                <p className="text-[16px] font-black text-surface-900 mt-1">{(interest?.windowDays ?? Number(statsDays)).toLocaleString('tr-TR')} gun</p>
+                              </div>
+                            </div>
+
+                            <div className="rounded-xl bg-surface-50 border border-surface-200 p-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-[12px] font-semibold text-surface-800">Son Rapor</p>
+                                <p className="text-[12px] text-surface-700">{formatDateTime(totals?.lastReportAt)}</p>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 mt-2 text-[12px] text-surface-700">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-surface-500">Bekleyen</span>
+                                  <span className="font-semibold">{Number(totals?.pendingKits ?? 0).toLocaleString('tr-TR')}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-surface-500">Devam Eden</span>
+                                  <span className="font-semibold">{Number(totals?.inProgressKits ?? 0).toLocaleString('tr-TR')}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-surface-500">Tamamlanan</span>
+                                  <span className="font-semibold">{Number(totals?.completedKits ?? 0).toLocaleString('tr-TR')}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-surface-500">İptal</span>
+                                  <span className="font-semibold">{Number(totals?.cancelledKits ?? 0).toLocaleString('tr-TR')}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })()
+                    ) : (
+                      <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
+                        <p className="text-[12px] font-semibold text-surface-800">Veri bulunamadı</p>
+                        <p className="text-[12px] text-surface-600 mt-1">Seçili laboratuvar için seçili zaman aralığında kayıt yok.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
 
             {/* ── Gelir Trendi — BAR CHART ── */}
             <motion.div className="col-span-12 lg:col-span-8" {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>

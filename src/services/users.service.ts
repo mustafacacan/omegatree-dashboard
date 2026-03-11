@@ -54,6 +54,8 @@ function mapApiUserToAppUser(apiUser: ApiUser & { isVerified?: boolean; deletedA
 export interface GetUsersParams {
   page?: number
   limit?: number
+  /** API rol filtresi (örn: 'expert') veya app rolü (örn: UserRole.SPECIALIST) */
+  role?: UserRole | CreateUserBody['role']
 }
 
 export interface GetUsersResponse {
@@ -61,8 +63,27 @@ export interface GetUsersResponse {
   total?: number
 }
 
+function isAppUserRole(role: string): role is UserRole {
+  return Object.values(UserRole).includes(role as UserRole)
+}
+
 /** GET /users — backend: { success, message, data: { items, totalItems, totalPages, currentPage } } */
 export async function getUsers(params?: GetUsersParams): Promise<GetUsersResponse> {
+  const queryParams =
+    params != null
+      ? {
+        page: params.page ?? 1,
+        limit: params.limit ?? 50,
+        ...(params.role != null
+          ? {
+            role: isAppUserRole(params.role)
+              ? mapAppRoleToApiRole(params.role)
+              : params.role,
+          }
+          : {}),
+      }
+      : undefined
+
   const { data } = await api.get<{
     success?: boolean
     message?: string
@@ -73,7 +94,7 @@ export async function getUsers(params?: GetUsersParams): Promise<GetUsersRespons
       currentPage?: string | number
     }
   }>('/users', {
-    params: params ? { page: params.page ?? 1, limit: params.limit ?? 50 } : undefined,
+    params: queryParams,
   })
   const list = data?.data?.items ?? []
   return {
