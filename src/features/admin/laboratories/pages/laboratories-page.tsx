@@ -11,7 +11,7 @@ import {
 import { formatDate, formatDateTime } from '@/lib/utils'
 import {
   Search, Plus, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone, Mail,
-  Download, Loader2, Eye, TestTubes, FlaskConical, Package, Clock, CheckCircle, FileText,
+  Loader2, Eye, TestTubes, FlaskConical, Package, Clock, CheckCircle, FileText,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
@@ -419,33 +419,6 @@ export function LaboratoriesPage() {
     return dieticians.filter((d: { id: number }) => !assignedIds.has(d.id))
   }, [dieticians, selectedLabDietitians])
 
-  const handleExportCsv = () => {
-    const headers = ['Ad', 'Adres', 'Şehir', 'İlçe', 'Telefon', 'E-posta', 'Kargo Firması', 'Atanan Diyetisyenler', 'Oluşturulma Tarihi']
-    const rows = filteredLaboratories.map((lab: LabWithDietitians) => {
-      const assignedNames = lab.assignedDietitianDetails.map((d: { dieticianId: number; name: string }) => d.name).join('; ')
-      return [
-        lab.name,
-        lab.address,
-        lab.city,
-        lab.district || '-',
-        lab.phone || '-',
-        lab.email || '-',
-        lab.cargofirm || '-',
-        assignedNames || '-',
-        formatDate(lab.createdAt),
-      ]
-    })
-    const csv = [headers, ...rows].map((r: string[]) => r.map((v: string) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `laboratuvarlar-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-    toast.success('Laboratuvar listesi indirildi')
-  }
-
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
@@ -479,9 +452,6 @@ export function LaboratoriesPage() {
                       className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                     />
                   </div>
-                  <Button variant="outline" size="sm" onClick={handleExportCsv}>
-                    <Download className="h-4 w-4" />
-                  </Button>
                   <Button variant="primary" size="sm" onClick={() => setNewLabOpen(true)}>
                     <Plus className="h-4 w-4" />
                     Yeni Laboratuvar

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import {
-  Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone, Download,
+  Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone,
   Loader2, Eye,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -177,27 +177,6 @@ function DietitiansPage() {
     deleteMutation.mutate(selected.id)
   }
 
-  const handleExportCsv = () => {
-    const headers = ['Ad', 'Soyad', 'E-posta', 'Telefon', 'Durum', 'Oluşturulma']
-    const rows = filtered.map((u) => [
-      u.firstName ?? '',
-      u.lastName ?? '',
-      u.email ?? '',
-      u.phone ?? '',
-      statusLabels[u.status ?? UserStatus.ACTIVE],
-      formatDate(u.createdAt),
-    ])
-    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `diyetisyenler-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-    toast.success('Diyetisyen listesi indirildi')
-  }
-
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
@@ -222,9 +201,6 @@ function DietitiansPage() {
                   className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
-              <Button variant="outline" size="sm" onClick={handleExportCsv}>
-                <Download className="h-4 w-4" />
-              </Button>
               <Button variant="primary" size="sm" onClick={() => { resetForm(); setNewOpen(true) }}>
                 <Plus className="h-4 w-4" />
                 Yeni Diyetisyen

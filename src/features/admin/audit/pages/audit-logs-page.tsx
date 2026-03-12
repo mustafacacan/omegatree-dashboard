@@ -6,7 +6,7 @@ import {
   Input, Button,
 } from '@/components/ui'
 import { formatDateTime } from '@/lib/utils'
-import { Search, Download, Filter, Shield } from 'lucide-react'
+import { Search, Filter, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
@@ -135,10 +135,6 @@ export function AuditLogsPage() {
               className="w-64"
             />
             <Button variant="outline" size="icon"><Filter className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" onClick={() => toast('Disa aktarma ozelligi yakinda eklenecek', { icon: '📤' })}>
-              <Download className="h-4 w-4" />
-              Disa Aktar
-            </Button>
           </div>
         </div>
         <CardContent className="p-0">

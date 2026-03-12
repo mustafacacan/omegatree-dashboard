@@ -13,7 +13,7 @@ import { formatDate } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import {
   Search, Plus, MoreHorizontal, UserCheck, UserX, Shield, Eye,
-  Filter, Download, ChevronLeft, ChevronRight, Loader2, Trash2,
+  Filter, ChevronLeft, ChevronRight, Loader2, Trash2,
 } from 'lucide-react'
 import type { User } from '@/types/user.types'
 import { toast } from 'sonner'
@@ -60,7 +60,7 @@ export function UsersListPage() {
     lastName: '',
     email: '',
     phone: '',
-    role: UserRole.DIETITIAN as UserRole,
+    role: UserRole.ADMIN as UserRole,
     gender: 'male' as 'male' | 'female',
   })
   const [roleToEdit, setRoleToEdit] = useState<UserRole>(UserRole.DIETITIAN)
@@ -150,34 +150,13 @@ export function UsersListPage() {
     setApprovalOpen(true)
   }
 
-  const handleExportCsv = () => {
-    const headers = ['Ad Soyad', 'E-posta', 'Telefon', 'Rol', 'Onay', 'Kayıt Tarihi']
-    const rows = filteredUsers.map((u) => [
-      `${u.firstName} ${u.lastName}`,
-      u.email,
-      u.phone ?? '-',
-      USER_ROLE_LABELS[u.role],
-      u.isVerified === true ? 'Onaylı' : u.isVerified === false ? 'Beklemede' : '-',
-      formatDate(u.createdAt),
-    ])
-    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `kullanicilar-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-    toast.success('Kullanici listesi indirildi')
-  }
-
   const resetNewUserForm = () => {
     setNewUserForm({
       firstName: '',
       lastName: '',
       email: '',
       phone: '',
-      role: UserRole.DIETITIAN,
+      role: UserRole.ADMIN,
       gender: 'male',
     })
   }
@@ -301,13 +280,10 @@ export function UsersListPage() {
                     <SelectItem value={UserRole.DANISAN}>Danışan</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button variant="outline" size="sm" onClick={handleExportCsv}>
-                  <Download className="h-4 w-4" />
-                </Button>
-                <Button variant="primary" size="sm" onClick={() => setNewUserOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  Yeni Kullanıcı
-                </Button>
+<Button variant="primary" size="sm" onClick={() => setNewUserOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                    Yeni Admin Ekle
+                  </Button>
               </div>
             </div>
             <TabsContent value="all">
@@ -505,24 +481,6 @@ export function UsersListPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <label className="block text-[13px] font-medium text-surface-700">Rol</label>
-              <Select
-                value={newUserForm.role}
-                onValueChange={(value) => setNewUserForm((s) => ({ ...s, role: value as UserRole }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Rol seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
-                  <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
-                  <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
-                  <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
-                  <SelectItem value={UserRole.DANISAN}>Danışan</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <p className="text-xs text-surface-500">
               Şifre kullanıcıya SMS ile gönderilir.
             </p>
@@ -532,7 +490,7 @@ export function UsersListPage() {
               İptal
             </Button>
             <Button variant="primary" onClick={submitNewUser} loading={createMutation.isPending}>
-              Kullanıcı Oluştur
+              Admin Ekle
             </Button>
           </ModalFooter>
         </ModalContent>

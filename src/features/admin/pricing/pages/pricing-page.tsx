@@ -10,7 +10,7 @@ import {
 } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { Plus, Pencil, Search, ImageIcon, Trash2, MoreHorizontal, Download, Loader2, Package } from 'lucide-react'
+import { Plus, Pencil, Search, ImageIcon, Trash2, MoreHorizontal, Loader2, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import {
@@ -270,9 +270,6 @@ export function PricingPage() {
                   className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
-              <Button variant="outline" size="sm" onClick={handleExportCsv}>
-                <Download className="h-4 w-4" />
-              </Button>
               <Button variant="primary" size="sm" onClick={openCreate}>
                 <Plus className="h-4 w-4" />
                 Yeni satış kiti
