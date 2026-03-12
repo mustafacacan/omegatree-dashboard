@@ -6,13 +6,18 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
+  Tabs, TabsList, TabsTrigger, TabsContent,
 } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatDateTime } from '@/lib/utils'
 import {
   Search, Plus, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone, Mail,
-  Download, Loader2, Eye, TestTubes,
+  Download, Loader2, Eye, TestTubes, FlaskConical, Package, Clock, CheckCircle, FileText,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
+  ResponsiveContainer,
+} from 'recharts'
 import type { Laboratory } from '@/types/laboratory.types'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
@@ -25,15 +30,31 @@ import {
   deleteLaboratory,
   getLabDietitianAssignments,
   assignDietitianToLab,
+  getLaboratoriesStatistics,
+  getLaboratoryStatisticsById,
+  type LaboratoryStatisticsItem,
 } from '@/services/laboratories.service'
 import { getDieticians } from '@/services/kits.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
+const W = { olive: '#8B9A4B', orange: '#E8913A', amber: '#F5C842', green: '#6ABF69', warmGray: '#8A8578' }
+const tooltipStyle = { borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', fontSize: '12px', padding: '10px 14px', border: '1px solid var(--color-border)', background: 'var(--color-panel)' }
+function formatSecondsToHours(seconds: number | undefined) {
+  if (seconds == null || Number.isNaN(seconds)) return '—'
+  const h = seconds / 3600
+  return `${Math.round(h * 10) / 10} saat`
+}
+function formatRate(rate: number | undefined) {
+  if (rate == null || Number.isNaN(rate)) return '—'
+  return `${Math.round(rate * 100)}%`
+}
 
 const LABS_QUERY_KEY = ['laboratories'] as const
 const LAB_DIETITIANS_KEY = ['laboratory-dietitians'] as const
 const DIETICIANS_KEY = ['dieticians'] as const
 const labDetailQueryKey = (id: string) => ['laboratories', id, 'detail'] as const
+
+type LabWithDietitians = Laboratory & { assignedDietitianDetails: { dieticianId: number; name: string }[] }
 
 export function LaboratoriesPage() {
   const queryClient = useQueryClient()
@@ -46,6 +67,8 @@ export function LaboratoriesPage() {
   const [viewLabId, setViewLabId] = useState<string>('')
   const [selectedLab, setSelectedLab] = useState<Laboratory | null>(null)
   const [selectedDietitianId, setSelectedDietitianId] = useState<string>('')
+  const [statsDays, setStatsDays] = useState('30')
+  const [selectedLabIdForStats, setSelectedLabIdForStats] = useState('all')
 
   const [newLabForm, setNewLabForm] = useState({
     firstName: '',
@@ -89,6 +112,63 @@ export function LaboratoriesPage() {
     enabled: viewLabOpen && !!viewLabId,
     retry: 1,
   })
+
+  const labStatsForModal = useQuery({
+    queryKey: ['laboratories', viewLabId, 'statistics', 'modal'],
+    queryFn: () => getLaboratoryStatisticsById(viewLabId, { days: 30 }),
+    enabled: viewLabOpen && !!viewLabId,
+    retry: 1,
+  })
+
+  const statsDaysLabel = useMemo(() => ({ '7': '7 gün', '30': '30 gün', '90': '90 gün' } as const)[statsDays] ?? `${statsDays} gün`, [statsDays])
+  const {
+    data: labsStats,
+    isLoading: labsStatsLoading,
+    isError: labsStatsError,
+  } = useQuery({
+    queryKey: ['laboratories', 'statistics', { days: Number(statsDays) }],
+    queryFn: () => getLaboratoriesStatistics({ days: Number(statsDays) }),
+    retry: 1,
+  })
+  const {
+    data: labStatsById,
+    isLoading: labStatsByIdLoading,
+    isError: labStatsByIdError,
+  } = useQuery({
+    queryKey: ['laboratories', 'statistics', 'by-id', selectedLabIdForStats, { days: Number(statsDays) }],
+    queryFn: () => getLaboratoryStatisticsById(Number(selectedLabIdForStats), { days: Number(statsDays) }),
+    enabled: selectedLabIdForStats !== 'all',
+    retry: 1,
+  })
+  const labStatsSummary = useMemo(() => {
+    const list = labsStats ?? []
+    return list.reduce(
+      (acc, item) => {
+        const t = item.totals
+        acc.totalKits += Number(t?.totalKits ?? 0)
+        acc.inProgressKits += Number(t?.inProgressKits ?? 0)
+        acc.completedKits += Number(t?.completedKits ?? 0)
+        acc.reportCount += Number(t?.reportCount ?? 0)
+        return acc
+      },
+      { totalKits: 0, inProgressKits: 0, completedKits: 0, reportCount: 0 }
+    )
+  }, [labsStats])
+  const labChartData = useMemo(() => {
+    const list = labsStats ?? []
+    return list.map((item) => {
+      const name = [item.laboratoryUser?.firstName, item.laboratoryUser?.lastName].filter(Boolean).join(' ') || `Lab #${item.laboratoryId}`
+      const totals = item.totals
+      return {
+        name: name.length > 12 ? name.slice(0, 10) + '…' : name,
+        toplam: Number(totals?.totalKits ?? 0),
+      }
+    }).filter((d) => d.toplam > 0).slice(0, 10)
+  }, [labsStats])
+  const selectedFromStatsList: LaboratoryStatisticsItem | undefined = useMemo(() => {
+    if (selectedLabIdForStats === 'all') return undefined
+    return (labsStats ?? []).find((x) => Number(x.laboratoryId) === Number(selectedLabIdForStats))
+  }, [labsStats, selectedLabIdForStats])
 
   const labsWithDietitians = useMemo(() => {
     const assignmentsByLabId = new Map<string, { dieticianId: number; name: string }[]>()
@@ -330,19 +410,19 @@ export function LaboratoriesPage() {
 
   const selectedLabDietitians = useMemo(() => {
     if (!selectedLab) return []
-    const labData = labsWithDietitians.find((l) => l.id === selectedLab.id)
+    const labData = labsWithDietitians.find((l: LabWithDietitians) => l.id === selectedLab.id)
     return labData?.assignedDietitianDetails ?? []
   }, [selectedLab, labsWithDietitians])
 
   const availableDietitians = useMemo(() => {
-    const assignedIds = new Set(selectedLabDietitians.map((d) => d.dieticianId))
-    return dieticians.filter((d) => !assignedIds.has(d.id))
+    const assignedIds = new Set(selectedLabDietitians.map((d: { dieticianId: number; name: string }) => d.dieticianId))
+    return dieticians.filter((d: { id: number }) => !assignedIds.has(d.id))
   }, [dieticians, selectedLabDietitians])
 
   const handleExportCsv = () => {
     const headers = ['Ad', 'Adres', 'Şehir', 'İlçe', 'Telefon', 'E-posta', 'Kargo Firması', 'Atanan Diyetisyenler', 'Oluşturulma Tarihi']
-    const rows = filteredLaboratories.map((lab) => {
-      const assignedNames = lab.assignedDietitianDetails.map((d) => d.name).join('; ')
+    const rows = filteredLaboratories.map((lab: LabWithDietitians) => {
+      const assignedNames = lab.assignedDietitianDetails.map((d: { dieticianId: number; name: string }) => d.name).join('; ')
       return [
         lab.name,
         lab.address,
@@ -355,7 +435,7 @@ export function LaboratoriesPage() {
         formatDate(lab.createdAt),
       ]
     })
-    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n')
+    const csv = [headers, ...rows].map((r: string[]) => r.map((v: string) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -370,59 +450,268 @@ export function LaboratoriesPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
-        <div className="panel">
-          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
-            <div>
-              <h3 className="text-[15px] font-semibold text-surface-900">Laboratuvarlar</h3>
-              <p className="text-[12px] mt-0.5 text-surface-500">
-                {isLoading ? 'Yükleniyor...' : `Kayıtlı laboratuvarlar (${filteredLaboratories.length} adet)`}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
-                <input
-                  type="text"
-                  placeholder="Laboratuvar ara..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
-                />
-              </div>
-              <Button variant="outline" size="sm" onClick={handleExportCsv}>
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button variant="primary" size="sm" onClick={() => setNewLabOpen(true)}>
-                <Plus className="h-4 w-4" />
-                Yeni Laboratuvar
-              </Button>
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
-            </div>
-          ) : labsError ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <p className="text-sm text-surface-700">Laboratuvarlar yüklenirken sunucu hatası oluştu (500).</p>
-              <p className="text-xs text-surface-500">Backend servisi kontrol edin. Veritabanı bağlantısı veya tablo şeması sorunu olabilir.</p>
-              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: LABS_QUERY_KEY })}>
-                Tekrar Dene
-              </Button>
-            </div>
-          ) : (
-            <LaboratoryTable
-              laboratories={filteredLaboratories}
-              onView={openViewLab}
-              onEdit={openEditLab}
-              onDelete={openDeleteLab}
-              onAssignDietitian={openAssignDietitian}
-            />
-          )}
+      <Tabs defaultValue="list" className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <TabsList className="bg-surface-100 p-1 rounded-xl">
+            <TabsTrigger value="list" className="rounded-lg data-[state=active]:bg-panel data-[state=active]:shadow-sm">Liste</TabsTrigger>
+            <TabsTrigger value="stats" className="rounded-lg data-[state=active]:bg-panel data-[state=active]:shadow-sm">İstatistikler</TabsTrigger>
+          </TabsList>
         </div>
-      </motion.div>
+
+        <TabsContent value="list" className="mt-0">
+          <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
+            <div className="panel">
+              <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
+                <div>
+                  <h3 className="text-[15px] font-semibold text-surface-900">Laboratuvarlar</h3>
+                  <p className="text-[12px] mt-0.5 text-surface-500">
+                    {isLoading ? 'Yükleniyor...' : `Kayıtlı laboratuvarlar (${filteredLaboratories.length} adet)`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
+                    <input
+                      type="text"
+                      placeholder="Laboratuvar ara..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
+                    />
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleExportCsv}>
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={() => setNewLabOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                    Yeni Laboratuvar
+                  </Button>
+                </div>
+              </div>
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
+                </div>
+              ) : labsError ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <p className="text-sm text-surface-700">Laboratuvarlar yüklenirken sunucu hatası oluştu (500).</p>
+                  <p className="text-xs text-surface-500">Backend servisi kontrol edin. Veritabanı bağlantısı veya tablo şeması sorunu olabilir.</p>
+                  <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: LABS_QUERY_KEY })}>
+                    Tekrar Dene
+                  </Button>
+                </div>
+              ) : (
+                <LaboratoryTable
+                  laboratories={filteredLaboratories}
+                  onView={openViewLab}
+                  onEdit={openEditLab}
+                  onDelete={openDeleteLab}
+                  onAssignDietitian={openAssignDietitian}
+                />
+              )}
+            </div>
+          </motion.div>
+        </TabsContent>
+
+        <TabsContent value="stats" className="mt-0">
+          <motion.div {...fadeUp} className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="panel p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="text-card-title">Laboratuvarlar (Son {statsDaysLabel})</h3>
+                  <p className="text-[12px] mt-0.5 text-surface-500">Kit sayısına göre özet</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={statsDays} onValueChange={setStatsDays}>
+                    <SelectTrigger className="w-[120px] h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">7 gün</SelectItem>
+                      <SelectItem value="30">30 gün</SelectItem>
+                      <SelectItem value="90">90 gün</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {labsStatsLoading && <Loader2 className="h-4 w-4 animate-spin text-primary-500" />}
+                </div>
+              </div>
+              {labsStatsError ? (
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 text-center">
+                  <p className="text-[12px] font-semibold text-surface-800">İstatistikler yüklenemedi</p>
+                </div>
+              ) : (labsStats?.length ?? 0) === 0 ? (
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-6 flex flex-col items-center justify-center">
+                  <FlaskConical className="h-10 w-10 text-surface-400" />
+                  <p className="text-[12px] font-semibold text-surface-700 mt-2">Veri yok</p>
+                </div>
+              ) : (
+                <>
+                  {labChartData.length > 0 && (
+                    <div className="h-[200px] mb-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={labChartData} barSize={24} barGap={6} layout="vertical" margin={{ left: 8, right: 16 }}>
+                          <defs>
+                            <linearGradient id="barLabPage" x1="0" y1="0" x2="1" y2="0">
+                              <stop offset="0%" stopColor={W.olive} stopOpacity={0.9} />
+                              <stop offset="100%" stopColor="#A8B86A" stopOpacity={0.75} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-200)" horizontal={false} />
+                          <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-surface-500)' }} />
+                          <YAxis type="category" dataKey="name" width={68} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--color-surface-600)' }} />
+                          <ReTooltip contentStyle={tooltipStyle} formatter={(v: number | undefined) => [v?.toLocaleString('tr-TR') ?? '0', 'Kit']} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
+                          <Bar dataKey="toplam" fill="url(#barLabPage)" radius={[0, 6, 6, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  <div className="overflow-x-auto rounded-xl border border-surface-200">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-surface-100 border-b border-surface-200">
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-3 py-2 text-surface-500">Laboratuvar</th>
+                          <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2 text-surface-500">Toplam</th>
+                          <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2 text-surface-500">Tamam</th>
+                          <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2 text-surface-500">Oran</th>
+                          <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-3 py-2 text-surface-500">Ort. Süre</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(labsStats ?? []).map((item) => {
+                          const name = [item.laboratoryUser?.firstName, item.laboratoryUser?.lastName].filter(Boolean).join(' ') || `#${item.laboratoryId}`
+                          const t = item.totals
+                          return (
+                            <tr key={item.laboratoryId} className="border-b border-surface-200 hover:bg-surface-50">
+                              <td className="px-3 py-2"><p className="text-[12px] font-semibold text-surface-800 truncate max-w-[120px]">{name}</p></td>
+                              <td className="px-3 py-2 text-right text-[12px] text-surface-700">{Number(t?.totalKits ?? 0).toLocaleString('tr-TR')}</td>
+                              <td className="px-3 py-2 text-right text-[12px] text-surface-700">{Number(t?.completedKits ?? 0).toLocaleString('tr-TR')}</td>
+                              <td className="px-3 py-2 text-right text-[12px] text-surface-700">{formatRate(item.interest?.completionRate)}</td>
+                              <td className="px-3 py-2 text-right text-[12px] text-surface-700">{formatSecondsToHours(item.interest?.avgCompletionSeconds)}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="panel p-5">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-card-title">Seçili Laboratuvar</h3>
+                  <p className="text-[12px] mt-0.5 text-surface-500">Son {statsDaysLabel} detayı</p>
+                </div>
+                <Select value={selectedLabIdForStats} onValueChange={setSelectedLabIdForStats}>
+                  <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Laboratuvar seç" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tümü (özet)</SelectItem>
+                    {filteredLaboratories.map((l: LabWithDietitians) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedLabIdForStats === 'all' ? (
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 space-y-3">
+                  <p className="text-[12px] font-semibold text-surface-800">Genel özet</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-surface-200 p-2.5">
+                      <p className="text-[10px] uppercase text-surface-500">Toplam Kit</p>
+                      <p className="text-lg font-bold text-surface-900">{labStatsSummary.totalKits.toLocaleString('tr-TR')}</p>
+                    </div>
+                    <div className="rounded-lg border border-surface-200 p-2.5">
+                      <p className="text-[10px] uppercase text-surface-500">Tamamlanan</p>
+                      <p className="text-lg font-bold text-surface-900">{labStatsSummary.completedKits.toLocaleString('tr-TR')}</p>
+                    </div>
+                    <div className="rounded-lg border border-surface-200 p-2.5">
+                      <p className="text-[10px] uppercase text-surface-500">Rapor</p>
+                      <p className="text-lg font-bold text-surface-900">{labStatsSummary.reportCount.toLocaleString('tr-TR')}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : labStatsByIdLoading ? (
+                <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary-500" /></div>
+              ) : labStatsByIdError || !labStatsById ? (
+                <div className="rounded-xl border border-surface-200 bg-surface-50 p-4"><p className="text-[12px] text-surface-600">Yüklenemedi veya veri yok.</p></div>
+              ) : (
+                (() => {
+                  const name = [labStatsById.laboratoryUser?.firstName, labStatsById.laboratoryUser?.lastName].filter(Boolean).join(' ') || selectedFromStatsList?.laboratoryUser?.firstName || `#${selectedLabIdForStats}`
+                  const totals = labStatsById.totals
+                  const interest = labStatsById.interest
+                  const pending = Number(totals?.pendingKits ?? 0)
+                  const inProgress = Number(totals?.inProgressKits ?? 0)
+                  const completed = Number(totals?.completedKits ?? 0)
+                  const cancelled = Number(totals?.cancelledKits ?? 0)
+                  const totalN = pending + inProgress + completed + cancelled || 1
+                  const statusItems = [
+                    { label: 'Bekleyen', count: pending, color: W.amber },
+                    { label: 'Devam Eden', count: inProgress, color: W.orange },
+                    { label: 'Tamamlanan', count: completed, color: W.green },
+                    { label: 'İptal', count: cancelled, color: W.warmGray },
+                  ]
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-50 border border-surface-200">
+                        <Avatar name={name} size="md" className="shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-semibold text-surface-900 truncate">{name}</p>
+                          <p className="text-[11px] text-surface-500 truncate">{labStatsById.laboratoryUser?.email ?? '—'}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: 'Toplam Kit', value: Number(totals?.totalKits ?? 0).toLocaleString('tr-TR'), icon: Package },
+                          { label: 'Rapor', value: Number(totals?.reportCount ?? 0).toLocaleString('tr-TR'), icon: FileText },
+                          { label: 'Tamamlama', value: formatRate(interest?.completionRate), icon: CheckCircle },
+                          { label: 'Ort. Süre', value: formatSecondsToHours(interest?.avgCompletionSeconds), icon: Clock },
+                        ].map((m) => {
+                          const Icon = m.icon
+                          return (
+                          <div key={m.label} className="rounded-xl border border-surface-200 bg-surface-50 p-2.5 flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-primary-100 flex items-center justify-center shrink-0">
+                              <Icon className="h-3.5 w-3.5 text-primary-600" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[9px] uppercase tracking-wider text-surface-500">{m.label}</p>
+                              <p className="text-[13px] font-bold text-surface-900 truncate">{m.value}</p>
+                            </div>
+                          </div>
+                          )
+                        })}
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-surface-500 mb-2">Kit durumları</p>
+                        <div className="space-y-2">
+                          {statusItems.map((cat) => {
+                            const pct = totalN > 0 ? Math.round((cat.count / totalN) * 100) : 0
+                            return (
+                              <div key={cat.label}>
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-sm shrink-0" style={{ background: cat.color }} />
+                                    <span className="text-[11px] font-medium text-surface-700">{cat.label}</span>
+                                  </div>
+                                  <span className="text-[11px] font-bold text-surface-900">{cat.count}</span>
+                                </div>
+                                <div className="w-full h-1.5 rounded-full overflow-hidden bg-surface-100">
+                                  <motion.div className="h-full rounded-full" style={{ background: cat.color }} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} />
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-50 border border-surface-200">
+                        <span className="text-[11px] font-medium text-surface-600">Son rapor</span>
+                        <span className="text-[11px] font-semibold text-surface-800">{formatDateTime(totals?.lastReportAt)}</span>
+                      </div>
+                    </div>
+                  )
+                })()
+              )}
+            </div>
+          </motion.div>
+        </TabsContent>
+      </Tabs>
 
       {/* ── View Laboratory Modal ── */}
       <Modal
@@ -454,6 +743,12 @@ export function LaboratoriesPage() {
                 </Button>
               </div>
             ) : labDetailQuery.data ? (
+              <Tabs defaultValue="bilgi" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="bilgi">Bilgi</TabsTrigger>
+                  <TabsTrigger value="stats">İstatistikler</TabsTrigger>
+                </TabsList>
+                <TabsContent value="bilgi" className="mt-0">
               <div className="space-y-5">
                 {/* Hero kart: Avatar + isim + il/ilçe */}
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-50 dark:bg-surface-200/40 border border-surface-200">
@@ -558,6 +853,82 @@ export function LaboratoriesPage() {
                   </p>
                 </div>
               </div>
+                </TabsContent>
+                <TabsContent value="stats" className="mt-0">
+                  {labStatsForModal.isLoading ? (
+                    <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary-500" /></div>
+                  ) : labStatsForModal.isError || !labStatsForModal.data ? (
+                    <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 text-center">
+                      <p className="text-[12px] text-surface-600">Son 30 güne ait istatistik yüklenemedi.</p>
+                    </div>
+                  ) : (
+                    (() => {
+                      const s = labStatsForModal.data
+                      const totals = s.totals
+                      const interest = s.interest
+                      const pending = Number(totals?.pendingKits ?? 0)
+                      const inProgress = Number(totals?.inProgressKits ?? 0)
+                      const completed = Number(totals?.completedKits ?? 0)
+                      const cancelled = Number(totals?.cancelledKits ?? 0)
+                      const totalN = pending + inProgress + completed + cancelled || 1
+                      const statusItems = [
+                        { label: 'Bekleyen', count: pending, color: W.amber },
+                        { label: 'Devam Eden', count: inProgress, color: W.orange },
+                        { label: 'Tamamlanan', count: completed, color: W.green },
+                        { label: 'İptal', count: cancelled, color: W.warmGray },
+                      ]
+                      return (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-xl border border-surface-200 bg-surface-50 p-2.5">
+                              <p className="text-[9px] uppercase text-surface-500">Toplam Kit</p>
+                              <p className="text-lg font-bold text-surface-900">{Number(totals?.totalKits ?? 0).toLocaleString('tr-TR')}</p>
+                            </div>
+                            <div className="rounded-xl border border-surface-200 bg-surface-50 p-2.5">
+                              <p className="text-[9px] uppercase text-surface-500">Rapor</p>
+                              <p className="text-lg font-bold text-surface-900">{Number(totals?.reportCount ?? 0).toLocaleString('tr-TR')}</p>
+                            </div>
+                            <div className="rounded-xl border border-surface-200 bg-surface-50 p-2.5">
+                              <p className="text-[9px] uppercase text-surface-500">Tamamlama oranı</p>
+                              <p className="text-lg font-bold text-surface-900">{formatRate(interest?.completionRate)}</p>
+                            </div>
+                            <div className="rounded-xl border border-surface-200 bg-surface-50 p-2.5">
+                              <p className="text-[9px] uppercase text-surface-500">Ort. süre</p>
+                              <p className="text-lg font-bold text-surface-900">{formatSecondsToHours(interest?.avgCompletionSeconds)}</p>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase text-surface-500 mb-2">Kit durumları (son 30 gün)</p>
+                            <div className="space-y-2">
+                              {statusItems.map((cat) => {
+                                const pct = totalN > 0 ? Math.round((cat.count / totalN) * 100) : 0
+                                return (
+                                  <div key={cat.label}>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                      <div className="flex items-center gap-1.5">
+                                        <div className="w-2 h-2 rounded-sm shrink-0" style={{ background: cat.color }} />
+                                        <span className="text-[11px] font-medium text-surface-700">{cat.label}</span>
+                                      </div>
+                                      <span className="text-[11px] font-bold text-surface-900">{cat.count}</span>
+                                    </div>
+                                    <div className="w-full h-1.5 rounded-full overflow-hidden bg-surface-100">
+                                      <motion.div className="h-full rounded-full" style={{ background: cat.color }} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} />
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-50 border border-surface-200">
+                            <span className="text-[11px] font-medium text-surface-600">Son rapor</span>
+                            <span className="text-[11px] font-semibold text-surface-800">{formatDateTime(totals?.lastReportAt)}</span>
+                          </div>
+                        </div>
+                      )
+                    })()
+                  )}
+                </TabsContent>
+              </Tabs>
             ) : (
               <p className="text-sm text-surface-500 py-4">Detay bulunamadı.</p>
             )}
@@ -570,7 +941,7 @@ export function LaboratoriesPage() {
               <Button
                 variant="primary"
                 onClick={() => {
-                  const lab = labsWithDietitians.find((l) => l.id === viewLabId)
+                  const lab = labsWithDietitians.find((l: LabWithDietitians) => l.id === viewLabId)
                   if (lab) {
                     setViewLabOpen(false)
                     setViewLabId('')
@@ -792,7 +1163,7 @@ export function LaboratoriesPage() {
               <div>
                 <p className="form-section-title">Atanan Diyetisyenler</p>
                 <div className="space-y-2">
-                  {selectedLabDietitians.map((d) => (
+                  {selectedLabDietitians.map((d: { dieticianId: number; name: string }) => (
                     <div
                       key={d.dieticianId}
                       className="flex items-center gap-2 p-2.5 rounded-xl bg-surface-50 border border-surface-200"
@@ -841,8 +1212,6 @@ export function LaboratoriesPage() {
     </div>
   )
 }
-
-type LabWithDietitians = Laboratory & { assignedDietitianDetails: { dieticianId: number; name: string }[] }
 
 function LaboratoryTable({
   laboratories,

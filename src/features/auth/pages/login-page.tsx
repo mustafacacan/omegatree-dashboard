@@ -5,13 +5,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button, Input } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth.store'
-import { UserRole, UserStatus } from '@/utils/constants'
+import { UserStatus } from '@/utils/constants'
 import { ROLE_HOME, ROUTES } from '@/utils/routes'
-import { TreePine, Mail, Lock, Eye, EyeOff, Shield, FlaskConical, TestTubes, Stethoscope, User } from 'lucide-react'
+import { TreePine, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { useUsersStore } from '@/stores/users.store'
-import type { User as AppUser } from '@/types/user.types'
 import { login as apiLogin } from '@/services/auth.service'
 
 const loginSchema = z.object({
@@ -21,25 +19,11 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>
 
-const demoAccounts = [
-  { email: 'admin@omegatree.com', password: 'demo123', role: UserRole.ADMIN, label: 'Admin', icon: Shield, color: 'bg-surface-800 text-white hover:bg-surface-700' },
-  { email: 'diyetisyen@omegatree.com', password: 'demo123', role: UserRole.DIETITIAN, label: 'Diyetisyen', icon: Stethoscope, color: 'bg-primary-500 text-white hover:bg-primary-600' },
-  { email: 'lab@omegatree.com', password: 'demo123', role: UserRole.LAB, label: 'Laboratuvar', icon: TestTubes, color: 'bg-amber-600 text-white hover:bg-amber-700' },
-  { email: 'uzman@omegatree.com', password: 'demo123', role: UserRole.SPECIALIST, label: 'Uzman', icon: FlaskConical, color: 'bg-orange-500 text-white hover:bg-orange-600' },
-]
-
-const danisanDemo = {
-  email: 'danisan@omegatree.com',
-  password: 'demo123',
-}
-
 export function LoginPage() {
   const navigate = useNavigate()
   const { setAuth } = useAuthStore()
-  const { authenticate } = useUsersStore()
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [loadingRole, setLoadingRole] = useState<string | null>(null)
 
   const {
     register,
@@ -48,31 +32,6 @@ export function LoginPage() {
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   })
-
-  const doLogin = async (user: AppUser) => {
-    setAuth(
-      {
-        ...user,
-        status: UserStatus.ACTIVE,
-      },
-      'demo-token-xyz'
-    )
-    const displayName = `${user.firstName} ${user.lastName}`.trim()
-    toast.success(`Hos geldiniz, ${displayName}!`)
-    navigate(ROLE_HOME[user.role])
-  }
-
-  const handleDemoLogin = async (account: typeof demoAccounts[0]) => {
-    setLoadingRole(account.role)
-    await new Promise((resolve) => setTimeout(resolve, 600))
-    const authResult = authenticate(account.email, account.password)
-    if (authResult.ok) {
-      await doLogin(authResult.user)
-    } else {
-      toast.error('Demo kullanici aktif degil veya bulunamadi')
-    }
-    setLoadingRole(null)
-  }
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true)
@@ -120,70 +79,6 @@ export function LoginPage() {
         <p className="text-surface-500 mt-1.5 text-[15px]">
           Hesabiniza erisim icin e-posta ve sifrenizi girin
         </p>
-      </div>
-
-      {/* Danışan Girişi */}
-      <div className="mb-8 p-4 rounded-xl border border-primary-200 bg-primary-50/50">
-        <p className="text-xs font-medium text-primary-700 uppercase tracking-wider mb-3">Danisan Girisi</p>
-        <p className="text-sm text-surface-600 mb-3">
-          Kit ve raporlariniza erismek icin danisan olarak giris yapin.
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            setLoadingRole(UserRole.DANISAN)
-            setTimeout(() => {
-              const authResult = authenticate(danisanDemo.email, danisanDemo.password)
-              if (authResult.ok) {
-                doLogin(authResult.user)
-              } else {
-                toast.error('Danisan demo hesabi bulunamadi')
-              }
-              setLoadingRole(null)
-            }, 500)
-          }}
-          disabled={loadingRole !== null}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-primary-500 text-white hover:bg-primary-600 transition-all duration-200 disabled:opacity-60 w-full sm:w-auto"
-        >
-          {loadingRole === UserRole.DANISAN ? (
-            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <User className="h-4 w-4" />
-          )}
-          Danisan olarak giris yap
-        </button>
-      </div>
-
-      {/* Demo quick login */}
-      <div className="mb-8">
-        <p className="text-xs font-medium text-surface-400 uppercase tracking-wider mb-3">Hizli Demo Giris (Personel)</p>
-        <div className="grid grid-cols-2 gap-2">
-          {demoAccounts.map((account) => (
-            <button
-              key={account.role}
-              onClick={() => handleDemoLogin(account)}
-              disabled={loadingRole !== null}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 disabled:opacity-60 ${account.color}`}
-            >
-              {loadingRole === account.role ? (
-                <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <account.icon className="h-4 w-4" />
-              )}
-              {account.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="relative mb-8">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-surface-200" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="px-3 text-xs text-surface-400" style={{ background: '#F9F7F3' }}>veya e-posta ile</span>
-        </div>
       </div>
 
       {/* Login form */}

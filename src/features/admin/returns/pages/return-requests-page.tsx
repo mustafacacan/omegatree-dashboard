@@ -1,14 +1,17 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Card, CardHeader, CardTitle, CardContent,
-  Button, Input, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
+  Button, Input,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+  Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
-  Badge,
+  Tabs, TabsList, TabsTrigger, TabsContent,
 } from '@/components/ui'
+import { TablePagination } from '@/components/shared/table-pagination'
 import { useWorkflowStore } from '@/stores/workflow.store'
-import { Search, RotateCcw, CheckCircle, XCircle, History, Package, Eye } from 'lucide-react'
+import { Search, RotateCcw, CheckCircle, XCircle, History, Package, Eye, MoreHorizontal, Loader2 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { formatDateTime } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { toast } from 'sonner'
@@ -391,66 +394,78 @@ export function ReturnRequestsPage() {
     })
   }
 
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const pendingPaginated = useMemo(
+    () => returnRequests.slice((page - 1) * pageSize, page * pageSize),
+    [returnRequests, page, pageSize]
+  )
+  const historyPaginated = useMemo(
+    () => filteredHistory.slice((page - 1) * pageSize, page * pageSize),
+    [filteredHistory, page, pageSize]
+  )
+
+  useEffect(() => {
+    setPage(1)
+  }, [activeTab, query])
+
+  useEffect(() => {
+    const total = activeTab === 'pending' ? returnRequests.length : filteredHistory.length
+    const totalPages = Math.max(1, Math.ceil(total / pageSize))
+    if (page > totalPages) setPage(totalPages)
+  }, [activeTab, returnRequests.length, filteredHistory.length, page, pageSize])
+
+  const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle>Iade Talepleri</CardTitle>
-            <div className="flex items-center gap-3">
-              <div className="flex rounded-lg border border-surface-200 p-0.5 bg-surface-50">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('pending')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                    activeTab === 'pending'
-                      ? 'bg-white text-surface-900 shadow-sm'
-                      : 'text-surface-600 hover:text-surface-900'
-                  }`}
-                >
-                  Bekleyen ({returnRequests.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('history')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${
-                    activeTab === 'history'
-                      ? 'bg-white text-surface-900 shadow-sm'
-                      : 'text-surface-600 hover:text-surface-900'
-                  }`}
-                >
-                  <History className="h-4 w-4" />
-                  Iade Gecmisi ({returnHistoryFromApi.length})
-                </button>
-                {damagedAwaitingCompensation.length > 0 && (
-                  <span className="text-xs text-amber-600 font-medium flex items-center gap-1">
-                    <Package className="h-3.5 w-3.5" />
-                    Telafi atanacak: {damagedAwaitingCompensation.length}
-                  </span>
-                )}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'history')} className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <TabsList className="bg-surface-100 p-1 rounded-xl">
+            <TabsTrigger value="pending" className="rounded-lg data-[state=active]:bg-panel data-[state=active]:shadow-sm">
+              Bekleyen ({returnRequests.length})
+            </TabsTrigger>
+            <TabsTrigger value="history" className="rounded-lg data-[state=active]:bg-panel data-[state=active]:shadow-sm">
+              İade Geçmişi ({returnHistoryFromApi.length})
+            </TabsTrigger>
+          </TabsList>
+          {damagedAwaitingCompensation.length > 0 && (
+            <span className="text-xs text-amber-600 font-medium flex items-center gap-1">
+              <Package className="h-3.5 w-3.5" />
+              Telafi atanacak: {damagedAwaitingCompensation.length}
+            </span>
+          )}
+        </div>
+
+        <TabsContent value="pending" className="mt-0">
+          <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
+            <div className="panel">
+              <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
+                <div>
+                  <h3 className="text-[15px] font-semibold text-surface-900">İade Talepleri</h3>
+                  <p className="text-[12px] mt-0.5 text-surface-500">
+                    {damagedLoading ? 'Yükleniyor...' : `Bekleyen talepler (${returnRequests.length} adet)`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
+                    <input
+                      type="text"
+                      placeholder="Barkod, diyetisyen veya neden ile ara..."
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 sm:w-64 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
+                    />
+                  </div>
+                </div>
               </div>
-              <Input
-                placeholder={
-                  activeTab === 'pending'
-                    ? 'Barkod, diyetisyen veya neden ile ara...'
-                    : 'Barkod, kullanici veya detay ile ara...'
-                }
-                leftIcon={<Search className="h-4 w-4" />}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-64"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {activeTab === 'pending' && (
-            <div className="p-5 space-y-3">
+
               {damagedAwaitingCompensation.length > 0 && (
-                <div className="mb-4 rounded-xl p-4 border border-amber-200 bg-amber-50/50">
-                  <p className="text-sm font-semibold text-amber-800 mb-2">Telafi kiti atanacak (hasar onaylandi)</p>
+                <div className="mx-5 mt-4 rounded-xl p-4 border border-amber-200 bg-amber-50/50">
+                  <p className="text-sm font-semibold text-amber-800 mb-2">Telafi kiti atanacak (hasar onaylandı)</p>
                   <div className="space-y-2">
                     {damagedAwaitingCompensation.map((d) => (
                       <div key={d.id ?? kitBarcode(d)} className="flex items-center justify-between gap-3 py-2 border-b border-amber-100 last:border-0">
@@ -466,175 +481,221 @@ export function ReturnRequestsPage() {
                 </div>
               )}
 
-              {damagedLoading && (
-                <div className="rounded-xl p-4 bg-panel border border-surface-200">
-                  <p className="text-sm text-surface-500">Yukleniyor...</p>
+              {damagedLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
                 </div>
+              ) : returnRequests.length === 0 ? (
+                <div className="px-5 py-12 text-center text-[12px] text-surface-500">
+                  Bekleyen iade talebi bulunmuyor.
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Diyetisyen</th>
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Neden</th>
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Talep Tarihi</th>
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20 text-surface-500" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingPaginated.map((d) => (
+                          <tr
+                            key={d.id ?? kitBarcode(d)}
+                            className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40 cursor-pointer"
+                            onClick={() => setSelectedReturnRequest(d)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedReturnRequest(d) } }}
+                            role="button"
+                            tabIndex={0}
+                          >
+                            <td className="px-5 py-3.5">
+                              <span className="text-[12px] font-mono font-medium text-surface-700">{kitBarcode(d)}</span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="text-[12px] text-surface-700">{dietitianName(d)}</span>
+                            </td>
+                            <td className="px-5 py-3.5 max-w-[200px]">
+                              <span className="text-[12px] text-surface-700 truncate block" title={d.reason ?? ''}>{d.reason || '—'}</span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="text-[12px] text-surface-500">{d.createdAt ? formatDateTime(d.createdAt) : '—'}</span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-100 text-amber-700">
+                                {damagedStatusValue(d)}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon-sm">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => setSelectedReturnRequest(d)}>
+                                    <Eye className="h-4 w-4 mr-2" /> Görüntüle
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      const barcode = kitBarcode(d)
+                                      const result = adminRejectReturn(barcode, 'Admin')
+                                      if (result.ok) toast.success(result.message)
+                                      else toast.error(result.message)
+                                    }}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-2" /> Reddet
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setCompensationForDamaged(d)
+                                      setCompensationSelectedKitId('')
+                                      handleApprove(d)
+                                    }}
+                                    disabled={approveMutation.isPending}
+                                  >
+                                    <RotateCcw className="h-4 w-4 mr-2" /> İadeyi Kabul Et
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <TablePagination
+                    totalItems={returnRequests.length}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(next) => { setPageSize(next); setPage(1) }}
+                  />
+                </>
               )}
+            </div>
+          </motion.div>
+        </TabsContent>
 
-              {!damagedLoading && returnRequests.length === 0 && (
-                <div
-                  className="rounded-xl p-4"
-                  className="rounded-xl p-4 bg-panel border border-surface-200"
-                >
-                  <p className="text-sm font-medium text-surface-700">
-                    Bekleyen iade talebi bulunmuyor.
+        <TabsContent value="history" className="mt-0">
+          <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
+            <div className="panel">
+              <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
+                <div>
+                  <h3 className="text-[15px] font-semibold text-surface-900">İade Geçmişi</h3>
+                  <p className="text-[12px] mt-0.5 text-surface-500">
+                    {damagedLoading ? 'Yükleniyor...' : `Onaylanan talepler (${filteredHistory.length} adet)`}
                   </p>
                 </div>
-              )}
-
-              {returnRequests.map((d) => (
-                <div
-                  key={d.id ?? kitBarcode(d)}
-                  className="rounded-xl p-4 bg-panel border border-surface-200 flex flex-col xl:flex-row gap-4 xl:items-center xl:justify-between cursor-pointer"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    setSelectedReturnRequest(d)
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      setSelectedReturnRequest(d)
-                    }
-                  }}
-                >
-                  <div className="space-y-1.5">
-                    <p className="text-sm font-semibold text-surface-900">
-                      {kitBarcode(d)} - {dietitianName(d)}
-                    </p>
-                    <p className="text-xs text-surface-500">
-                      Durum: <span className="font-semibold text-surface-700">{damagedStatusValue(d)}</span>
-                    </p>
-                    <p className="text-sm text-surface-700">
-                      <span className="font-medium">Neden:</span>{' '}
-                      {d.reason || '-'}
-                    </p>
-                    <p className="text-xs text-surface-500">
-                      Talep Tarihi:{' '}
-                      {d.createdAt ? formatDateTime(d.createdAt) : '-'}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSelectedReturnRequest(d)
-                      }}
-                      disabled={d.id == null}
-                      title={d.id == null ? 'Detay için id bulunamadı' : 'Detayı görüntüle'}
-                    >
-                      <Eye className="h-4 w-4" />
-                      Gör
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        const barcode = kitBarcode(d)
-                        const result = adminRejectReturn(barcode, 'Admin')
-                        if (result.ok) toast.success(result.message)
-                        else toast.error(result.message)
-                      }}
-                    >
-                      <XCircle className="h-4 w-4" />
-                      Reddet
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={approveMutation.isPending}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setCompensationForDamaged(d)
-                        setCompensationSelectedKitId('')
-                        handleApprove(d)
-                      }}
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                      Iadeyi Kabul Et
-                    </Button>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
+                    <input
+                      type="text"
+                      placeholder="Barkod, diyetisyen veya detay ile ara..."
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 sm:w-64 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
+                    />
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {damagedLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
+                </div>
+              ) : filteredHistory.length === 0 ? (
+                <div className="px-5 py-12 text-center text-[12px] text-surface-500">
+                  İade geçmişi kaydı bulunmuyor. Onaylanan talepler burada listelenir.
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Diyetisyen</th>
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Neden</th>
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Talep Tarihi</th>
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum / Telafi</th>
+                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20 text-surface-500" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {historyPaginated.map((d) => (
+                          <tr
+                            key={d.id ?? kitBarcode(d)}
+                            className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40 cursor-pointer"
+                            onClick={() => setSelectedReturnRequest(d)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedReturnRequest(d) } }}
+                            role="button"
+                            tabIndex={0}
+                          >
+                            <td className="px-5 py-3.5">
+                              <span className="text-[12px] font-mono font-medium text-surface-700">{kitBarcode(d)}</span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="text-[12px] text-surface-700">{dietitianName(d)}</span>
+                            </td>
+                            <td className="px-5 py-3.5 max-w-[200px]">
+                              <span className="text-[12px] text-surface-700 truncate block" title={d.reason ?? ''}>{d.reason || '—'}</span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="text-[12px] text-surface-500">{d.createdAt ? formatDateTime(d.createdAt) : '—'}</span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <div className="flex flex-wrap gap-1.5">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-primary-100 text-primary-700">
+                                  {damagedStatusValue(d)}
+                                </span>
+                                {assignedKitIdValue(d) && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-200 text-surface-700">
+                                    Telafi: {assignedKitIdValue(d)}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon-sm">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => setSelectedReturnRequest(d)}>
+                                    <Eye className="h-4 w-4 mr-2" /> Görüntüle
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <TablePagination
+                    totalItems={filteredHistory.length}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(next) => { setPageSize(next); setPage(1) }}
+                  />
+                </>
+              )}
             </div>
-          )}
-
-          {activeTab === 'history' && (
-            <div className="p-5 space-y-3">
-              {damagedLoading && (
-                <div
-                  className="rounded-xl p-4"
-                  className="rounded-xl p-4 bg-panel border border-surface-200"
-                >
-                  <p className="text-sm text-surface-500">Yukleniyor...</p>
-                </div>
-              )}
-
-              {!damagedLoading && filteredHistory.length === 0 && (
-                <div
-                  className="rounded-xl p-4"
-                  className="rounded-xl p-4 bg-panel border border-surface-200"
-                >
-                  <p className="text-sm font-medium text-surface-700">
-                    Iade gecmisi kaydi bulunmuyor. Onaylanan talepler burada listelenir.
-                  </p>
-                </div>
-              )}
-
-              {!damagedLoading && filteredHistory.map((d) => (
-                <div
-                  key={d.id ?? kitBarcode(d)}
-                  className="rounded-xl p-4 flex flex-wrap items-center justify-between gap-3"
-                  className="rounded-xl p-4 bg-panel border border-surface-200"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-surface-900">
-                        {kitBarcode(d)} · {dietitianName(d)}
-                        <span className="ml-2 font-normal text-surface-500">{damagedStatusValue(d)}</span>
-                      </p>
-                      <p className="text-sm mt-0.5 text-surface-700">
-                        <span className="font-medium">Neden:</span> {d.reason || '-'}
-                      </p>
-                      <p className="text-xs mt-1 text-surface-500">
-                        Talep: {d.createdAt ? formatDateTime(d.createdAt) : '-'}
-                      </p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <Badge variant="success" dot>{damagedStatusValue(d)}</Badge>
-                        {d.assignedKitId && (
-                          <Badge variant="primary" dot>
-                            Telafi atandi: {assignedKitIdValue(d) ?? '—'}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedReturnRequest(d)
-                      }}
-                      disabled={d.id == null}
-                      title={d.id == null ? 'Detay için id bulunamadı' : 'Detayı görüntüle'}
-                    >
-                      <Eye className="h-4 w-4" />
-                      Gör
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </motion.div>
+        </TabsContent>
+      </Tabs>
 
       {/* Telafi kiti ata modal */}
       <Modal open={!!compensationForDamaged} onOpenChange={(open) => !open && (setCompensationForDamaged(null), setCompensationSelectedKitId(''))}>
@@ -725,14 +786,11 @@ export function ReturnRequestsPage() {
             {modalRequest && (
               <>
                 {(selectedReturnRequestDetailsLoading || selectedReturnRequestDetailsError) && (
-                  <div
-                    className="rounded-xl p-4"
-                    className="rounded-xl p-4 bg-panel border border-surface-200"
-                  >
+                  <div className="rounded-xl p-4 bg-panel border border-surface-200">
                     {selectedReturnRequestDetailsLoading ? (
-                      <p className="text-sm text-surface-500">Detay yukleniyor...</p>
+                      <p className="text-sm text-surface-500">Detay yükleniyor...</p>
                     ) : (
-                      <p className="text-sm text-surface-500">Detay alinamadi. Liste verisi gosteriliyor.</p>
+                      <p className="text-sm text-surface-500">Detay alınamadı. Liste verisi gösteriliyor.</p>
                     )}
                   </div>
                 )}

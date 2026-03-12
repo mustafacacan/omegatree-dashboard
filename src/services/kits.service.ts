@@ -23,16 +23,43 @@ function mapApiKit(apiKit: KitResponse): Kit {
   }
 }
 
-/** GET /kits — cevap data veya data.items olabilir */
-export async function getKits(params?: { page?: number; limit?: number }): Promise<Kit[]> {
+/** API sayfalı cevap: { data: { totalItems, totalPages, currentPage, items } } */
+export interface GetKitsPaginatedResult {
+  items: Kit[]
+  totalItems: number
+}
+
+/** GET /kits — sayfalı: totalItems + items döner */
+export async function getKitsPaginated(params?: { page?: number; limit?: number }): Promise<GetKitsPaginatedResult> {
   const { data } = await api.get<{
-    data?: KitResponse[] | { items?: KitResponse[] }
+    data?: {
+      totalItems?: number
+      totalPages?: number
+      currentPage?: number
+      items?: KitResponse[]
+    } | KitResponse[] | { items?: KitResponse[] }
   }>('/kits', {
-    params: params ? { page: params.page ?? 1, limit: params.limit ?? 100 } : undefined,
+    params: params ? { page: params.page ?? 1, limit: params.limit ?? 10 } : undefined,
   })
   const raw = data?.data
-  const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' && 'items' in raw ? (raw as { items?: KitResponse[] }).items : []) ?? []
-  return (list as KitResponse[]).map(mapApiKit)
+  if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'items' in raw) {
+    const payload = raw as { totalItems?: number; items?: KitResponse[] }
+    const list = payload.items ?? []
+    const totalItems = Number(payload.totalItems) ?? list.length
+    return {
+      items: (list as KitResponse[]).map(mapApiKit),
+      totalItems,
+    }
+  }
+  const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' && 'items' in (raw as object) ? (raw as { items?: KitResponse[] }).items : []) ?? []
+  const kits = (list as KitResponse[]).map(mapApiKit)
+  return { items: kits, totalItems: kits.length }
+}
+
+/** GET /kits — tek sayfa liste (geriye uyumluluk) */
+export async function getKits(params?: { page?: number; limit?: number }): Promise<Kit[]> {
+  const res = await getKitsPaginated(params)
+  return res.items
 }
 
 /** GET /kits/{kitId} */

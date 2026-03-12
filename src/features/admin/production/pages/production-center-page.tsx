@@ -15,7 +15,7 @@ import { Factory, Barcode, Package, Plus, Copy, Check, Pencil, Printer, Search, 
 import JsBarcode from 'jsbarcode'
 import { toast } from 'sonner'
 import {
-  getKits,
+  getKitsPaginated,
   createKit,
   updateKit,
   type Kit,
@@ -41,10 +41,12 @@ export function ProductionCenterPage() {
   const [editKitName, setEditKitName] = useState('')
   const [editKitActive, setEditKitActive] = useState(true)
 
-  const { data: apiKits = [], isLoading: kitsLoading } = useQuery({
-    queryKey: KITS_QUERY_KEY,
-    queryFn: () => getKits({ page: 1, limit: 200 }),
+  const { data: kitsResult, isLoading: kitsLoading } = useQuery({
+    queryKey: [...KITS_QUERY_KEY, page, pageSize],
+    queryFn: () => getKitsPaginated({ page, limit: pageSize }),
   })
+  const apiKits = kitsResult?.items ?? []
+  const totalKitsFromApi = kitsResult?.totalItems ?? 0
   const createKitMutation = useMutation({
     mutationFn: (payload: { name: string; isActive: boolean }) => createKit(payload),
     onSuccess: () => {
@@ -91,19 +93,9 @@ export function ProductionCenterPage() {
     return sorted
   }, [apiKits, searchQuery, statusFilter, sortOrder])
 
-  const paginatedKits = useMemo(
-    () => filteredKits.slice((page - 1) * pageSize, page * pageSize),
-    [filteredKits, page, pageSize]
-  )
-
   useEffect(() => {
     setPage(1)
   }, [searchQuery, statusFilter, sortOrder])
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(filteredKits.length / pageSize))
-    if (page > totalPages) setPage(totalPages)
-  }, [filteredKits.length, page, pageSize])
 
   const handleCopyBarcode = async (barcode: string, kitId: number) => {
     if (!barcode) return
@@ -223,7 +215,7 @@ export function ProductionCenterPage() {
           <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
             <div>
               <h3 className="text-[15px] font-semibold text-surface-900">Kitler</h3>
-              <p className="text-[12px] mt-0.5 text-surface-500">Üretim merkezi kit tanımları ({filteredKits.length} kit)</p>
+              <p className="text-[12px] mt-0.5 text-surface-500">Üretim merkezi kit tanımları ({totalKitsFromApi} kit)</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <div className="relative">
@@ -282,14 +274,14 @@ export function ProductionCenterPage() {
                       <p className="text-[12px] text-surface-500">Kit listesi yükleniyor...</p>
                     </td>
                   </tr>
-                ) : paginatedKits.length === 0 ? (
+                ) : filteredKits.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-5 py-12 text-center text-[12px] text-surface-500">
                       {apiKits.length === 0 ? 'Henüz kit yok. Yeni Kit ile ekleyin.' : 'Arama veya filtreye uygun kit bulunamadı.'}
                     </td>
                   </tr>
                 ) : (
-                  paginatedKits.map((k) => (
+                  filteredKits.map((k) => (
                     <tr
                       key={k.id}
                       className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
@@ -352,7 +344,7 @@ export function ProductionCenterPage() {
             </table>
           </div>
           <TablePagination
-            totalItems={filteredKits.length}
+            totalItems={totalKitsFromApi}
             page={page}
             pageSize={pageSize}
             onPageChange={setPage}

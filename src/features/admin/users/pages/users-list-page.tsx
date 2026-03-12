@@ -12,8 +12,8 @@ import { UserRole, UserStatus, USER_ROLE_LABELS } from '@/utils/constants'
 import { formatDate } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import {
-  Search, Plus, MoreHorizontal, UserCheck, UserX, Mail, Shield, Eye,
-  Filter, Download, ChevronLeft, ChevronRight, Loader2,
+  Search, Plus, MoreHorizontal, UserCheck, UserX, Shield, Eye,
+  Filter, Download, ChevronLeft, ChevronRight, Loader2, Trash2,
 } from 'lucide-react'
 import type { User } from '@/types/user.types'
 import { toast } from 'sonner'
@@ -64,6 +64,8 @@ export function UsersListPage() {
     gender: 'male' as 'male' | 'female',
   })
   const [roleToEdit, setRoleToEdit] = useState<UserRole>(UserRole.DIETITIAN)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: USERS_QUERY_KEY,
@@ -90,10 +92,12 @@ export function UsersListPage() {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
       setApprovalOpen(false)
       setSelectedUser(null)
-      toast.success('Kullanıcı başvurusu reddedildi')
+      setDeleteConfirmOpen(false)
+      setUserToDelete(null)
+      toast.success('Kullanıcı silindi')
     },
     onError: (err: unknown) => {
-      toast.error(getApiErrorMessage(err, { fallback: 'İşlem başarısız' }))
+      toast.error(getApiErrorMessage(err, { fallback: 'Kullanıcı silinemedi' }))
     },
   })
 
@@ -219,8 +223,14 @@ export function UsersListPage() {
     deleteMutation.mutate(selectedUser.id)
   }
 
-  const handleSuspend = (_id: string) => {
-    toast.error('Hesap askıya alma API tarafında henüz desteklenmiyor')
+  const handleDeleteOpen = (user: User) => {
+    setUserToDelete(user)
+    setDeleteConfirmOpen(true)
+  }
+
+  const handleDeleteConfirm = () => {
+    if (!userToDelete) return
+    deleteMutation.mutate(userToDelete.id)
   }
 
   const handleActivate = (_id: string) => {
@@ -305,7 +315,7 @@ export function UsersListPage() {
                 users={filteredUsers}
                 currentUserId={currentUser?.id}
                 onApprove={handleApprove}
-                onSuspend={handleSuspend}
+                onDelete={handleDeleteOpen}
                 onActivate={handleActivate}
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
@@ -317,7 +327,7 @@ export function UsersListPage() {
                 users={filteredUsers.filter(u => u.status === UserStatus.ACTIVE)}
                 currentUserId={currentUser?.id}
                 onApprove={handleApprove}
-                onSuspend={handleSuspend}
+                onDelete={handleDeleteOpen}
                 onActivate={handleActivate}
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
@@ -329,7 +339,7 @@ export function UsersListPage() {
                 users={filteredUsers.filter(u => u.status === UserStatus.PENDING)}
                 currentUserId={currentUser?.id}
                 onApprove={handleApprove}
-                onSuspend={handleSuspend}
+                onDelete={handleDeleteOpen}
                 onActivate={handleActivate}
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
@@ -425,6 +435,29 @@ export function UsersListPage() {
         </ModalContent>
       </Modal>
 
+      {/* Silme onay modalı */}
+      <Modal open={deleteConfirmOpen} onOpenChange={(open) => { setDeleteConfirmOpen(open); if (!open) setUserToDelete(null) }}>
+        <ModalContent>
+          <ModalHeader>
+            <ModalTitle>Kullanıcıyı Sil</ModalTitle>
+            <ModalDescription>
+              {userToDelete
+                ? `${userToDelete.firstName} ${userToDelete.lastName} (${userToDelete.email}) kullanıcısını silmek istediğinize emin misiniz? Kullanıcının tüm verileri kalıcı olarak silinecektir. Bu işlem geri alınamaz.`
+                : ''}
+            </ModalDescription>
+          </ModalHeader>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => { setDeleteConfirmOpen(false); setUserToDelete(null) }}>
+              İptal
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={!userToDelete || deleteMutation.isPending}>
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {deleteMutation.isPending ? ' Siliniyor...' : ' Sil'}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       {/* Create User Modal */}
       <Modal open={newUserOpen} onOpenChange={setNewUserOpen}>
         <ModalContent>
@@ -498,7 +531,7 @@ export function UsersListPage() {
             <Button variant="outline" onClick={() => { setNewUserOpen(false); resetNewUserForm() }}>
               İptal
             </Button>
-            <Button onClick={submitNewUser} loading={createMutation.isPending}>
+            <Button variant="primary" onClick={submitNewUser} loading={createMutation.isPending}>
               Kullanıcı Oluştur
             </Button>
           </ModalFooter>
@@ -532,8 +565,8 @@ export function UsersListPage() {
             </Select>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => setEditRoleOpen(false)}>Iptal</Button>
-            <Button onClick={submitRoleUpdate}>Kaydet</Button>
+            <Button variant="outline" onClick={() => setEditRoleOpen(false)}>İptal</Button>
+            <Button variant="primary" onClick={submitRoleUpdate}>Kaydet</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -609,7 +642,7 @@ function UserTable({
   users,
   currentUserId,
   onApprove,
-  onSuspend,
+  onDelete,
   onActivate,
   onEditRole,
   onViewProfile,
@@ -618,7 +651,7 @@ function UserTable({
   users: User[]
   currentUserId?: string
   onApprove: (u: User) => void
-  onSuspend: (id: string) => void
+  onDelete: (u: User) => void
   onActivate: (id: string) => void
   onEditRole: (u: User) => void
   onViewProfile: (u: User) => void
@@ -730,9 +763,6 @@ function UserTable({
                           <Eye className="h-4 w-4 mr-2" /> Profili Gör
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => toast.success(`${user.firstName} ${user.lastName} adresine e-posta gönderildi`)}>
-                          <Mail className="h-4 w-4 mr-2" /> E-posta Gönder
-                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onEditRole(user)}>
                           <Shield className="h-4 w-4 mr-2" /> Yetkileri Düzenle
                         </DropdownMenuItem>
@@ -743,14 +773,13 @@ function UserTable({
                             disabled={user.id === currentUserId}
                             onClick={() => {
                               if (user.id === currentUserId) {
-                                toast.error('Kendi hesabınızı askıya alamazsınız')
+                                toast.error('Kendi hesabınızı silemezsiniz')
                                 return
                               }
-                              onSuspend(user.id)
-                              toast.success(`${user.firstName} ${user.lastName} askıya alındı`)
+                              onDelete(user)
                             }}
                           >
-                            <UserX className="h-4 w-4 mr-2" /> Askıya Al
+                            <Trash2 className="h-4 w-4 mr-2" /> Sil
                           </DropdownMenuItem>
                         )}
                         {user.status === UserStatus.SUSPENDED && (
