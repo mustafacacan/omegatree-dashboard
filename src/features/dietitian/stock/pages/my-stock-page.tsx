@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { PanelHeader } from '@/components/shared/panel-header'
+import { ToolbarSearch } from '@/components/shared/toolbar-search'
 import {
   Badge,
   Button,
@@ -28,7 +30,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Package, Boxes, ShoppingCart, AlertTriangle, ScanLine, RotateCcw,
-  TrendingUp, TrendingDown, Search, CheckCircle, ArrowRight, Loader2,
+  Search, CheckCircle, ArrowRight, Loader2,
 } from 'lucide-react'
 import { ROUTES } from '@/utils/routes'
 import { useDietitianSettingsStore } from '@/stores/dietitian-settings.store'
@@ -45,16 +47,6 @@ import { createDamagedKit } from '@/services/damaged-kits.service'
 import { toast } from 'sonner'
 
 type BarcodeState = 'idle' | 'checking' | 'success' | 'error'
-
-const W = {
-  olive: '#8B9A4B', oliveLight: '#EEF2DE',
-  orange: '#E8913A', orangeLight: '#FDF0E2',
-  amber: '#F5C842', amberLight: '#FDF8E8',
-  green: '#6ABF69', greenLight: '#E8F5E8',
-  cream: '#F9F7F3', creamDark: '#F0EDE7',
-  warmBorder: '#E8E4DE', dark: '#2D2A26',
-  text: '#4A4640', textLight: '#9C968D', warmGrayLight: '#B5AFA5',
-}
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -226,7 +218,6 @@ export function MyStockPage() {
   }
 
   const availableKits = useMemo(() => myKits.filter((k) => k.uiStatus === 'available'), [myKits])
-  const assignedKits = useMemo(() => myKits.filter((k) => k.uiStatus === 'assigned'), [myKits])
   const usedKits = useMemo(() => myKits.filter((k) => k.uiStatus !== 'available'), [myKits])
 
   const filtered = useMemo(() => {
@@ -259,47 +250,14 @@ export function MyStockPage() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      {/* ═══ STAT CARDS ═══ */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          { title: 'Kullanilabilir', value: availableKits.length, icon: Package, iconColor: W.olive, iconBg: W.oliveLight, change: 2 },
-          { title: 'Danisana Atanmis', value: assignedKits.length, icon: Boxes, iconColor: W.orange, iconBg: W.orangeLight, change: 1 },
-          { title: 'Minimum stok limiti', value: minStockAlert || '—', icon: AlertTriangle, iconColor: W.amber, iconBg: W.amberLight, change: 0 },
-        ].map((s, i) => {
-          const Icon = s.icon
-          return (
-            <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.05 }}>
-              <div className="rounded-2xl p-5 transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-                <div className="flex items-center gap-3.5">
-                  <div className="h-12 w-12 rounded-full flex items-center justify-center shrink-0" style={{ background: s.iconBg }}>
-                    <Icon className="h-5 w-5" style={{ color: s.iconColor }} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: W.textLight }}>{s.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xl font-bold" style={{ color: W.dark }}>{s.value}</span>
-                      {s.change !== 0 && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: s.change > 0 ? W.greenLight : '#FDE8E8', color: s.change > 0 ? '#3D8B3D' : '#C53030' }}>
-                          {s.change > 0 ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
-                          {s.change > 0 ? '+' : ''}{s.change}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
-
-      {/* ═══ MIN STOK LİMİTİ AYARI ═══ */}
+      {/* Min stok uyarı limiti */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.08 }}>
-        <div className="rounded-2xl p-4 flex flex-wrap items-center gap-3" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-          <span className="text-sm font-medium text-surface-700">Minimum stok uyari limiti:</span>
+        <div className="panel">
+          <div className="p-5 flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium text-surface-700">Minimum stok uyarı limiti:</span>
           <input
             type="number"
             min={0}
@@ -311,7 +269,7 @@ export function MyStockPage() {
               }
             }}
             placeholder={String(minStockAlert || 0)}
-            className="w-20 rounded-lg border border-surface-200 px-2 py-1.5 text-sm"
+            className="w-20 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-200"
           />
           <Button
             variant="primary"
@@ -324,7 +282,8 @@ export function MyStockPage() {
           >
             Kaydet
           </Button>
-          <span className="text-xs text-surface-500">Stok bu sayinin altina dustugunde uyari alirsiniz.</span>
+          <span className="text-xs text-surface-500">Stok bu sayının altına düşünce uyarı alırsınız.</span>
+          </div>
         </div>
       </motion.div>
 
@@ -353,193 +312,159 @@ export function MyStockPage() {
         }}
       />
 
-      {/* ═══ STOCK WARNING ═══ */}
+      {/* Stok uyarısı */}
       {minStockAlert > 0 && availableKits.length < minStockAlert && (
         <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
-          <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: W.amberLight, border: '1px solid #F0DFA0' }}>
-            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#F5E6A0' }}>
-              <AlertTriangle className="h-5 w-5" style={{ color: '#B8960A' }} />
+          <div className="rounded-2xl p-4 flex items-center gap-3 border border-amber-200 bg-amber-50/70">
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-amber-100">
+              <AlertTriangle className="h-5 w-5 text-amber-700" />
             </div>
             <div className="flex-1">
-              <p className="text-[12px] font-semibold" style={{ color: '#78600A' }}>Stok uyarisi</p>
-              <p className="text-[11px]" style={{ color: '#9C7D0A' }}>Kullanilabilir kit sayiniz ({availableKits.length}) minimum limitinizin ({minStockAlert}) altinda. Yeni siparis vermenizi oneririz.</p>
+              <p className="text-[12px] font-semibold text-amber-900">Stok uyarısı</p>
+              <p className="text-[11px] text-amber-800">
+                Kullanılabilir kit sayınız ({availableKits.length}) minimum limitinizin ({minStockAlert}) altında. Yeni sipariş vermenizi öneririz.
+              </p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)} style={{ borderColor: '#D4B830', color: '#78600A' }}>
-              Siparis Ver
+            <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)} className="border-amber-300 text-amber-900">
+              Sipariş ver
             </Button>
           </div>
         </motion.div>
       )}
 
-      {/* ═══ STOCK LIST ═══ */}
+      {/* Kit listesi */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.15 }}>
         <div className="panel">
-
-          {/* Header — tablonun ustunde Kit Teslim Al butonu */}
-          <div className="p-5 flex items-center justify-between gap-3 flex-wrap" style={{ borderBottom: `1px solid ${W.warmBorder}` }}>
-            <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kitler</h3>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: W.warmGrayLight }} />
-                <input
-                  type="text"
-                  placeholder="Barkod ara..."
+          <PanelHeader
+            title="Kitler"
+            description={`Kullanılabilir: ${availableKits.length} · Kullanılan: ${usedKits.length}`}
+            actions={
+              <>
+                <ToolbarSearch
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-44 outline-none transition-colors"
-                  style={{ background: W.cream, border: `1px solid ${W.warmBorder}`, color: W.dark }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = W.olive }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = W.warmBorder }}
+                  onChange={setSearchQuery}
+                  placeholder="Barkod ara..."
+                  className="w-full sm:w-auto"
                 />
-              </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setReceiveKitModalOpen(true)}
-                className="gap-1.5"
-                style={{ background: W.olive }}
-              >
-                <ScanLine className="h-3.5 w-3.5" /> Kit Teslim Al
-              </Button>
-              <Button variant="outline" size="sm" onClick={openReturnModal}>
-                <RotateCcw className="h-3.5 w-3.5" /> Iade Talebi
-              </Button>
-              <Button variant="primary" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)}>
-                <ShoppingCart className="h-3.5 w-3.5" /> Yeni Siparis
-              </Button>
-            </div>
-          </div>
+                <Button variant="primary" size="sm" onClick={() => setReceiveKitModalOpen(true)} className="gap-2">
+                  <ScanLine className="h-4 w-4" /> Kit teslim al
+                </Button>
+                <Button variant="outline" size="sm" onClick={openReturnModal} className="gap-2">
+                  <RotateCcw className="h-4 w-4" /> İade talebi
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)} className="gap-2">
+                  <ShoppingCart className="h-4 w-4" /> Sipariş ver
+                </Button>
+              </>
+            }
+          />
 
           <div className="p-5">
             <Tabs value={kitsTab} onValueChange={(v) => setKitsTab(v as 'in-stock' | 'used')}>
-              <TabsList>
-                <TabsTrigger value="in-stock">Stoktaki Kitler</TabsTrigger>
-                <TabsTrigger value="used">Kullanilan Kitler</TabsTrigger>
+              <TabsList className="mb-4">
+                <TabsTrigger value="in-stock">Stoktaki ({filteredAvailable.length})</TabsTrigger>
+                <TabsTrigger value="used">Kullanılan ({filteredUsed.length})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="in-stock">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-2 w-2 rounded-full" style={{ background: W.green }} />
-                  <span className="text-[12px] font-semibold" style={{ color: W.dark }}>Kullanilabilir</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: W.greenLight, color: '#3D8B3D' }}>{availableKits.length}</span>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Teslim</th>
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr>
+                          <td colSpan={3} className="px-5 py-12 text-center">
+                            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
+                            <p className="text-[12px] text-surface-500">Stok listesi yükleniyor...</p>
+                          </td>
+                        </tr>
+                      ) : filteredAvailable.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-5 py-12 text-center">
+                            <Package className="h-10 w-10 mx-auto mb-2 text-surface-400" />
+                            <p className="text-[12px] font-medium text-surface-700">Kullanılabilir kit yok</p>
+                            <p className="text-[11px] mt-0.5 text-surface-500">Kit teslim alarak stoğunuza ekleyebilirsiniz.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredAvailable.map((kit) => (
+                          <tr key={kit.barcode} className="border-b border-surface-200 last:border-0 hover:bg-surface-50">
+                            <td className="px-5 py-3">
+                              <code className="text-[13px] font-mono font-semibold text-surface-900">{kit.barcode}</code>
+                            </td>
+                            <td className="px-5 py-3 text-[12px] text-surface-600">{formatDate(kit.receivedAt)}</td>
+                            <td className="px-5 py-3">{badgeForKit(kit)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-
-                {loading ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-surface-500 text-sm">
-                    <Loader2 className="h-8 w-8 animate-spin mb-2" style={{ color: W.olive }} />
-                    <p>Stok listesi yükleniyor...</p>
-                  </div>
-                ) : filteredAvailable.length === 0 ? (
-                  <div className="text-center py-8 text-surface-500 text-sm">
-                    <Package className="h-8 w-8 mx-auto mb-2 text-surface-300" />
-                    <p>Kullanilabilir kit bulunmuyor</p>
-                  </div>
-                ) : (
-                  <div
-                    className="rounded-xl overflow-hidden"
-                    style={{ border: `1px solid ${W.warmBorder}`, background: '#fff' }}
-                  >
-                    {filteredAvailable.map((kit, idx, arr) => (
-                      <div
-                        key={kit.barcode}
-                        className="flex items-center justify-between px-4 py-3 transition-colors cursor-pointer"
-                        style={{
-                          background: W.cream,
-                          borderBottom: idx === arr.length - 1 ? 'none' : `1px solid ${W.warmBorder}`,
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = W.oliveLight
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = W.cream
-                        }}
-                      >
-                        <div className="min-w-0">
-                          <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
-                          <p className="text-[10px] mt-0.5" style={{ color: W.textLight }}>Teslim: {formatDate(kit.receivedAt)}</p>
-                        </div>
-                        <div className="shrink-0">{badgeForKit(kit)}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </TabsContent>
 
               <TabsContent value="used">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-2 w-2 rounded-full" style={{ background: W.orange }} />
-                  <span className="text-[12px] font-semibold" style={{ color: W.dark }}>Kullanilan</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md font-bold" style={{ background: W.orangeLight, color: W.orange }}>{usedKits.length}</span>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Not</th>
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr>
+                          <td colSpan={3} className="px-5 py-12 text-center">
+                            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
+                            <p className="text-[12px] text-surface-500">Stok listesi yükleniyor...</p>
+                          </td>
+                        </tr>
+                      ) : filteredUsed.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-5 py-12 text-center">
+                            <Boxes className="h-10 w-10 mx-auto mb-2 text-surface-400" />
+                            <p className="text-[12px] font-medium text-surface-700">Kullanılan kit yok</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredUsed.map((kit) => (
+                          <tr key={kit.barcode} className="border-b border-surface-200 last:border-0 hover:bg-surface-50">
+                            <td className="px-5 py-3">
+                              <code className="text-[13px] font-mono font-semibold text-surface-900">{kit.barcode}</code>
+                            </td>
+                            <td className="px-5 py-3 text-[12px] text-surface-600">
+                              {kit.uiStatus === 'assigned'
+                                ? 'Danışana atanmış'
+                                : kit.uiStatus === 'damaged'
+                                  ? `Hasarlı${kit.kitStatus === 'damaged-pending' ? ' (bekliyor)' : ''}`
+                                  : `Teslim: ${formatDate(kit.receivedAt)}`}
+                            </td>
+                            <td className="px-5 py-3">{badgeForKit(kit)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-
-                {loading ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-surface-500 text-sm">
-                    <Loader2 className="h-8 w-8 animate-spin mb-2" style={{ color: W.olive }} />
-                    <p>Stok listesi yükleniyor...</p>
-                  </div>
-                ) : filteredUsed.length === 0 ? (
-                  <div className="text-center py-8 text-surface-500 text-sm">
-                    <Boxes className="h-8 w-8 mx-auto mb-2 text-surface-300" />
-                    <p>Kullanilan kit bulunmuyor</p>
-                  </div>
-                ) : (
-                  <div
-                    className="rounded-xl overflow-hidden"
-                    style={{ border: `1px solid ${W.warmBorder}`, background: '#fff' }}
-                  >
-                    {filteredUsed.map((kit, idx, arr) => (
-                      <div
-                        key={kit.barcode}
-                        className="flex items-center justify-between px-4 py-3 transition-colors"
-                        style={{
-                          background:
-                            kit.uiStatus === 'assigned'
-                              ? W.orangeLight
-                              : kit.kitStatus === 'damaged-pending'
-                                ? '#FDE8E8'
-                                : W.cream,
-                          borderBottom: idx === arr.length - 1 ? 'none' : `1px solid ${W.warmBorder}`,
-                        }}
-                      >
-                        <div className="min-w-0">
-                          <code className="text-[13px] font-mono font-bold" style={{ color: W.dark }}>{kit.barcode}</code>
-                          <p
-                            className="text-[10px] mt-0.5"
-                            style={{
-                              color:
-                                kit.uiStatus === 'assigned'
-                                  ? W.orange
-                                  : kit.kitStatus === 'damaged-pending'
-                                    ? '#C53030'
-                                    : W.textLight,
-                            }}
-                          >
-                            {kit.uiStatus === 'assigned'
-                              ? 'Danisana atanmis'
-                              : kit.uiStatus === 'damaged'
-                                ? `Hasarli${kit.kitStatus === 'damaged-pending' ? ' (Bekliyor)' : ''}`
-                                : `Teslim: ${formatDate(kit.receivedAt)}`}
-                          </p>
-                        </div>
-                        <div className="shrink-0">{badgeForKit(kit)}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </TabsContent>
             </Tabs>
           </div>
 
-          {/* Info */}
-          <div className="px-5 pb-5">
-            <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: W.oliveLight }}>
-              <ScanLine className="h-4 w-4 shrink-0" style={{ color: W.olive }} />
-              <p className="text-[11px]" style={{ color: '#5A6B2A' }}>
-                Bu stok, barkod numarasi ile teslim aldiginiz kitleri gosterir. Yeni kit eklemek icin yukaridaki
-                <button type="button" onClick={() => setReceiveKitModalOpen(true)} className="font-semibold underline ml-1" style={{ color: '#5A6B2A' }}>Kit Teslim Al</button> butonunu kullanin.
-                Iade talebi icin yukaridaki <span className="font-semibold">Iade Talebi</span> butonunu kullanin.
-              </p>
-            </div>
+          <div className="border-t border-surface-200 px-5 py-4">
+            <p className="text-[11px] text-surface-500">
+              Bu stok, barkod ile teslim aldığınız kitleri gösterir. Yeni kit eklemek için{' '}
+              <button type="button" onClick={() => setReceiveKitModalOpen(true)} className="font-medium text-primary-600 hover:underline">
+                Kit teslim al
+              </button>
+              . İade için <span className="font-medium">İade talebi</span> butonunu kullanın.
+            </p>
           </div>
         </div>
       </motion.div>
@@ -596,7 +521,6 @@ export function MyStockPage() {
               variant="primary"
               onClick={() => void submitReturnRequest()}
               disabled={returnSubmitting || returnableKits.length === 0}
-              style={{ background: W.olive }}
             >
               {returnSubmitting ? (
                 <>
@@ -616,8 +540,8 @@ export function MyStockPage() {
         <ModalContent className="max-w-md">
           <ModalHeader>
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: W.oliveLight }}>
-                <ScanLine className="h-5 w-5" style={{ color: W.olive }} />
+              <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-primary-100 text-primary-600">
+                <ScanLine className="h-5 w-5" />
               </div>
               <div>
                 <ModalTitle>Kit Teslim Al</ModalTitle>
@@ -637,8 +561,8 @@ export function MyStockPage() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="text-center py-4"
                 >
-                  <div className="h-14 w-14 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ background: W.greenLight }}>
-                    <CheckCircle className="h-7 w-7" style={{ color: W.green }} />
+                  <div className="h-14 w-14 rounded-full mx-auto mb-3 flex items-center justify-center bg-success/10">
+                    <CheckCircle className="h-7 w-7 text-success" />
                   </div>
                   <h4 className="text-[15px] font-bold text-surface-800">Kit Basariyla Teslim Alindi!</h4>
                   <p className="text-[12px] mt-2 text-surface-500">
@@ -668,7 +592,7 @@ export function MyStockPage() {
                         }}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleBarcodeSubmit() }}
                         placeholder="Barkod (orn: OT-2025-00160)"
-                        className="w-full pl-9 pr-3 py-3 text-sm font-mono rounded-xl border border-surface-200 bg-surface-50 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-200"
+                        className="w-full pl-9 pr-3 py-3 text-sm font-mono rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-200 dark:focus:ring-primary-800"
                         style={{ borderColor: barcodeState === 'error' ? '#E87070' : undefined }}
                         disabled={barcodeState === 'checking'}
                       />
@@ -679,7 +603,6 @@ export function MyStockPage() {
                       onClick={handleBarcodeSubmit}
                       disabled={!barcodeInput.trim() || barcodeState === 'checking'}
                       className="shrink-0 gap-1.5"
-                      style={{ background: W.olive }}
                     >
                       {barcodeState === 'checking' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Teslim Al'}
                     </Button>
@@ -704,7 +627,7 @@ export function MyStockPage() {
                       { step: 3, text: 'Stoga eklensin' },
                     ].map((s) => (
                       <div key={s.step} className="flex items-center gap-1.5">
-                        <div className="h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-primary-100 text-primary-700">{s.step}</div>
+                        <div className="h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300">{s.step}</div>
                         <span className="text-[11px] text-surface-500">{s.text}</span>
                       </div>
                     ))}

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
-import { Button, Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui'
+import {
+  Button, Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
+  Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
+} from '@/components/ui'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { formatDate } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
-  Search, ArrowRightLeft, X, Check,
+  Search, ArrowRightLeft, Check,
   User, Send, CheckCircle, Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -353,57 +356,32 @@ export function StockPage() {
         </div>
       </motion.div>
 
-      {/* ═══ ASSIGN MODAL ═══ */}
-      <AnimatePresence>
-        {showAssignModal && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-            onClick={closeAssignModal}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.25 }}
-              className="w-full max-w-lg rounded-2xl overflow-hidden shadow-xl bg-panel border border-surface-200"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-5 border-b border-surface-200">
-                <div>
-                  <h2 className="text-[17px] font-bold text-surface-900">Kit Zimmetle</h2>
-                  <p className="text-[12px] mt-0.5 text-surface-500">
-                    Kitleri secin ve bir diyetisyene atanyin
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeAssignModal}
-                  className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors bg-surface-100 hover:bg-surface-200 text-surface-700"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+      {/* Kit Zimmetle modalı */}
+      <Modal open={showAssignModal} onOpenChange={(open) => !open && closeAssignModal()}>
+        <ModalContent className="max-w-lg max-h-[90vh] flex flex-col">
+          <ModalHeader>
+            <ModalTitle>Kit Zimmetle</ModalTitle>
+            <ModalDescription>Kitleri seçin ve bir diyetisyene atayın.</ModalDescription>
+          </ModalHeader>
 
-              {assignSuccess ? (
-                <div className="p-10 text-center">
-                  <div className="h-16 w-16 rounded-full mx-auto mb-4 flex items-center justify-center bg-green-100 dark:bg-green-900/30">
-                    <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
-                  </div>
-                  <h3 className="text-[16px] font-bold text-surface-900">Zimmetleme Basarili!</h3>
-                  <p className="text-[13px] mt-2 text-surface-500">
-                    {selectedKitIds.length} kit seçilen diyetisyene zimmetlendi.
-                    Diyetisyen kiti teslim aldiginda barkod numarasini girerek stoguna ekleyecek.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* Step 1: Select Kits */}
-                  <div className="p-5 border-b border-surface-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-primary-500">1</div>
-                      <span className="text-[13px] font-semibold text-surface-900">Kit Secin</span>
+          {assignSuccess ? (
+            <ModalBody className="py-10 text-center">
+              <div className="h-16 w-16 rounded-full mx-auto mb-4 flex items-center justify-center bg-green-100 dark:bg-green-900/30">
+                <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+              </div>
+              <h3 className="text-[16px] font-bold text-surface-900">Zimmetleme Başarılı!</h3>
+              <p className="text-[13px] mt-2 text-surface-500">
+                {selectedKitIds.length} kit seçilen diyetisyene zimmetlendi.
+                Diyetisyen kiti teslim aldığında barkod numarası ile stokuna ekleyecek.
+              </p>
+            </ModalBody>
+          ) : (
+            <>
+              <ModalBody className="space-y-5 pt-0">
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-primary-500">1</div>
+                    <span className="text-[13px] font-semibold text-surface-900">Kit seçin</span>
                       {selectedKitIds.length > 0 && (
                         <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300">
                           {selectedKitIds.length} seçildi
@@ -422,7 +400,7 @@ export function StockPage() {
                       />
                     </div>
 
-                    <div className="max-h-[160px] overflow-y-auto space-y-1.5 pr-1">
+                    <div className="max-h-[180px] overflow-y-auto space-y-1.5 pr-1 rounded-xl border border-surface-200 bg-surface-50/50">
                       {assignModalLoading ? (
                         <p className="text-[12px] text-center py-4 text-surface-500">Yükleniyor...</p>
                       ) : filteredAvailableStocksForModal.length === 0 ? (
@@ -457,27 +435,24 @@ export function StockPage() {
                         })
                       )}
                     </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${selectedKitIds.length > 0 ? 'bg-primary-500' : 'bg-surface-400'}`}>2</div>
+                    <span className="text-[13px] font-semibold text-surface-900">Diyetisyen seçin</span>
                   </div>
-
-                  {/* Step 2: Select Dietitian */}
-                  <div className="p-5 border-b border-surface-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${selectedKitIds.length > 0 ? 'bg-primary-500' : 'bg-surface-400'}`}>2</div>
-                      <span className="text-[13px] font-semibold text-surface-900">Diyetisyen seçin</span>
-                    </div>
-
-                    <div className="relative mb-3">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
-                      <input
-                        type="text"
-                        placeholder="Diyetisyen ara..."
-                        value={assignDietitianSearch}
-                        onChange={(e) => setAssignDietitianSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-full outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-orange-500"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
+                    <input
+                      type="text"
+                      placeholder="Diyetisyen ara..."
+                      value={assignDietitianSearch}
+                      onChange={(e) => setAssignDietitianSearch(e.target.value)}
+                      className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-full outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1 rounded-xl border border-surface-200 bg-surface-50/50">
                       {assignModalLoading ? (
                         <p className="text-[12px] text-center py-4 text-surface-500">Yükleniyor...</p>
                       ) : filteredDietitiansForModal.length === 0 ? (
@@ -509,30 +484,29 @@ export function StockPage() {
                           )
                         })
                       )}
-                    </div>
                   </div>
+                </div>
+              </ModalBody>
 
-                  {/* Footer */}
-                  <div className="p-5 flex items-center justify-between">
-                    <p className="text-[11px] text-surface-500">
-                      Zimmetlenen kitler diyetisyene gosterilmez. Fiziksel teslimat sonrasi barkod ile eslestirme yapilir.
-                    </p>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={handleAssign}
-                      disabled={selectedKitIds.length === 0 || assigning}
-                    >
-                      {assigning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                      Zimmetle ({selectedKitIds.length})
-                    </Button>
-                  </div>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <ModalFooter className="flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <p className="text-[11px] text-surface-500 order-2 sm:order-1">
+                  Zimmetlenen kitler diyetisyene gösterilmez. Fiziksel teslimat sonrası barkod ile eşleştirme yapılır.
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="order-1 sm:order-2 shrink-0"
+                  onClick={handleAssign}
+                  disabled={selectedKitIds.length === 0 || selectedDietitianId == null || assigning}
+                >
+                  {assigning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  Zimmetle ({selectedKitIds.length})
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   )
 }

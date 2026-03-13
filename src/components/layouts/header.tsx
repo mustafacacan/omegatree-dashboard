@@ -45,7 +45,8 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith(ROUTES.DIYETISYEN_DANISANLAR)) return 'Danisanlarim'
   if (pathname.startsWith(ROUTES.DIYETISYEN_KITLER)) return 'Kit Islemleri'
   if (pathname.startsWith(ROUTES.DIYETISYEN_STOK)) return 'Stogum'
-  if (pathname.startsWith(ROUTES.DIYETISYEN_SIPARISLER)) return 'Siparislerim'
+  if (pathname.startsWith(ROUTES.DIYETISYEN_SIPARIS_GECMISI)) return 'Siparis Gecmisim'
+  if (pathname.startsWith(ROUTES.DIYETISYEN_SIPARISLER)) return 'Siparis Ver'
   if (pathname.startsWith(ROUTES.DIYETISYEN_RAPORLAR)) return 'Raporlar'
   if (pathname.startsWith(ROUTES.DIYETISYEN_BILDIRIMLER)) return 'Bildirimler'
 

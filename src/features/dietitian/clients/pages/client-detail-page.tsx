@@ -133,10 +133,10 @@ export function ClientDetailPage() {
         <PageHeader />
         <Card>
           <CardContent className="p-12 text-center">
-            <div className="h-12 w-12 rounded-2xl bg-surface-100 flex items-center justify-center mx-auto mb-4">
+            <div className="h-12 w-12 rounded-2xl bg-surface-100 dark:bg-surface-200/80 flex items-center justify-center mx-auto mb-4">
               <User className="h-6 w-6 text-surface-400" />
             </div>
-            <p className="text-surface-600 mb-5">Bu ID ile eslesen bir danisan kaydi bulunamadi.</p>
+            <p className="text-surface-600 dark:text-surface-400 mb-5">Bu ID ile eslesen bir danisan kaydi bulunamadi.</p>
             <Button variant="primary" onClick={() => navigate(ROUTES.DIYETISYEN_DANISANLAR)}>
               Danisanlar listesine don
             </Button>
@@ -176,7 +176,7 @@ export function ClientDetailPage() {
               <Avatar name={`${client.firstName} ${client.lastName}`} size="xl" />
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-lg font-semibold text-surface-900">{client.firstName} {client.lastName}</h1>
+                  <h1 className="text-lg font-semibold text-surface-900 dark:text-surface-100">{client.firstName} {client.lastName}</h1>
                   <Badge variant="success" size="sm">Aktif</Badge>
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-surface-500 mb-2">
@@ -185,7 +185,7 @@ export function ClientDetailPage() {
                   <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{client.address}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <code className="text-[11px] font-mono bg-surface-100 text-surface-600 px-1.5 py-0.5 rounded font-semibold">{client.id}</code>
+                  <code className="text-[11px] font-mono bg-surface-100 dark:bg-surface-800/60 text-surface-600 dark:text-surface-400 px-1.5 py-0.5 rounded font-semibold">{client.id}</code>
                   <span className="text-[11px] text-surface-400">Kayit: {formatDate(client.createdAt)}</span>
                 </div>
               </div>
@@ -240,7 +240,7 @@ export function ClientDetailPage() {
                     <InfoRow icon={Activity} label="BMI" value={bmi} />
                   </div>
 
-                  <div className="p-3 rounded-lg bg-surface-50 border border-surface-100">
+                  <div className="p-3 rounded-lg bg-surface-50 dark:bg-surface-800/50 border border-surface-100 dark:border-surface-700">
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-xs font-medium text-surface-600">Vucut Kitle Indeksi</span>
                       <span className={`text-sm font-bold ${Number(bmi) < 18.5 ? 'text-orange-600' : Number(bmi) < 25 ? 'text-primary-600' : Number(bmi) < 30 ? 'text-amber-600' : 'text-red-600'}`}>{bmi}</span>
@@ -360,13 +360,13 @@ export function ClientDetailPage() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-[14px] font-semibold text-surface-900">{kit.kitName || 'Kit'}</h3>
+                              <h3 className="text-[14px] font-semibold text-surface-900 dark:text-surface-100">{kit.kitName || 'Kit'}</h3>
                               <Badge variant={kit.status === 'completed' ? 'success' : kit.status === 'cancelled' ? 'destructive' : 'primary'} size="sm">
                                 {kit.status ?? '—'}
                               </Badge>
                             </div>
                             <div className="flex flex-wrap items-center gap-3 text-xs text-surface-500">
-                              <code className="font-mono bg-surface-50 px-1.5 py-0.5 rounded">{kit.kitBarcode || `#${kit.kitId}`}</code>
+                              <code className="font-mono bg-surface-50 dark:bg-surface-800/60 px-1.5 py-0.5 rounded text-surface-800 dark:text-surface-200">{kit.kitBarcode || `#${kit.kitId}`}</code>
                               <span><Calendar className="h-3 w-3 inline mr-0.5" />{kit.createdAt ? formatDate(kit.createdAt) : '—'}</span>
                             </div>
                           </div>
@@ -437,7 +437,7 @@ export function ClientDetailPage() {
                   {apiKits.map((kit, idx) => (
                     <div key={kit.id} className="flex gap-3">
                       <div className="flex flex-col items-center">
-                        <div className="flex items-center justify-center h-8 w-8 rounded-lg shrink-0 bg-primary-50 text-primary-600">
+                        <div className="flex items-center justify-center h-8 w-8 rounded-lg shrink-0 bg-primary-50 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400">
                           <FlaskConical className="h-4 w-4" />
                         </div>
                         {idx < apiKits.length - 1 && <div className="w-px h-6 bg-surface-200 mt-1" />}
@@ -503,8 +503,8 @@ export function ClientDetailPage() {
                         onClick={() => setSelectedStockKit(kit.barcode)}
                         className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
                           selectedStockKit === kit.barcode
-                            ? 'border-primary-500 bg-primary-50'
-                            : 'border-surface-200 hover:border-primary-300 bg-white'
+                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30'
+                            : 'border-surface-200 dark:border-surface-700 hover:border-primary-300 dark:hover:border-primary-700 bg-white dark:bg-surface-100'
                         }`}
                       >
                         <div className="flex items-start justify-between">
@@ -530,7 +530,7 @@ export function ClientDetailPage() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200"
+                className="mt-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
               >
                 <div className="flex gap-3">
                   <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -589,19 +589,19 @@ export function ClientDetailPage() {
           <ModalBody>
             {viewingReport && (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
+                <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-surface-50 dark:bg-surface-800/50 border border-surface-200 dark:border-surface-700">
                   <div>
                     <p className="text-xs font-medium text-surface-500 mb-1">Rapor ID</p>
-                    <code className="text-sm font-mono font-semibold text-surface-900">{viewingReport.id}</code>
+                    <code className="text-sm font-mono font-semibold text-surface-900 dark:text-surface-100">{viewingReport.id}</code>
                   </div>
                   <div>
                     <p className="text-xs font-medium text-surface-500 mb-1">Uzman</p>
-                    <p className="text-sm font-semibold text-surface-900">{viewingReport.specialist}</p>
+                    <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">{viewingReport.specialist}</p>
                   </div>
                 </div>
-                <div className="p-4 rounded-xl bg-violet-50 border border-violet-200">
-                  <p className="text-xs font-medium text-violet-700 uppercase tracking-wider mb-2">Rapor Ozeti</p>
-                  <p className="text-sm text-violet-900 leading-relaxed">{viewingReport.summary}</p>
+                <div className="p-4 rounded-xl bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800">
+                  <p className="text-xs font-medium text-violet-700 dark:text-violet-400 uppercase tracking-wider mb-2">Rapor Ozeti</p>
+                  <p className="text-sm text-violet-900 dark:text-violet-200 leading-relaxed">{viewingReport.summary}</p>
                 </div>
               </div>
             )}
@@ -621,9 +621,9 @@ export function ClientDetailPage() {
 
 function MiniStat({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div className="px-4 py-2.5 rounded-lg bg-surface-50 min-w-[80px]">
+    <div className="px-4 py-2.5 rounded-lg bg-surface-50 dark:bg-surface-800/50 min-w-[80px]">
       <p className="text-[10px] font-medium text-surface-400 uppercase tracking-wider">{label}</p>
-      <p className="text-[15px] font-bold text-surface-900">{value}</p>
+      <p className="text-[15px] font-bold text-surface-900 dark:text-surface-100">{value}</p>
       <p className="text-[10px] text-surface-400">{sub}</p>
     </div>
   )
@@ -632,12 +632,12 @@ function MiniStat({ label, value, sub }: { label: string; value: string; sub: st
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="h-8 w-8 rounded-lg bg-surface-50 flex items-center justify-center shrink-0">
+      <div className="h-8 w-8 rounded-lg bg-surface-50 dark:bg-surface-800/50 flex items-center justify-center shrink-0">
         <Icon className="h-3.5 w-3.5 text-surface-400" />
       </div>
       <div className="min-w-0">
         <p className="text-[10px] font-medium text-surface-400 uppercase tracking-wider">{label}</p>
-        <p className="text-[13px] text-surface-800 truncate">{value}</p>
+        <p className="text-[13px] text-surface-800 dark:text-surface-200 truncate">{value}</p>
       </div>
     </div>
   )

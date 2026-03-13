@@ -1,5 +1,6 @@
 import { useMemo, useState, type ChangeEvent } from 'react'
 import { PageHeader } from '@/components/shared/page-header'
+import { PanelHeader } from '@/components/shared/panel-header'
 import { Badge, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, ModalContent, ModalHeader, ModalTitle, ModalBody } from '@/components/ui'
 import { Timeline } from '@/components/shared/timeline'
 import { formatDate } from '@/lib/utils'
@@ -14,16 +15,6 @@ import { toast } from 'sonner'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createDamagedKit } from '@/services/damaged-kits.service'
 import { getDieticianClientKitById, getDieticianClientKits, type DieticianClientKit } from '@/services/dietician-client-kits.service'
-
-const W = {
-  olive: '#8B9A4B', oliveLight: '#EEF2DE',
-  orange: '#E8913A', orangeLight: '#FDF0E2',
-  amber: '#F5C842', amberLight: '#FDF8E8',
-  green: '#6ABF69', greenLight: '#E8F5E8',
-  cream: '#F9F7F3', creamDark: '#F0EDE7',
-  warmBorder: '#E8E4DE', dark: '#2D2A26',
-  text: '#4A4640', textLight: '#9C968D', warmGrayLight: '#B5AFA5',
-}
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -189,35 +180,18 @@ export function KitsPage() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      <PageHeader
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-amber-600 border-amber-300 hover:bg-amber-50"
-            onClick={() =>
-              toast(
-                'Hasar / iade bildirimi icin ilgili kitin satirindaki "Surec Takibi" butonuna tiklayin, acilan pencerede "Iade Talebi Olustur" secin.',
-                { icon: '📋', duration: 5000 }
-              )
-            }
-          >
-            <AlertTriangle className="h-3.5 w-3.5" />
-            Hasar Bildir
-          </Button>
-        }
-      />
+    <div className="space-y-6 animate-fade-in">
+
 
       {/* Numuneleri göndereceğiniz laboratuvar adresi */}
       {assignedLab && (
         <motion.div {...fadeUp} transition={{ duration: 0.3 }}>
-          <div className="rounded-xl p-4 border flex items-start gap-3" style={{ background: W.oliveLight, borderColor: W.warmBorder }}>
-            <MapPin className="h-5 w-5 shrink-0 mt-0.5" style={{ color: W.olive }} />
+          <div className="rounded-2xl p-4 border border-surface-200 bg-primary-50/60 flex items-start gap-3">
+            <MapPin className="h-5 w-5 shrink-0 mt-0.5 text-primary-600" />
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: W.textLight }}>Numuneleri gondereceginiz adres</p>
-              <p className="text-[14px] font-semibold mt-1" style={{ color: W.dark }}>{assignedLab.name}</p>
-              <p className="text-[13px] mt-1 leading-snug" style={{ color: W.text }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Numuneleri göndereceğiniz adres</p>
+              <p className="text-[14px] font-semibold mt-1 text-surface-900">{assignedLab.name}</p>
+              <p className="text-[13px] mt-1 leading-snug text-surface-700">
                 {assignedLab.address}
                 {assignedLab.district ? `, ${assignedLab.district}` : ''} / {assignedLab.city}
                 {assignedLab.postalCode ? ` ${assignedLab.postalCode}` : ''}
@@ -229,72 +203,68 @@ export function KitsPage() {
 
       {/* ═══ ACTIVE KITS — Tablo ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Aktif Kitlerim</h3>
-          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: W.oliveLight, color: W.olive }}>
-            {myKits.length} kit
-          </span>
-        </div>
-
         <div className="panel">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Barkod</TableHead>
-                <TableHead>Danisan</TableHead>
-                <TableHead>Durum</TableHead>
-                <TableHead>Tarih</TableHead>
-                <TableHead className="text-right">Islem</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {kitsQuery.isLoading ? (
+          <PanelHeader title="Kitlerim" description={`Aktif kitler (${myKits.length})`} />
+          <div className="p-5 pt-0">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center text-surface-500 text-sm">
-                    Yukleniyor...
-                  </TableCell>
+                  <TableHead>Barkod</TableHead>
+                  <TableHead>Danışan</TableHead>
+                  <TableHead>Durum</TableHead>
+                  <TableHead>Tarih</TableHead>
+                  <TableHead className="text-right">İşlem</TableHead>
                 </TableRow>
-              ) : kitsQuery.isError ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center text-surface-500 text-sm">
-                    {getApiErrorMessage(kitsQuery.error, { fallback: 'Kitler yuklenemedi.' })}
-                  </TableCell>
-                </TableRow>
-              ) : myKits.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-12 text-center text-surface-500 text-sm">
-                    Henuz kitiniz yok. Siparis verdikten sonra kargodan gelen kitleri barkod ile teslim alin.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                myKits.map((kit) => (
-                  <TableRow key={kit.id}>
-                    <TableCell>
-                      <code className="font-mono font-semibold text-surface-800">{getDieticianKitBarcode(kit)}</code>
-                    </TableCell>
-                    <TableCell className="text-surface-700">{kit.clientName || 'Danisan atanmadi'}</TableCell>
-                    <TableCell>
-                      <DieticianKitStatusBadge status={kit.status} />
-                    </TableCell>
-                    <TableCell className="text-surface-500 text-xs">
-                      {formatDate(kit.createdAt || kit.kitCreatedAt)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDetailModalKitId(kit.id)}
-                        className="gap-1.5"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                          Goruntule
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {kitsQuery.isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-12 text-center text-surface-500 text-sm">
+                      Yükleniyor...
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : kitsQuery.isError ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-12 text-center text-surface-500 text-sm">
+                      {getApiErrorMessage(kitsQuery.error, { fallback: 'Kitler yüklenemedi.' })}
+                    </TableCell>
+                  </TableRow>
+                ) : myKits.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-12 text-center text-surface-500 text-sm">
+                      Henüz kitiniz yok. Sipariş verdikten sonra kargodan gelen kitleri barkod ile teslim alın.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  myKits.map((kit) => (
+                    <TableRow key={kit.id}>
+                      <TableCell>
+                        <code className="font-mono font-semibold text-surface-800">{getDieticianKitBarcode(kit)}</code>
+                      </TableCell>
+                      <TableCell className="text-surface-700">{kit.clientName || 'Danışan atanmamış'}</TableCell>
+                      <TableCell>
+                        <DieticianKitStatusBadge status={kit.status} />
+                      </TableCell>
+                      <TableCell className="text-surface-500 text-xs">
+                        {formatDate(kit.createdAt || kit.kitCreatedAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDetailModalKitId(kit.id)}
+                          className="gap-1.5"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Görüntüle
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </motion.div>
 
@@ -335,11 +305,11 @@ export function KitsPage() {
                     <DieticianKitStatusBadge status={kit.status} />
                   </div>
 
-                  <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
+                  <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Kit</p>
-                        <p className="text-[13px] font-medium text-surface-800">{kit.kitName || '—'}</p>
+                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-200">{kit.kitName || '—'}</p>
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Durum</p>
@@ -347,7 +317,7 @@ export function KitsPage() {
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Diyetisyen</p>
-                        <p className="text-[13px] font-medium text-surface-800">{kit.dieticianName || '—'}</p>
+                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-200">{kit.dieticianName || '—'}</p>
                         {(kit.dieticianPhone || kit.dieticianEmail) && (
                           <p className="text-[11px] text-surface-500 mt-0.5">
                             {kit.dieticianPhone ?? ''}{kit.dieticianPhone && kit.dieticianEmail ? ' · ' : ''}{kit.dieticianEmail ?? ''}
@@ -356,7 +326,7 @@ export function KitsPage() {
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Danisan</p>
-                        <p className="text-[13px] font-medium text-surface-800">{kit.clientName || '—'}</p>
+                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-200">{kit.clientName || '—'}</p>
                         {(kit.clientPhone || kit.clientEmail) && (
                           <p className="text-[11px] text-surface-500 mt-0.5">
                             {kit.clientPhone ?? ''}{kit.clientPhone && kit.clientEmail ? ' · ' : ''}{kit.clientEmail ?? ''}
@@ -378,15 +348,14 @@ export function KitsPage() {
                     <div className="pt-3 space-y-2 border-t border-surface-200">
                       <button
                         type="button"
-                        className="w-full py-2.5 rounded-xl text-[12px] font-semibold transition-colors border"
-                        style={{ color: '#A45F16', background: '#FFF7ED', borderColor: '#F3D6B4' }}
+                        className="w-full py-2.5 rounded-xl text-[12px] font-semibold transition-colors border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
                         onClick={() => {
                           setReturnFormKitId(returnFormKitId === kit.id ? null : kit.id)
                           setReturnError('')
                         }}
                       >
                         <RotateCcw className="h-3.5 w-3.5 inline mr-1.5" />
-                        Iade Talebi Olustur
+                        İade talebi oluştur
                       </button>
 
                       {returnFormKitId === kit.id && (
@@ -397,7 +366,7 @@ export function KitsPage() {
                             onChange={(e) => setReturnReason(e.target.value)}
                             rows={3}
                             placeholder="Kiti neden iade etmek istediginizi yazin..."
-                            className="w-full rounded-xl px-3 py-2 text-[12px] outline-none resize-none border border-surface-200 bg-surface-50"
+                            className="w-full rounded-xl px-3 py-2 text-[12px] outline-none resize-none border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50"
                           />
                           <label className="flex items-center gap-2 text-xs font-medium text-surface-600 cursor-pointer">
                             <ImageIcon className="h-3.5 w-3.5" />

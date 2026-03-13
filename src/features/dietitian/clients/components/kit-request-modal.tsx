@@ -94,23 +94,23 @@ export function KitRequestModal({ open, onOpenChange, clientName, clientId }: Ki
           )}
 
           {deliveryType === 'office' && (
-            <div className="p-3 rounded-lg bg-surface-50 border border-surface-100">
+            <div className="p-3 rounded-lg bg-surface-50 dark:bg-surface-800/50 border border-surface-100 dark:border-surface-700">
               <div className="flex items-center gap-2 mb-1">
                 <MapPin className="h-3.5 w-3.5 text-surface-500" />
                 <span className="text-xs font-medium text-surface-500">Kayitli Klinik Adresi</span>
               </div>
-              <p className="text-sm text-surface-700">Bagdat Cad. No:123 Kadikoy/Istanbul</p>
+              <p className="text-sm text-surface-700 dark:text-surface-300">Bagdat Cad. No:123 Kadikoy/Istanbul</p>
             </div>
           )}
 
           {/* Kit info */}
           {deliveryType && (
-            <div className="p-3 rounded-lg bg-primary-50 border border-primary-100">
+            <div className="p-3 rounded-lg bg-primary-50 dark:bg-primary-900/30 border border-primary-100 dark:border-primary-800">
               <div className="flex items-center gap-2">
                 <Truck className="h-4 w-4 text-primary-600" />
                 <div>
-                  <p className="text-xs font-medium text-primary-700">Omega-3 Index Kit</p>
-                  <p className="text-[11px] text-primary-600">Tahmini teslimat: 1-3 is gunu (Aras Kargo)</p>
+<p className="text-xs font-medium text-primary-700 dark:text-primary-400">Omega-3 Index Kit</p>
+                <p className="text-[11px] text-primary-600 dark:text-primary-400">Tahmini teslimat: 1-3 is gunu (Aras Kargo)</p>
                 </div>
               </div>
             </div>

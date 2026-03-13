@@ -45,12 +45,12 @@ export function ReportShareModal({ open, onOpenChange, reportId, clientName }: R
         </ModalHeader>
         <ModalBody className="space-y-4">
           {/* Security note */}
-          <div className="p-3 rounded-lg bg-green-50 border border-green-100">
+          <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
             <div className="flex items-start gap-2">
-              <Shield className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+              <Shield className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs font-medium text-green-700">Guvenli Paylasim</p>
-                <p className="text-[11px] text-green-600 mt-0.5">
+                <p className="text-xs font-medium text-green-700 dark:text-green-400">Guvenli Paylasim</p>
+                <p className="text-[11px] text-green-600 dark:text-green-400 mt-0.5">
                   Rapor PDF sistem disindan indirilemez. Danisan sadece goruntuleme yapabilir.
                 </p>
               </div>

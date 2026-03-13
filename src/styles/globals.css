@@ -262,7 +262,7 @@
   .text-card-title {
     font-size: var(--text-card-title-size);
     font-weight: var(--text-card-title-weight);
-    color: var(--color-surface-900);
+    color: var(--color-text-primary);
     line-height: 1.4;
   }
   .text-body {

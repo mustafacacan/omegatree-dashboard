@@ -162,6 +162,11 @@ export function PricingPage() {
     setCreateOpen(true)
   }
 
+  /** API response imageData.url kullan (tam URL veya relative) */
+  const getDisplayImageUrl = (kit: SalesKit) =>
+    getSalesKitImageUrl(kit.imageData?.url) ??
+    (kit.imageData?.url?.startsWith('http') ? kit.imageData.url : null)
+
   const openEdit = (kit: SalesKit) => {
     setEditKit(kit)
     setFormName(kit.name)
@@ -170,7 +175,7 @@ export function PricingPage() {
     setFormPrice(String(kit.price))
     setFormIsActive(kit.isActive ?? true)
     setFormFile(null)
-    setFormFilePreview(getSalesKitImageUrl(kit.imageData?.url) ?? null)
+    setFormFilePreview(getDisplayImageUrl(kit))
   }
 
   const openDelete = (kit: SalesKit) => {
@@ -308,7 +313,7 @@ export function PricingPage() {
                   </TableRow>
                 ) : (
                   paginatedList.map((k) => {
-                    const imageUrl = getSalesKitImageUrl(k.imageData?.url)
+                    const imageUrl = getDisplayImageUrl(k)
                     const showImg = imageUrl && !failedImageIds.has(k.id)
                     const isActive = k.isActive ?? true
                     return (
@@ -457,11 +462,13 @@ export function PricingPage() {
                 className="block w-full text-sm text-surface-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-surface-100 file:text-surface-700"
               />
               {formFilePreview && (
-                <img
-                  src={formFilePreview}
-                  alt="Önizleme"
-                  className="mt-2 h-24 rounded-lg object-cover border border-surface-200"
-                />
+                <div className="mt-2 flex items-center justify-center rounded-lg border border-surface-200 bg-surface-50 min-h-[200px] max-h-[320px] p-2">
+                  <img
+                    src={formFilePreview}
+                    alt="Önizleme"
+                    className="max-h-[280px] w-auto object-contain rounded"
+                  />
+                </div>
               )}
             </div>
           </ModalBody>
@@ -551,11 +558,21 @@ export function PricingPage() {
                 className="block w-full text-sm text-surface-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-surface-100 file:text-surface-700"
               />
               {formFilePreview && (
-                <img
-                  src={formFilePreview}
-                  alt="Önizleme"
-                  className="mt-2 h-24 rounded-lg object-cover border border-surface-200"
-                />
+                <div className="mt-2 flex items-center justify-center rounded-lg border border-surface-200 bg-surface-50 min-h-[200px] max-h-[320px] p-2">
+                  {formFilePreview.startsWith('blob:') ? (
+                    <img
+                      src={formFilePreview}
+                      alt="Yeni görsel önizleme"
+                      className="max-h-[280px] w-auto object-contain rounded"
+                    />
+                  ) : (
+                    <SalesKitImage
+                      url={formFilePreview}
+                      alt={editKit?.name ?? 'Görsel'}
+                      className="max-h-[280px] w-auto object-contain rounded"
+                    />
+                  )}
+                </div>
               )}
             </div>
           </ModalBody>

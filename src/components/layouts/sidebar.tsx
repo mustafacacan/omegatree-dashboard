@@ -30,6 +30,7 @@ import {
   RotateCcw,
   MapPin,
   Settings,
+  History,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -81,6 +82,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Kitlerim', href: ROUTES.DIYETISYEN_KITLER, icon: FlaskConical },
           { label: 'Stogum', href: ROUTES.DIYETISYEN_STOK, icon: Boxes },
           { label: 'Siparis Ver', href: ROUTES.DIYETISYEN_SIPARISLER, icon: Truck },
+          { label: 'Siparis Gecmisim', href: ROUTES.DIYETISYEN_SIPARIS_GECMISI, icon: History },
         ]},
         { title: 'Sonuclar', items: [{ label: 'Sonuclar', href: ROUTES.DIYETISYEN_RAPORLAR, icon: BarChart3 }] },
         { title: 'Hesap', items: [{ label: 'Ayarlar', href: ROUTES.DIYETISYEN_AYARLAR, icon: Settings }] },

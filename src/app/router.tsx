@@ -45,6 +45,7 @@ const ClientDetailPage = lazy(() => import('@/features/dietitian/clients/pages/c
 const KitsPage = lazy(() => import('@/features/dietitian/kits/pages/kits-page').then(m => ({ default: m.KitsPage })))
 const MyStockPage = lazy(() => import('@/features/dietitian/stock/pages/my-stock-page').then(m => ({ default: m.MyStockPage })))
 const DietitianOrderPage = lazy(() => import('@/features/dietitian/orders/pages/order-page').then(m => ({ default: m.DietitianOrderPage })))
+const DietitianOrderHistoryPage = lazy(() => import('@/features/dietitian/orders/pages/order-history-page').then(m => ({ default: m.DietitianOrderHistoryPage })))
 const ReportsPage = lazy(() => import('@/features/dietitian/reports/pages/reports-page').then(m => ({ default: m.ReportsPage })))
 
 // Laboratory
@@ -140,6 +141,7 @@ export const router = createBrowserRouter([
       { path: ROUTES.DIYETISYEN_KITLER, element: <SuspensePage><KitsPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_STOK, element: <SuspensePage><MyStockPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_SIPARISLER, element: <SuspensePage><DietitianOrderPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_SIPARIS_GECMISI, element: <SuspensePage><DietitianOrderHistoryPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_RAPORLAR, element: <SuspensePage><ReportsPage /></SuspensePage> },
     ],
   },

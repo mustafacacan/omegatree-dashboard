@@ -2,16 +2,18 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
+import { PanelHeader } from '@/components/shared/panel-header'
+import { ToolbarSearch } from '@/components/shared/toolbar-search'
 import {
-  Card, CardContent, Button, Input, Avatar, Badge,
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
+  Card, CardContent, Button, Avatar, Badge,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   Tabs, TabsList, TabsTrigger, TabsContent,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
 } from '@/components/ui'
 import { formatDate, formatDateTime } from '@/lib/utils'
-import { 
+import { motion } from 'framer-motion'
+import {
   Search, Plus, MoreHorizontal, Eye, Mail, Loader2, Phone, PackagePlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -121,7 +123,6 @@ export function ClientsListPage() {
 
   const clientsItems = clientsData?.items ?? []
   const clientsTotalItems = clientsData?.totalItems ?? 0
-  const displayCount = tab === 'clients' ? clientsTotalItems : filteredKitAssignments.length
 
   const {
     data: detail,
@@ -213,286 +214,288 @@ export function ClientsListPage() {
     },
   })
 
+  const fadeUp = { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.2 } }
+
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      <Card className="border-surface-200">
-        <div className="p-6 pb-4 flex flex-wrap items-center justify-between gap-3 border-b border-surface-100">
-          <Input
-            placeholder="Ad veya ID ile ara..."
-            leftIcon={<Search className="h-4 w-4" />}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
-            className="w-full sm:w-80"
+      <Tabs
+        value={tab}
+        onValueChange={(v) => {
+          setTab(v as ActiveTab)
+          setPage(1)
+        }}
+      >
+        <motion.div
+          className="panel border-b border-surface-200"
+          {...fadeUp}
+        >
+          <PanelHeader
+            title="Danışanlarım"
+            description={
+              tab === 'clients'
+                ? `Kayıtlı danışanlar (${clientsTotalItems} kişi)`
+                : `Kit atanan danışanlar (${filteredKitAssignments.length} kişi)`
+            }
+            actions={
+              <>
+                <TabsList className="bg-surface-100 dark:bg-surface-200/60 p-0.5 rounded-lg">
+                  <TabsTrigger value="clients" className="rounded-md text-[12px] data-[state=active]:bg-white dark:data-[state=active]:bg-surface-100">
+                    Danışanlarım
+                  </TabsTrigger>
+                  <TabsTrigger value="kits" className="rounded-md text-[12px] data-[state=active]:bg-white dark:data-[state=active]:bg-surface-100">
+                    Kit atananlar
+                  </TabsTrigger>
+                </TabsList>
+                <ToolbarSearch
+                  value={search}
+                  onChange={(v) => {
+                    setSearch(v)
+                    setPage(1)
+                  }}
+                  placeholder="Ad veya ID ile ara..."
+                  inputClassName="h-9 text-sm w-48"
+                />
+                <Link to={ROUTES.DIYETISYEN_DANISANLAR_YENI}>
+                  <Button variant="primary" size="sm">
+                    <Plus className="h-4 w-4" />
+                    Danışan Ekle
+                  </Button>
+                </Link>
+              </>
+            }
           />
-          <div className="flex items-center gap-2">
-            <p className="text-sm text-surface-500">{displayCount} danisan</p>
-            <Link to={ROUTES.DIYETISYEN_DANISANLAR_YENI}>
-              <Button variant="primary" size="sm">
-                <Plus className="h-4 w-4" />
-                Danisan Ekle
-              </Button>
-            </Link>
-          </div>
-        </div>
-        <CardContent className="p-0">
-          <Tabs
-            value={tab}
-            onValueChange={(v) => {
-              setTab(v as ActiveTab)
-              setPage(1)
-            }}
-          >
-            <div className="p-4 border-b border-surface-100">
-              <TabsList>
-                <TabsTrigger value="clients">Danisanlarim</TabsTrigger>
-                <TabsTrigger value="kits">Kit Atanan Danisanlarim</TabsTrigger>
-              </TabsList>
+
+          <TabsContent value="clients" className="mt-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Danışan</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Client ID</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">User ID</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">E-posta</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kayıt Tarihi</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20 text-surface-500" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {clientsLoading && !clientsData ? (
+                    <tr>
+                      <td colSpan={6} className="px-5 py-12 text-center">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
+                        <p className="text-[12px] text-surface-500">Danışan listesi yükleniyor...</p>
+                      </td>
+                    </tr>
+                  ) : clientsItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-5 py-12 text-center text-[12px] text-surface-500">
+                        Filtreye uygun danışan bulunamadı.
+                      </td>
+                    </tr>
+                  ) : (
+                    clientsItems.map((client) => (
+                      <tr
+                        key={client.id}
+                        className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40 cursor-pointer"
+                        onClick={() => client.clientId && navigate(danisanDetayPath(String(client.clientId)))}
+                      >
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <Avatar name={client.clientName ?? '—'} size="sm" />
+                            <span className="text-[12px] text-surface-700">{client.clientName ?? '—'}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <code className="text-xs font-mono bg-surface-100 dark:bg-surface-200/60 px-2 py-0.5 rounded text-surface-600">{client.clientId ?? '—'}</code>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <code className="text-xs font-mono bg-surface-100 dark:bg-surface-200/60 px-2 py-0.5 rounded text-surface-600">{client.clientUserId ?? '—'}</code>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span className="text-[12px] text-surface-700">{client.clientEmail ?? '—'}</span>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span className="text-[12px] text-surface-500">{client.createdAt ? formatDate(client.createdAt) : '—'}</span>
+                        </td>
+                        <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon-sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openDetail(client.clientId)}>
+                                <Eye className="h-4 w-4 mr-2" /> Görüntüle
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openAssign(client.clientId ?? null, client.clientName)}>
+                                <PackagePlus className="h-4 w-4 mr-2" /> Kit Ata
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
+            <TablePagination
+              totalItems={clientsTotalItems}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(next) => {
+                setPageSize(next)
+                setPage(1)
+              }}
+            />
+          </TabsContent>
 
-            <TabsContent value="clients" className="mt-0">
-              {clientsLoading && !clientsData ? (
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
-                  <span className="ml-2 text-sm text-surface-500">Danışanlar yükleniyor...</span>
-                </div>
-              ) : (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Danisan</TableHead>
-                        <TableHead>Client ID</TableHead>
-                        <TableHead>User ID</TableHead>
-                        <TableHead>E-posta</TableHead>
-                        <TableHead>Kayit Tarihi</TableHead>
-                        <TableHead className="w-12" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {clientsItems.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="py-14 text-center">
-                            <div className="mx-auto max-w-sm">
-                              <p className="text-sm font-medium text-surface-700 mb-1">Eslesen danisan bulunamadi</p>
-                              <p className="text-xs text-surface-500">Arama metnini degistirerek tekrar deneyin.</p>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {clientsItems.map((client) => (
-                        <TableRow
-                          key={client.id}
-                          className="cursor-pointer hover:bg-surface-50/70 transition-colors"
-                          onClick={() => client.clientId && navigate(danisanDetayPath(String(client.clientId)))}
-                        >
-                          <TableCell>
-                            <div className="flex items-center gap-3 group/name">
-                              <Avatar name={client.clientName ?? '—'} size="sm" />
-                              <span className="font-medium text-surface-800 group-hover/name:text-primary-600 transition-colors">{client.clientName ?? '—'}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <code className="text-xs font-mono bg-surface-50 px-2 py-0.5 rounded">{client.clientId ?? '—'}</code>
-                          </TableCell>
-                          <TableCell>
-                            <code className="text-xs font-mono bg-surface-50 px-2 py-0.5 rounded">{client.clientUserId ?? '—'}</code>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1 text-xs text-surface-600">
-                              <Mail className="h-3 w-3" />
-                              <span>{client.clientEmail ?? '—'}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-surface-500">{client.createdAt ? formatDate(client.createdAt) : '—'}</TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon-sm">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => openDetail(client.clientId)}
-                                >
-                                  <Eye className="h-4 w-4 mr-2" /> Goruntule
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => openAssign(client.clientId ?? null, client.clientName)}
-                                >
-                                  <PackagePlus className="h-4 w-4 mr-2" /> Kit Ata
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <TablePagination
-                    totalItems={clientsTotalItems}
-                    page={page}
-                    pageSize={pageSize}
-                    onPageChange={setPage}
-                    onPageSizeChange={(next) => {
-                      setPageSize(next)
-                      setPage(1)
-                    }}
-                  />
-                </>
-              )}
-            </TabsContent>
-
-            <TabsContent value="kits" className="mt-0">
-              {kitsLoading && !kitsData ? (
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
-                  <span className="ml-2 text-sm text-surface-500">Kitli danışanlar yükleniyor...</span>
-                </div>
-              ) : (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Danisan</TableHead>
-                        <TableHead>Client ID</TableHead>
-                        <TableHead>Durum</TableHead>
-                        <TableHead>Kit</TableHead>
-                        <TableHead>Aktif</TableHead>
-                        <TableHead>Son Atama</TableHead>
-                        <TableHead className="w-12" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedKitAssignments.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={7} className="py-14 text-center">
-                            <div className="mx-auto max-w-sm">
-                              <p className="text-sm font-medium text-surface-700 mb-1">Kit atanmis danisan bulunamadi</p>
-                              <p className="text-xs text-surface-500">Arama metnini degistirerek tekrar deneyin.</p>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {paginatedKitAssignments.map((k) => (
-                        <TableRow
-                          key={k.id}
-                          className="cursor-pointer hover:bg-surface-50/70 transition-colors"
-                          onClick={() => k.clientId && navigate(danisanDetayPath(String(k.clientId)))}
-                        >
-                          <TableCell>
-                            <div className="flex items-center gap-3 group/name">
-                              <Avatar name={k.clientName ?? '—'} size="sm" />
-                              <span className="font-medium text-surface-800 group-hover/name:text-primary-600 transition-colors">{k.clientName ?? '—'}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <code className="text-xs font-mono bg-surface-50 px-2 py-0.5 rounded">{k.clientId ?? '—'}</code>
-                          </TableCell>
-                          <TableCell>
-                            {k.status ? (
-                              <Badge
-                                variant={
-                                  k.status === 'completed' || k.status === 'delivered'
-                                    ? 'success'
-                                    : k.status === 'cancelled'
-                                      ? 'danger'
-                                      : k.status === 'in_laboratory'
-                                        ? 'warning'
-                                        : k.status === 'in_expert'
-                                          ? 'info'
-                                          : 'primary'
+          <TabsContent value="kits" className="mt-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Danışan</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Client ID</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kit</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Aktif</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Son Atama</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20 text-surface-500" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {kitsLoading && !kitsData ? (
+                    <tr>
+                      <td colSpan={7} className="px-5 py-12 text-center">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
+                        <p className="text-[12px] text-surface-500">Kit atanan danışanlar yükleniyor...</p>
+                      </td>
+                    </tr>
+                  ) : paginatedKitAssignments.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-5 py-12 text-center text-[12px] text-surface-500">
+                        Kit atanmış danışan bulunamadı.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedKitAssignments.map((k) => (
+                      <tr
+                        key={k.id}
+                        className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40 cursor-pointer"
+                        onClick={() => k.clientId && navigate(danisanDetayPath(String(k.clientId)))}
+                      >
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <Avatar name={k.clientName ?? '—'} size="sm" />
+                            <span className="text-[12px] text-surface-700">{k.clientName ?? '—'}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <code className="text-xs font-mono bg-surface-100 dark:bg-surface-200/60 px-2 py-0.5 rounded text-surface-600">{k.clientId ?? '—'}</code>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          {k.status ? (
+                            <Badge
+                              variant={
+                                k.status === 'completed' || k.status === 'delivered'
+                                  ? 'success'
+                                  : k.status === 'cancelled'
+                                    ? 'danger'
+                                    : k.status === 'in_laboratory'
+                                      ? 'warning'
+                                      : k.status === 'in_expert'
+                                        ? 'info'
+                                        : 'primary'
+                              }
+                              size="sm"
+                            >
+                              {k.status === 'in_client'
+                                ? 'Danışanda'
+                                : k.status === 'in_laboratory'
+                                  ? 'Laboratuvarda'
+                                  : k.status === 'in_expert'
+                                    ? 'Uzmanda'
+                                    : k.status === 'delivered'
+                                      ? 'Teslim'
+                                      : k.status === 'cancelled'
+                                        ? 'İptal'
+                                        : k.status === 'completed'
+                                          ? 'Tamamlandı'
+                                          : k.status}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-surface-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <Badge variant="outline">{k.kitName ?? 'Kit'}</Badge>
+                          {k.kitBarcode ? (
+                            <div className="mt-1 text-[11px] text-surface-500">{k.kitBarcode}</div>
+                          ) : (
+                            <div className="mt-1 text-[11px] text-surface-400">—</div>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          {k.isActive ? (
+                            <Badge variant="success" size="sm">Aktif</Badge>
+                          ) : (
+                            <Badge variant="outline" size="sm">Pasif</Badge>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span className="text-[12px] text-surface-500">{k.createdAt ? formatDate(k.createdAt) : '—'}</span>
+                        </td>
+                        <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon-sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openKitDetail(k.id)}>
+                                <Eye className="h-4 w-4 mr-2" /> Görüntüle
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  openEdit({
+                                    assignmentId: k.id,
+                                    clientName: k.clientName,
+                                    kitName: k.kitName,
+                                    kitBarcode: k.kitBarcode,
+                                    status: k.status,
+                                  })
                                 }
-                                size="sm"
                               >
-                                {k.status === 'in_client'
-                                  ? 'Danisanda'
-                                  : k.status === 'in_laboratory'
-                                    ? 'Laboratuvarda'
-                                    : k.status === 'in_expert'
-                                      ? 'Uzmanda'
-                                      : k.status === 'delivered'
-                                        ? 'Teslim'
-                                        : k.status === 'cancelled'
-                                          ? 'Iptal'
-                                          : k.status === 'completed'
-                                            ? 'Tamamlandi'
-                                            : k.status}
-                              </Badge>
-                            ) : (
-                              <span className="text-xs text-surface-400">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{k.kitName ?? 'Kit'}</Badge>
-                            {k.kitBarcode ? (
-                              <div className="mt-1 text-[11px] text-surface-500">
-                                {k.kitBarcode}
-                              </div>
-                            ) : (
-                              <div className="mt-1 text-[11px] text-surface-400">—</div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {k.isActive ? (
-                              <Badge variant="success" size="sm">Aktif</Badge>
-                            ) : (
-                              <Badge variant="outline" size="sm">Pasif</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm text-surface-500">{k.createdAt ? formatDate(k.createdAt) : '—'}</TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon-sm">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openKitDetail(k.id)}>
-                                  <Eye className="h-4 w-4 mr-2" /> Goruntule
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    openEdit({
-                                      assignmentId: k.id,
-                                      clientName: k.clientName,
-                                      kitName: k.kitName,
-                                      kitBarcode: k.kitBarcode,
-                                      status: k.status,
-                                    })
-                                  }
-                                >
-                                  Duzenle
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <TablePagination
-                    totalItems={filteredKitAssignments.length}
-                    page={page}
-                    pageSize={pageSize}
-                    onPageChange={setPage}
-                    onPageSizeChange={(next) => {
-                      setPageSize(next)
-                      setPage(1)
-                    }}
-                  />
-                </>
-              )}
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+                                Düzenle
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <TablePagination
+              totalItems={filteredKitAssignments.length}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(next) => {
+                setPageSize(next)
+                setPage(1)
+              }}
+            />
+          </TabsContent>
+        </motion.div>
+      </Tabs>
 
       <Modal
         open={detailOpen}

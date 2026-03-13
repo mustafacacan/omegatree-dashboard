@@ -1,7 +1,18 @@
+import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { TreePine } from 'lucide-react'
+import { useThemeStore } from '@/stores/theme.store'
 
 export function AuthLayout() {
+  useEffect(() => {
+    document.documentElement.classList.remove('dark')
+    return () => {
+      const theme = useThemeStore.getState().theme
+      if (theme === 'dark') document.documentElement.classList.add('dark')
+      else document.documentElement.classList.remove('dark')
+    }
+  }, [])
+
   return (
     <div className="min-h-screen flex" style={{ background: '#F9F7F3' }}>
       {/* Left panel - Branding */}

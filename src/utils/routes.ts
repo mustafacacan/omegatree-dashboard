@@ -34,6 +34,7 @@ export const ROUTES = {
   DIYETISYEN_KITLER: '/diyetisyen/kitler',
   DIYETISYEN_STOK: '/diyetisyen/stok',
   DIYETISYEN_SIPARISLER: '/diyetisyen/siparisler',
+  DIYETISYEN_SIPARIS_GECMISI: '/diyetisyen/siparisler/gecmis',
   DIYETISYEN_RAPORLAR: '/diyetisyen/raporlar',
 
   LABORATUVAR: '/laboratuvar',

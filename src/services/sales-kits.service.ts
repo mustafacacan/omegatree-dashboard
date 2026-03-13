@@ -85,16 +85,17 @@ function mapApiKit(apiKit: SalesKitResponse | Record<string, unknown>): SalesKit
   }
 }
 
-/** Görsel URL'si API'den tam veya relative gelebilir; "undefined" on eki backend hatasinda duzeltilir */
+/** Görsel URL'si: API'den gelen imageData.url (tam veya relative) kullanılır */
 export function getSalesKitImageUrl(url: string | undefined): string | null {
-  if (!url?.trim()) return null
-  let u = url.trim()
+  if (!url || typeof url !== 'string' || !url.trim()) return null
+  const u = url.trim()
+  if (u.startsWith('http://') || u.startsWith('https://')) return u
   const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3005/api'
   const base = String(apiBase).replace(/\/api\/?$/, '')
   if (u.startsWith('undefined') || u.startsWith('undefined/')) {
-    u = u.replace(/^undefined\/?/, '/')
+    const fixed = u.replace(/^undefined\/?/, '/')
+    return `${base}${fixed.startsWith('/') ? '' : '/'}${fixed}`
   }
-  if (u.startsWith('http://') || u.startsWith('https://')) return u
   return `${base}${u.startsWith('/') ? '' : '/'}${u}`
 }
 

@@ -80,10 +80,10 @@ export function ReportsPage() {
     <div className="space-y-8 animate-fade-in">
       <PageHeader />
 
-      <Card className="border-surface-200">
-        <CardHeader className="border-b border-surface-100">
+      <Card className="border-surface-200 dark:border-surface-700">
+        <CardHeader className="border-b border-surface-100 dark:border-surface-700">
           <div>
-            <h2 className="text-lg font-semibold text-surface-900">Sonuclar</h2>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Sonuclar</h2>
             <p className="text-sm text-surface-500 mt-0.5">
               Sonuclanan raporlari buradan goruntuleyebilirsiniz.
             </p>
@@ -97,10 +97,10 @@ export function ReportsPage() {
             </div>
           ) : resultsQuery.isError ? (
             <div className="py-14 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100 dark:bg-surface-200/80">
                 <FileText className="h-7 w-7 text-surface-400" />
               </div>
-              <p className="text-sm font-medium text-surface-600">Sonuclar yuklenemedi</p>
+              <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Sonuclar yuklenemedi</p>
               <p className="text-xs text-surface-500 mt-1">{getApiErrorMessage(resultsQuery.error, { fallback: 'Lutfen tekrar deneyin' })}</p>
               <div className="mt-4 flex justify-center">
                 <Button variant="outline" size="sm" onClick={() => resultsQuery.refetch()}>
@@ -110,10 +110,10 @@ export function ReportsPage() {
             </div>
           ) : items.length === 0 ? (
             <div className="py-14 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100 dark:bg-surface-200/80">
                 <FileText className="h-7 w-7 text-surface-400" />
               </div>
-              <p className="text-sm font-medium text-surface-600">Henuz sonuc yok</p>
+              <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Henuz sonuc yok</p>
               <p className="text-xs text-surface-500 mt-1">Sonuclanan raporlar burada listelenecek.</p>
             </div>
           ) : (
@@ -121,14 +121,14 @@ export function ReportsPage() {
               {items.map((r) => (
                 <div
                   key={String(r.id ?? `${r.dieticianClientId ?? '0'}-${r.createdAt ?? ''}`)}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-surface-200 bg-white p-4 transition-colors hover:border-primary-200 hover:bg-surface-50/50"
+                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-100 p-4 transition-colors hover:border-primary-200 dark:hover:border-primary-800 hover:bg-surface-50/50 dark:hover:bg-surface-200/40"
                 >
                   <div className="flex items-center gap-4 min-w-0">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-surface-200 bg-surface-50">
                       <FileText className="h-6 w-6 text-primary-600" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-surface-900">
+                      <p className="font-semibold text-surface-900 dark:text-surface-100">
                         <span className="font-mono text-sm">#{r.id ?? '-'}</span>
                         <Badge className="ml-2" variant={r.status === 'approved' ? 'success' : r.status === 'rejected' ? 'danger' : r.status === 'completed' ? 'info' : 'warning'} dot>
                           {getResultStatusLabel(r.status)}
@@ -176,12 +176,12 @@ export function ReportsPage() {
           </ModalHeader>
           <ModalBody className="space-y-4">
             {detailQuery.isLoading ? (
-              <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 text-sm text-surface-600">
+              <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-4 text-sm text-surface-600 dark:text-surface-400">
                 Yukleniyor...
               </div>
             ) : detailQuery.isError ? (
-              <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
-                <p className="text-sm font-medium text-surface-700">Detay yuklenemedi</p>
+              <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-4">
+                <p className="text-sm font-medium text-surface-700 dark:text-surface-300">Detay yuklenemedi</p>
                 <p className="text-xs text-surface-500 mt-1">{getApiErrorMessage(detailQuery.error, { fallback: 'Lutfen daha sonra tekrar deneyin.' })}</p>
               </div>
             ) : detailResult ? (
@@ -210,13 +210,13 @@ export function ReportsPage() {
                     {detailResult.overall_evaluation ? (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-1">Genel Degerlendirme</p>
-                        <p className="text-sm text-surface-800 whitespace-pre-wrap">{detailResult.overall_evaluation}</p>
+                        <p className="text-sm text-surface-800 dark:text-surface-200 whitespace-pre-wrap">{detailResult.overall_evaluation}</p>
                       </div>
                     ) : null}
                     {detailResult.nutrition_suggestions ? (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-1">Beslenme Onerileri</p>
-                        <p className="text-sm text-surface-800 whitespace-pre-wrap">{detailResult.nutrition_suggestions}</p>
+                        <p className="text-sm text-surface-800 dark:text-surface-200 whitespace-pre-wrap">{detailResult.nutrition_suggestions}</p>
                       </div>
                     ) : null}
                     {detailResult.reinforcement_suggestions ? (
@@ -239,15 +239,15 @@ export function ReportsPage() {
                     {isProbablyPdf(detailMediaUrl) ? (
                       <PdfViewer file={detailMediaUrl} maxHeight="55vh" className="flex-1" />
                     ) : (
-                      <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
-                        <p className="text-sm text-surface-600">Dosya onizlemesi sadece PDF icin destekleniyor.</p>
+                      <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-4">
+                        <p className="text-sm text-surface-600 dark:text-surface-400">Dosya onizlemesi sadece PDF icin destekleniyor.</p>
                         <p className="text-xs text-surface-500 mt-1">Linkten acarak goruntuleyebilirsiniz.</p>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
-                    <p className="text-sm text-surface-600">Sonuc dosyasi bulunamadi.</p>
+                  <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-4">
+                    <p className="text-sm text-surface-600 dark:text-surface-400">Sonuc dosyasi bulunamadi.</p>
                     <p className="text-xs text-surface-500 mt-1">Bu kayit icin medya yuklenmemis olabilir.</p>
                   </div>
                 )}
