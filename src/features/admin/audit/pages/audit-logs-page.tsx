@@ -223,7 +223,7 @@ export function AuditLogsPage() {
       </Card>
 
       <Modal open={detailLogId !== null} onOpenChange={(open) => !open && setDetailLogId(null)}>
-        <ModalContent className="max-w-3xl w-full max-h-[90vh] flex flex-col">
+        <ModalContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <ModalHeader>
             <ModalTitle>
               Log {detailLogId != null ? `#${detailLogId}` : ''}

@@ -39,7 +39,6 @@ const ReportApprovalsPage = lazy(() => import('@/features/admin/reports/pages/re
 // Dietitian
 const DietitianDashboardPage = lazy(() => import('@/features/dietitian/dashboard/dietitian-dashboard-page').then(m => ({ default: m.DietitianDashboardPage })))
 const ClientsListPage = lazy(() => import('@/features/dietitian/clients/pages/clients-list-page').then(m => ({ default: m.ClientsListPage })))
-const ClientFormPage = lazy(() => import('@/features/dietitian/clients/pages/client-form-page').then(m => ({ default: m.ClientFormPage })))
 const ClientDetailPage = lazy(() => import('@/features/dietitian/clients/pages/client-detail-page').then(m => ({ default: m.ClientDetailPage })))
 const KitsPage = lazy(() => import('@/features/dietitian/kits/pages/kits-page').then(m => ({ default: m.KitsPage })))
 const MyStockPage = lazy(() => import('@/features/dietitian/stock/pages/my-stock-page').then(m => ({ default: m.MyStockPage })))
@@ -133,9 +132,9 @@ export const router = createBrowserRouter([
       { path: ROUTES.DIYETISYEN_AYARLAR, element: <SuspensePage><SettingsPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_BILDIRIMLER, element: <SuspensePage><NotificationsPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_DANISANLAR, element: <SuspensePage><ClientsListPage /></SuspensePage> },
-      { path: ROUTES.DIYETISYEN_DANISANLAR_YENI, element: <SuspensePage><ClientFormPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_DANISANLAR_YENI, element: <Navigate to={ROUTES.DIYETISYEN_DANISANLAR} replace /> },
       { path: `${ROUTES.DIYETISYEN_DANISANLAR}/:clientId`, element: <SuspensePage><ClientDetailPage /></SuspensePage> },
-      { path: `${ROUTES.DIYETISYEN_DANISANLAR}/:clientId/duzenle`, element: <SuspensePage><ClientFormPage /></SuspensePage> },
+      { path: `${ROUTES.DIYETISYEN_DANISANLAR}/:clientId/duzenle`, element: <Navigate to={ROUTES.DIYETISYEN_DANISANLAR} replace /> },
       { path: ROUTES.DIYETISYEN_KITLER, element: <SuspensePage><KitsPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_STOK, element: <SuspensePage><MyStockPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_SIPARISLER, element: <SuspensePage><DietitianOrderPage /></SuspensePage> },

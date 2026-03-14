@@ -232,7 +232,7 @@ function SpecialistsPage() {
 
       {/* Görüntüle */}
       <Modal open={viewOpen} onOpenChange={setViewOpen}>
-        <ModalContent>
+        <ModalContent className="max-w-lg">
           <ModalHeader>
             <ModalTitle>Uzman Detayı</ModalTitle>
             <ModalDescription>
@@ -285,39 +285,42 @@ function SpecialistsPage() {
 
       {/* Yeni Uzman */}
       <Modal open={newOpen} onOpenChange={setNewOpen}>
-        <ModalContent>
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
             <ModalTitle>Yeni Uzman Ekle</ModalTitle>
             <ModalDescription>Yeni uzmanı aktif olarak oluşturun.</ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-3">
+          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
+            <p className="form-section-title">Kişisel Bilgiler</p>
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Ad"
+                label="Ad *"
                 value={form.firstName}
                 onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
                 placeholder="Ad"
               />
               <Input
-                label="Soyad"
+                label="Soyad *"
                 value={form.lastName}
                 onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
                 placeholder="Soyad"
               />
             </div>
-            <Input
-              label="E-posta"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-              placeholder="ornek@email.com"
-            />
-            <Input
-              label="Telefon"
-              value={form.phone}
-              onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-              placeholder="05XX XXX XX XX"
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Telefon *"
+                value={form.phone}
+                onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
+                placeholder="05XX XXX XX XX"
+              />
+              <Input
+                label="E-posta *"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+                placeholder="ornek@email.com"
+              />
+            </div>
             <div className="space-y-1.5">
               <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
               <Select value={form.gender} onValueChange={(v) => setForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
@@ -328,14 +331,15 @@ function SpecialistsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <p className="text-xs text-surface-500">
+            <p className="text-[11px] text-surface-500 pt-2">
               Oluşturulan hesap uzman (expert) rolü ile kaydedilir.
             </p>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => { setNewOpen(false); resetForm() }}>İptal</Button>
-            <Button variant="primary" onClick={submitNew} disabled={createMutation.isPending}>
-              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button variant="outline" onClick={() => { setNewOpen(false); resetForm() }} disabled={createMutation.isPending}>
+              İptal
+            </Button>
+            <Button variant="primary" onClick={submitNew} disabled={createMutation.isPending} loading={createMutation.isPending}>
               Uzman Oluştur
             </Button>
           </ModalFooter>
@@ -344,44 +348,48 @@ function SpecialistsPage() {
 
       {/* Düzenle */}
       <Modal open={editOpen} onOpenChange={setEditOpen}>
-        <ModalContent>
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
             <ModalTitle>Uzman Düzenle</ModalTitle>
             <ModalDescription>{selected && `${selected.firstName} ${selected.lastName}`}</ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-3">
+          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
+            <p className="form-section-title">Kişisel Bilgiler</p>
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Ad"
+                label="Ad *"
                 value={form.firstName}
                 onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
                 placeholder="Ad"
               />
               <Input
-                label="Soyad"
+                label="Soyad *"
                 value={form.lastName}
                 onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
                 placeholder="Soyad"
               />
             </div>
-            <Input
-              label="E-posta"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-              placeholder="ornek@email.com"
-            />
-            <Input
-              label="Telefon"
-              value={form.phone}
-              onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-              placeholder="05XX XXX XX XX"
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Telefon *"
+                value={form.phone}
+                onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
+                placeholder="05XX XXX XX XX"
+              />
+              <Input
+                label="E-posta *"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+                placeholder="ornek@email.com"
+              />
+            </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => { setEditOpen(false); setSelected(null) }}>İptal</Button>
-            <Button variant="primary" onClick={submitEdit} disabled={updateMutation.isPending}>
-              {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button variant="outline" onClick={() => { setEditOpen(false); setSelected(null) }} disabled={updateMutation.isPending}>
+              İptal
+            </Button>
+            <Button variant="primary" onClick={submitEdit} disabled={updateMutation.isPending} loading={updateMutation.isPending}>
               Kaydet
             </Button>
           </ModalFooter>
@@ -390,7 +398,7 @@ function SpecialistsPage() {
 
       {/* Sil */}
       <Modal open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <ModalContent>
+        <ModalContent className="max-w-md">
           <ModalHeader>
             <ModalTitle>Uzman Sil</ModalTitle>
             <ModalDescription>
@@ -398,10 +406,11 @@ function SpecialistsPage() {
             </ModalDescription>
           </ModalHeader>
           <ModalFooter>
-            <Button variant="outline" onClick={() => { setDeleteOpen(false); setSelected(null) }}>İptal</Button>
-            <Button variant="destructive" onClick={submitDelete} disabled={deleteMutation.isPending} className="min-w-[80px]">
-              {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              <Trash2 className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={() => { setDeleteOpen(false); setSelected(null) }} disabled={deleteMutation.isPending}>
+              İptal
+            </Button>
+            <Button variant="destructive" onClick={submitDelete} disabled={deleteMutation.isPending} loading={deleteMutation.isPending}>
+              <Trash2 className="h-4 w-4" />
               Sil
             </Button>
           </ModalFooter>

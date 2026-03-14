@@ -358,19 +358,20 @@ export function ProductionCenterPage() {
 
       {/* Create Kit Modal */}
       <Modal open={createKitOpen} onOpenChange={setCreateKitOpen}>
-        <ModalContent>
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
             <ModalTitle>Yeni Kit</ModalTitle>
             <ModalDescription>Yeni bir kit tanımı oluşturun</ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-4">
+          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
+            <p className="form-section-title">Kit Bilgileri</p>
             <Input
-              label="Kit adı"
+              label="Kit Adı *"
               value={newKitName}
               onChange={(e) => setNewKitName(e.target.value)}
               placeholder="Örn: Standart Omega-3 Kiti"
             />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pt-1">
               <input
                 type="checkbox"
                 id="newKitActive"
@@ -378,12 +379,14 @@ export function ProductionCenterPage() {
                 onChange={(e) => setNewKitActive(e.target.checked)}
                 className="h-4 w-4 rounded border-surface-300"
               />
-              <label htmlFor="newKitActive" className="text-sm text-surface-700">Aktif</label>
+              <label htmlFor="newKitActive" className="text-[13px] text-surface-700">Aktif</label>
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => setCreateKitOpen(false)}>İptal</Button>
-            <Button variant="primary" onClick={handleCreateKit} disabled={createKitMutation.isPending}>
+            <Button variant="outline" onClick={() => setCreateKitOpen(false)} disabled={createKitMutation.isPending}>
+              İptal
+            </Button>
+            <Button variant="primary" onClick={handleCreateKit} disabled={createKitMutation.isPending} loading={createKitMutation.isPending}>
               Oluştur
             </Button>
           </ModalFooter>
@@ -392,19 +395,20 @@ export function ProductionCenterPage() {
 
       {/* Edit Kit Modal */}
       <Modal open={!!editKit} onOpenChange={(open) => !open && setEditKit(null)}>
-        <ModalContent>
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
             <ModalTitle>Kiti Düzenle</ModalTitle>
             <ModalDescription>Kit adı ve durumunu güncelleyin</ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-4">
+          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
+            <p className="form-section-title">Kit Bilgileri</p>
             <Input
-              label="Kit adı"
+              label="Kit Adı *"
               value={editKitName}
               onChange={(e) => setEditKitName(e.target.value)}
               placeholder="Örn: Standart Omega-3 Kiti"
             />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pt-1">
               <input
                 type="checkbox"
                 id="editKitActive"
@@ -412,12 +416,14 @@ export function ProductionCenterPage() {
                 onChange={(e) => setEditKitActive(e.target.checked)}
                 className="h-4 w-4 rounded border-surface-300"
               />
-              <label htmlFor="editKitActive" className="text-sm text-surface-700">Aktif</label>
+              <label htmlFor="editKitActive" className="text-[13px] text-surface-700">Aktif</label>
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => setEditKit(null)}>İptal</Button>
-            <Button variant="primary" onClick={handleUpdateKit} disabled={updateKitMutation.isPending}>
+            <Button variant="outline" onClick={() => setEditKit(null)} disabled={updateKitMutation.isPending}>
+              İptal
+            </Button>
+            <Button variant="primary" onClick={handleUpdateKit} disabled={updateKitMutation.isPending} loading={updateKitMutation.isPending}>
               Kaydet
             </Button>
           </ModalFooter>

@@ -699,9 +699,9 @@ export function ReturnRequestsPage() {
 
       {/* Telafi kiti ata modal */}
       <Modal open={!!compensationForDamaged} onOpenChange={(open) => !open && (setCompensationForDamaged(null), setCompensationSelectedKitId(''))}>
-        <ModalContent>
+        <ModalContent className="max-w-md">
           <ModalHeader>
-            <ModalTitle>Kit ata</ModalTitle>
+            <ModalTitle>Kit Ata</ModalTitle>
             <ModalDescription>
               Hasarlı kit: <code className="font-mono">{compensationForDamaged ? kitBarcode(compensationForDamaged) : ''}</code>. Stoktan bir barkod secip bu diyetisyene atayin.
             </ModalDescription>
@@ -750,7 +750,7 @@ export function ReturnRequestsPage() {
       <Modal open={!!photoModalUrl} onOpenChange={(open) => !open && setPhotoModalUrl(null)}>
         <ModalContent className="max-w-4xl">
           <ModalHeader>
-            <ModalTitle>Iade kanit gorseli</ModalTitle>
+            <ModalTitle>İade Kanıt Görseli</ModalTitle>
           </ModalHeader>
           <ModalBody className="p-0">
             {photoModalUrl && (
@@ -773,9 +773,9 @@ export function ReturnRequestsPage() {
           }
         }}
       >
-        <ModalContent className="max-w-3xl">
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
-            <ModalTitle>Iade talebi detayı</ModalTitle>
+            <ModalTitle>İade Talebi Detayı</ModalTitle>
             <ModalDescription>
               {modalRequest
                 ? `Talep #${requestIdValue(modalRequest) ?? '—'} · Kit ${kitIdValue(modalRequest) ?? kitBarcode(modalRequest as unknown as DamagedKit)} · ${dietitianName(modalRequest as unknown as DamagedKit)}`

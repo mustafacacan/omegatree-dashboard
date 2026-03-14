@@ -94,10 +94,10 @@ export function MyStockPage() {
     onSuccess: (res) => {
       queryClient.setQueryData(['stocks', 'alert-settings'], res)
       setMinStockAlert(res.limit)
-      toast.success('Minimum stok limiti guncellendi')
+      toast.success('Minimum stok limiti güncellendi')
     },
     onError: (err) => {
-      toast.error(getApiErrorMessage(err as { response?: { data?: { message?: string } }; message?: string }, { fallback: 'Minimum stok limiti guncellenemedi.' }))
+      toast.error(getApiErrorMessage(err as { response?: { data?: { message?: string } }; message?: string }, { fallback: 'Minimum stok limiti güncellenemedi.' }))
     },
   })
 
@@ -194,11 +194,11 @@ export function MyStockPage() {
       return
     }
     if (!returnFile) {
-      toast.error('Kanit dosyasi secin')
+      toast.error('Kanıt dosyası seçin')
       return
     }
     if (!returnReason.trim()) {
-      toast.error('Aciklama girin')
+      toast.error('Açıklama girin')
       return
     }
 
@@ -208,11 +208,11 @@ export function MyStockPage() {
         reason: returnReason.trim(),
         imageFile: returnFile,
       })
-      toast.success('Iade talebiniz alindi')
+      toast.success('İade talebiniz alındı')
       closeReturnModal()
       queryClient.invalidateQueries({ queryKey: ['stocks', 'my-stock-list'] })
     } catch (err) {
-      toast.error(getApiErrorMessage(err as { response?: { data?: { message?: string } }; message?: string }, { fallback: 'Iade talebi olusturulamadi.' }))
+      toast.error(getApiErrorMessage(err as { response?: { data?: { message?: string } }; message?: string }, { fallback: 'İade talebi oluşturulamadı.' }))
       setReturnSubmitting(false)
     }
   }
@@ -238,7 +238,7 @@ export function MyStockPage() {
 
   const badgeForKit = (kit: { uiStatus: 'available' | 'assigned' | 'damaged'; kitStatus?: unknown }) => {
     if (kit.uiStatus === 'assigned') {
-      return <Badge variant="warning" dot>Atanmis</Badge>
+      return <Badge variant="warning" dot>Atanmış</Badge>
     }
     if (kit.uiStatus === 'damaged') {
       if (kit.kitStatus === 'damaged-pending') {
@@ -255,34 +255,34 @@ export function MyStockPage() {
 
       {/* Min stok uyarı limiti */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.08 }}>
-        <div className="panel">
+        <div className="panel border-b border-surface-200">
           <div className="p-5 flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-surface-700">Minimum stok uyarı limiti:</span>
-          <input
-            type="number"
-            min={0}
-            value={minStockInput !== '' ? minStockInput : minStockAlert}
-            onChange={(e) => setMinStockInput(e.target.value)}
-            onBlur={() => {
-              if (minStockInput.trim() !== '' && draftLimit == null) {
-                setMinStockInput('')
-              }
-            }}
-            placeholder={String(minStockAlert || 0)}
-            className="w-20 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-200"
-          />
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={!canSaveLimit}
-            onClick={() => {
-              if (draftLimit == null) return
-              setConfirmLimit(draftLimit)
-            }}
-          >
-            Kaydet
-          </Button>
-          <span className="text-xs text-surface-500">Stok bu sayının altına düşünce uyarı alırsınız.</span>
+            <input
+              type="number"
+              min={0}
+              value={minStockInput !== '' ? minStockInput : minStockAlert}
+              onChange={(e) => setMinStockInput(e.target.value)}
+              onBlur={() => {
+                if (minStockInput.trim() !== '' && draftLimit == null) {
+                  setMinStockInput('')
+                }
+              }}
+              placeholder={String(minStockAlert || 0)}
+              className="w-20 rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-200 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-200 dark:focus:ring-primary-800"
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={!canSaveLimit}
+              onClick={() => {
+                if (draftLimit == null) return
+                setConfirmLimit(draftLimit)
+              }}
+            >
+              Kaydet
+            </Button>
+            <span className="text-xs text-surface-500">Stok bu sayının altına düşünce uyarı alırsınız.</span>
           </div>
         </div>
       </motion.div>
@@ -295,11 +295,11 @@ export function MyStockPage() {
         title="Minimum stok limiti"
         description={
           confirmLimit != null
-            ? `Minimum stok uyari limitini ${confirmLimit} olarak guncellemek istiyor musunuz?`
+            ? `Minimum stok uyarı limitini ${confirmLimit} olarak güncellemek istiyor musunuz?`
             : 'Devam etmek istiyor musunuz?'
         }
         confirmLabel="Onayla"
-        cancelLabel="Vazgec"
+        cancelLabel="İptal"
         loading={updateAlertLimitMutation.isPending}
         onConfirm={() => {
           if (confirmLimit == null) return
@@ -334,188 +334,204 @@ export function MyStockPage() {
 
       {/* Kit listesi */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.15 }}>
-        <div className="panel">
-          <PanelHeader
-            title="Kitler"
-            description={`Kullanılabilir: ${availableKits.length} · Kullanılan: ${usedKits.length}`}
-            actions={
-              <>
-                <ToolbarSearch
-                  value={searchQuery}
-                  onChange={setSearchQuery}
-                  placeholder="Barkod ara..."
-                  className="w-full sm:w-auto"
-                />
-                <Button variant="primary" size="sm" onClick={() => setReceiveKitModalOpen(true)} className="gap-2">
-                  <ScanLine className="h-4 w-4" /> Kit teslim al
-                </Button>
-                <Button variant="outline" size="sm" onClick={openReturnModal} className="gap-2">
-                  <RotateCcw className="h-4 w-4" /> İade talebi
-                </Button>
-                <Button variant="primary" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)} className="gap-2">
-                  <ShoppingCart className="h-4 w-4" /> Sipariş ver
-                </Button>
-              </>
-            }
-          />
+        <Tabs value={kitsTab} onValueChange={(v) => setKitsTab(v as 'in-stock' | 'used')}>
+          <div className="panel border-b border-surface-200">
+            <PanelHeader
+              title="Stoğum"
+              description={`Kullanılabilir: ${availableKits.length} · Kullanılan: ${usedKits.length}`}
+              actions={
+                <>
+                  <TabsList className="bg-surface-100 dark:bg-surface-200/60 p-0.5 rounded-lg">
+                    <TabsTrigger value="in-stock" className="rounded-md text-[12px] data-[state=active]:bg-white dark:data-[state=active]:bg-surface-100">
+                      Stoktaki ({filteredAvailable.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="used" className="rounded-md text-[12px] data-[state=active]:bg-white dark:data-[state=active]:bg-surface-100">
+                      Kullanılan ({filteredUsed.length})
+                    </TabsTrigger>
+                  </TabsList>
+                  <ToolbarSearch
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Barkod ara..."
+                    inputClassName="h-9 text-sm w-48"
+                  />
+                  <Button variant="primary" size="sm" onClick={() => setReceiveKitModalOpen(true)} className="gap-2">
+                    <ScanLine className="h-4 w-4" /> Kit teslim al
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={openReturnModal} className="gap-2">
+                    <RotateCcw className="h-4 w-4" /> İade talebi
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)} className="gap-2">
+                    <ShoppingCart className="h-4 w-4" /> Sipariş ver
+                  </Button>
+                </>
+              }
+            />
 
-          <div className="p-5">
-            <Tabs value={kitsTab} onValueChange={(v) => setKitsTab(v as 'in-stock' | 'used')}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="in-stock">Stoktaki ({filteredAvailable.length})</TabsTrigger>
-                <TabsTrigger value="used">Kullanılan ({filteredUsed.length})</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="in-stock">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
-                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
-                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Teslim</th>
-                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+            <TabsContent value="in-stock" className="mt-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                      <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
+                      <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Teslim</th>
+                      <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={3} className="px-5 py-12 text-center">
+                          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
+                          <p className="text-[12px] text-surface-500">Stok listesi yükleniyor...</p>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {loading ? (
-                        <tr>
-                          <td colSpan={3} className="px-5 py-12 text-center">
-                            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
-                            <p className="text-[12px] text-surface-500">Stok listesi yükleniyor...</p>
-                          </td>
-                        </tr>
-                      ) : filteredAvailable.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="px-5 py-12 text-center">
-                            <Package className="h-10 w-10 mx-auto mb-2 text-surface-400" />
-                            <p className="text-[12px] font-medium text-surface-700">Kullanılabilir kit yok</p>
-                            <p className="text-[11px] mt-0.5 text-surface-500">Kit teslim alarak stoğunuza ekleyebilirsiniz.</p>
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredAvailable.map((kit) => (
-                          <tr key={kit.barcode} className="border-b border-surface-200 last:border-0 hover:bg-surface-50">
-                            <td className="px-5 py-3">
-                              <code className="text-[13px] font-mono font-semibold text-surface-900">{kit.barcode}</code>
-                            </td>
-                            <td className="px-5 py-3 text-[12px] text-surface-600">{formatDate(kit.receivedAt)}</td>
-                            <td className="px-5 py-3">{badgeForKit(kit)}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="used">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
-                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
-                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Not</th>
-                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                    ) : filteredAvailable.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-5 py-12 text-center">
+                          <Package className="h-10 w-10 mx-auto mb-2 text-surface-400" />
+                          <p className="text-[12px] font-medium text-surface-700">Kullanılabilir kit yok</p>
+                          <p className="text-[11px] mt-0.5 text-surface-500">Kit teslim alarak stoğunuza ekleyebilirsiniz.</p>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {loading ? (
-                        <tr>
-                          <td colSpan={3} className="px-5 py-12 text-center">
-                            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
-                            <p className="text-[12px] text-surface-500">Stok listesi yükleniyor...</p>
+                    ) : (
+                      filteredAvailable.map((kit) => (
+                        <tr key={kit.barcode} className="border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200 transition-colors">
+                          <td className="px-5 py-3.5">
+                            <code className="text-xs font-mono bg-surface-100 dark:bg-surface-200/60 px-2 py-0.5 rounded text-surface-600">{kit.barcode}</code>
                           </td>
+                          <td className="px-5 py-3.5 text-[12px] text-surface-500">{formatDate(kit.receivedAt)}</td>
+                          <td className="px-5 py-3.5">{badgeForKit(kit)}</td>
                         </tr>
-                      ) : filteredUsed.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="px-5 py-12 text-center">
-                            <Boxes className="h-10 w-10 mx-auto mb-2 text-surface-400" />
-                            <p className="text-[12px] font-medium text-surface-700">Kullanılan kit yok</p>
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredUsed.map((kit) => (
-                          <tr key={kit.barcode} className="border-b border-surface-200 last:border-0 hover:bg-surface-50">
-                            <td className="px-5 py-3">
-                              <code className="text-[13px] font-mono font-semibold text-surface-900">{kit.barcode}</code>
-                            </td>
-                            <td className="px-5 py-3 text-[12px] text-surface-600">
-                              {kit.uiStatus === 'assigned'
-                                ? 'Danışana atanmış'
-                                : kit.uiStatus === 'damaged'
-                                  ? `Hasarlı${kit.kitStatus === 'damaged-pending' ? ' (bekliyor)' : ''}`
-                                  : `Teslim: ${formatDate(kit.receivedAt)}`}
-                            </td>
-                            <td className="px-5 py-3">{badgeForKit(kit)}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
 
-          <div className="border-t border-surface-200 px-5 py-4">
-            <p className="text-[11px] text-surface-500">
-              Bu stok, barkod ile teslim aldığınız kitleri gösterir. Yeni kit eklemek için{' '}
-              <button type="button" onClick={() => setReceiveKitModalOpen(true)} className="font-medium text-primary-600 hover:underline">
-                Kit teslim al
-              </button>
-              . İade için <span className="font-medium">İade talebi</span> butonunu kullanın.
-            </p>
+            <TabsContent value="used" className="mt-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                      <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
+                      <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Not</th>
+                      <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={3} className="px-5 py-12 text-center">
+                          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
+                          <p className="text-[12px] text-surface-500">Stok listesi yükleniyor...</p>
+                        </td>
+                      </tr>
+                    ) : filteredUsed.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-5 py-12 text-center">
+                          <Boxes className="h-10 w-10 mx-auto mb-2 text-surface-400" />
+                          <p className="text-[12px] font-medium text-surface-700">Kullanılan kit yok</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUsed.map((kit) => (
+                        <tr key={kit.barcode} className="border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200 transition-colors">
+                          <td className="px-5 py-3.5">
+                            <code className="text-xs font-mono bg-surface-100 dark:bg-surface-200/60 px-2 py-0.5 rounded text-surface-600">{kit.barcode}</code>
+                          </td>
+                          <td className="px-5 py-3.5 text-[12px] text-surface-500">
+                            {kit.uiStatus === 'assigned'
+                              ? 'Danışana atanmış'
+                              : kit.uiStatus === 'damaged'
+                                ? `Hasarlı${kit.kitStatus === 'damaged-pending' ? ' (bekliyor)' : ''}`
+                                : `Teslim: ${formatDate(kit.receivedAt)}`}
+                          </td>
+                          <td className="px-5 py-3.5">{badgeForKit(kit)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
+
+            <div className="border-t border-surface-200 px-5 py-4">
+              <p className="text-[11px] text-surface-500">
+                Bu stok, barkod ile teslim aldığınız kitleri gösterir. Yeni kit eklemek için{' '}
+                <button type="button" onClick={() => setReceiveKitModalOpen(true)} className="font-medium text-primary-600 hover:underline">
+                  Kit teslim al
+                </button>
+                . İade için <span className="font-medium">İade talebi</span> butonunu kullanın.
+              </p>
+            </div>
           </div>
-        </div>
+        </Tabs>
       </motion.div>
 
-      {/* Iade Talebi modali */}
+      {/* İade Talebi modali */}
       <Modal open={returnRequestModalOpen} onOpenChange={(open) => !open && closeReturnModal()}>
-        <ModalContent className="max-w-lg">
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
-            <ModalTitle>Iade Talebi</ModalTitle>
-            <ModalDescription>
-              Stogunuzdan bir kit secip kanit dosyasi ve aciklama ekleyin.
+            <ModalTitle>İade Talebi</ModalTitle>
+            <ModalDescription className="text-surface-700 dark:text-surface-700 font-medium">
+              Stoğunuzdan bir kit seçip kanıt dosyası ve açıklama ekleyin.
             </ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-3">
-            <Select
-              value={selectedReturnKitId || '_empty'}
-              onValueChange={(v) => setSelectedReturnKitId(v === '_empty' ? '' : v)}
-            >
-              <SelectTrigger label="Kit" className="w-full">
-                <SelectValue placeholder={returnableKits.length > 0 ? 'Secin...' : 'Stokta kit yok'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_empty">Secin...</SelectItem>
-                {returnableKits.map((k) => (
-                  <SelectItem key={k.id} value={String(k.id)}>
-                    {k.barcode}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <ModalBody className="space-y-4">
+            <div>
+              <p className="form-section-title mb-2">Kit</p>
+              <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50">
+                <Select
+                  value={selectedReturnKitId || '_empty'}
+                  onValueChange={(v) => setSelectedReturnKitId(v === '_empty' ? '' : v)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={returnableKits.length > 0 ? 'Seçin...' : 'Stokta kit yok'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_empty">Seçin...</SelectItem>
+                    {returnableKits.map((k) => (
+                      <SelectItem key={k.id} value={String(k.id)}>
+                        {k.barcode}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-            <Input
-              type="file"
-              label="Kanit dosyasi (fotoğraf veya PDF)"
-              accept="image/*,application/pdf"
-              onChange={(e) => {
-                const file = e.target.files && e.target.files[0] ? e.target.files[0] : null
-                setReturnFile(file)
-              }}
-            />
+            <div>
+              <p className="form-section-title mb-2">Kanıt dosyası</p>
+              <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50">
+                <Input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files && e.target.files[0] ? e.target.files[0] : null
+                    setReturnFile(file)
+                  }}
+                />
+                <p className="text-xs text-surface-500 mt-1">Fotoğraf veya PDF yükleyin.</p>
+              </div>
+            </div>
 
-            <Textarea
-              label="Neden"
-              placeholder="Hasar / iade nedeni..."
-              value={returnReason}
-              onChange={(e) => setReturnReason(e.target.value)}
-            />
+            <div>
+              <p className="form-section-title mb-2">Açıklama</p>
+              <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50">
+                <Textarea
+                  placeholder="Hasar / iade nedeni..."
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  className="min-h-[80px]"
+                />
+              </div>
+            </div>
           </ModalBody>
-          <ModalFooter className="gap-2">
+          <ModalFooter>
             <Button variant="outline" onClick={closeReturnModal}>
-              Iptal
+              İptal
             </Button>
             <Button
               variant="primary"
@@ -525,10 +541,10 @@ export function MyStockPage() {
               {returnSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Gonderiliyor
+                  Gönderiliyor...
                 </>
               ) : (
-                'Iade talebi olustur'
+                'İade talebi oluştur'
               )}
             </Button>
           </ModalFooter>
@@ -537,7 +553,7 @@ export function MyStockPage() {
 
       {/* Kit Teslim Al modali */}
       <Modal open={receiveKitModalOpen} onOpenChange={(open) => !open && closeReceiveKitModal()}>
-        <ModalContent className="max-w-md">
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-primary-100 text-primary-600">
@@ -545,9 +561,9 @@ export function MyStockPage() {
               </div>
               <div>
                 <ModalTitle>Kit Teslim Al</ModalTitle>
-                <p className="text-xs text-surface-500 mt-0.5">
-                  Kargonuz geldiginde kit uzerindeki barkod numarasini girin
-                </p>
+                <ModalDescription className="text-surface-700 dark:text-surface-700 font-medium mt-0.5">
+                  Kargonuz geldiğinde kit üzerindeki barkod numarasını girin.
+                </ModalDescription>
               </div>
             </div>
           </ModalHeader>
@@ -564,16 +580,16 @@ export function MyStockPage() {
                   <div className="h-14 w-14 rounded-full mx-auto mb-3 flex items-center justify-center bg-success/10">
                     <CheckCircle className="h-7 w-7 text-success" />
                   </div>
-                  <h4 className="text-[15px] font-bold text-surface-800">Kit Basariyla Teslim Alindi!</h4>
+                  <h4 className="text-[15px] font-bold text-surface-800">Kit başarıyla teslim alındı!</h4>
                   <p className="text-[12px] mt-2 text-surface-500">
-                    <code className="font-mono font-semibold text-primary-600">{barcodeInput}</code> barkodlu kit stogunuza eklendi.
+                    <code className="font-mono font-semibold text-primary-600">{barcodeInput}</code> barkodlu kit stoğunuza eklendi.
                   </p>
                   <div className="flex items-center justify-center gap-2 mt-4">
                     <Button variant="outline" size="sm" onClick={resetBarcode}>
-                      <ScanLine className="h-3.5 w-3.5" /> Baska Kit Teslim Al
+                      <ScanLine className="h-3.5 w-3.5" /> Başka kit teslim al
                     </Button>
                     <Button variant="primary" size="sm" onClick={closeReceiveKitModal} className="gap-1.5">
-                      <ArrowRight className="h-3.5 w-3.5" /> Listeyi Guncelle
+                      <ArrowRight className="h-3.5 w-3.5" /> Listeyi güncelle
                     </Button>
                   </div>
                 </motion.div>
@@ -591,7 +607,7 @@ export function MyStockPage() {
                           if (barcodeState === 'error') setBarcodeState('idle')
                         }}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleBarcodeSubmit() }}
-                        placeholder="Barkod (orn: OT-2025-00160)"
+                        placeholder="Barkod (örn: OT-2025-00160)"
                         className="w-full pl-9 pr-3 py-3 text-sm font-mono rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-200 dark:focus:ring-primary-800"
                         style={{ borderColor: barcodeState === 'error' ? '#E87070' : undefined }}
                         disabled={barcodeState === 'checking'}

@@ -328,7 +328,7 @@ export function UsersListPage() {
 
       {/* Approval Modal — carousel ile bekleyen kullanıcılar arasında gezinme */}
       <Modal open={approvalOpen} onOpenChange={setApprovalOpen}>
-        <ModalContent>
+        <ModalContent className="max-w-lg">
           <ModalHeader>
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -374,14 +374,14 @@ export function UsersListPage() {
             </div>
           </ModalHeader>
           {selectedUser && (
-            <ModalBody>
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-50">
+            <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
                 <Avatar name={`${selectedUser.firstName} ${selectedUser.lastName}`} size="lg" />
                 <div>
                   <p className="font-semibold text-surface-900">
                     {selectedUser.firstName} {selectedUser.lastName}
                   </p>
-                  <p className="text-sm text-surface-500">{selectedUser.email}</p>
+                  <p className="text-[13px] text-surface-500">{selectedUser.email}</p>
                   <Badge variant="info" className="mt-1">
                     {USER_ROLE_LABELS[selectedUser.role]}
                   </Badge>
@@ -394,15 +394,16 @@ export function UsersListPage() {
               variant="outline"
               onClick={handleRejectConfirm}
               disabled={verifyMutation.isPending || deleteMutation.isPending}
+              loading={deleteMutation.isPending}
             >
               <UserX className="h-4 w-4" />
               Reddet
             </Button>
             <Button
-              variant="default"
+              variant="primary"
               onClick={handleApproveConfirm}
+              disabled={verifyMutation.isPending || deleteMutation.isPending}
               loading={verifyMutation.isPending}
-              disabled={deleteMutation.isPending}
             >
               <UserCheck className="h-4 w-4" />
               Onayla
@@ -413,7 +414,7 @@ export function UsersListPage() {
 
       {/* Silme onay modalı */}
       <Modal open={deleteConfirmOpen} onOpenChange={(open) => { setDeleteConfirmOpen(open); if (!open) setUserToDelete(null) }}>
-        <ModalContent>
+        <ModalContent className="max-w-md">
           <ModalHeader>
             <ModalTitle>Kullanıcıyı Sil</ModalTitle>
             <ModalDescription>
@@ -423,12 +424,12 @@ export function UsersListPage() {
             </ModalDescription>
           </ModalHeader>
           <ModalFooter>
-            <Button variant="outline" onClick={() => { setDeleteConfirmOpen(false); setUserToDelete(null) }}>
+            <Button variant="outline" onClick={() => { setDeleteConfirmOpen(false); setUserToDelete(null) }} disabled={deleteMutation.isPending}>
               İptal
             </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={!userToDelete || deleteMutation.isPending}>
-              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              {deleteMutation.isPending ? ' Siliniyor...' : ' Sil'}
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={!userToDelete || deleteMutation.isPending} loading={deleteMutation.isPending}>
+              <Trash2 className="h-4 w-4" />
+              Sil
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -436,36 +437,42 @@ export function UsersListPage() {
 
       {/* Create User Modal */}
       <Modal open={newUserOpen} onOpenChange={setNewUserOpen}>
-        <ModalContent>
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
-            <ModalTitle>Yeni Kullanici Ekle</ModalTitle>
+            <ModalTitle>Yeni Kullanıcı Ekle</ModalTitle>
             <ModalDescription>Yeni kullaniciyi aktif olarak olusturun</ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-3">
+          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
+            <p className="form-section-title">Kişisel Bilgiler</p>
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Ad"
+                label="Ad *"
                 value={newUserForm.firstName}
                 onChange={(e) => setNewUserForm((s) => ({ ...s, firstName: e.target.value }))}
+                placeholder="Ad"
               />
               <Input
-                label="Soyad"
+                label="Soyad *"
                 value={newUserForm.lastName}
                 onChange={(e) => setNewUserForm((s) => ({ ...s, lastName: e.target.value }))}
+                placeholder="Soyad"
               />
             </div>
-            <Input
-              label="E-posta"
-              type="email"
-              value={newUserForm.email}
-              onChange={(e) => setNewUserForm((s) => ({ ...s, email: e.target.value }))}
-            />
-            <Input
-              label="Telefon"
-              value={newUserForm.phone}
-              onChange={(e) => setNewUserForm((s) => ({ ...s, phone: e.target.value }))}
-              placeholder="05XX XXX XX XX"
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Telefon *"
+                value={newUserForm.phone}
+                onChange={(e) => setNewUserForm((s) => ({ ...s, phone: e.target.value }))}
+                placeholder="05XX XXX XX XX"
+              />
+              <Input
+                label="E-posta *"
+                type="email"
+                value={newUserForm.email}
+                onChange={(e) => setNewUserForm((s) => ({ ...s, email: e.target.value }))}
+                placeholder="ornek@email.com"
+              />
+            </div>
             <div className="space-y-1.5">
               <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
               <Select
@@ -481,15 +488,15 @@ export function UsersListPage() {
                 </SelectContent>
               </Select>
             </div>
-            <p className="text-xs text-surface-500">
+            <p className="text-[11px] text-surface-500 pt-2">
               Şifre kullanıcıya SMS ile gönderilir.
             </p>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => { setNewUserOpen(false); resetNewUserForm() }}>
+            <Button variant="outline" onClick={() => { setNewUserOpen(false); resetNewUserForm() }} disabled={createMutation.isPending}>
               İptal
             </Button>
-            <Button variant="primary" onClick={submitNewUser} loading={createMutation.isPending}>
+            <Button variant="primary" onClick={submitNewUser} disabled={createMutation.isPending} loading={createMutation.isPending}>
               Admin Ekle
             </Button>
           </ModalFooter>
@@ -498,90 +505,97 @@ export function UsersListPage() {
 
       {/* Edit Role Modal */}
       <Modal open={editRoleOpen} onOpenChange={setEditRoleOpen}>
-        <ModalContent>
+        <ModalContent className="max-w-md">
           <ModalHeader>
-            <ModalTitle>Rol Duzenle</ModalTitle>
+            <ModalTitle>Rol Düzenle</ModalTitle>
             <ModalDescription>Kullanicinin rolunu guncelleyin</ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-3">
+          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
             {selectedUser && (
-              <div className="text-sm text-surface-600">
+              <div className="text-[13px] text-surface-600 p-3 rounded-lg bg-surface-50 border border-surface-200">
                 {selectedUser.firstName} {selectedUser.lastName} ({selectedUser.email})
               </div>
             )}
-            <Select value={roleToEdit} onValueChange={(v) => setRoleToEdit(v as UserRole)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
-                <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
-                <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
-                <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
-                <SelectItem value={UserRole.DANISAN}>Danisan</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-1.5">
+              <label className="block text-[13px] font-medium text-surface-700">Yeni Rol *</label>
+              <Select value={roleToEdit} onValueChange={(v) => setRoleToEdit(v as UserRole)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
+                  <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
+                  <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
+                  <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
+                  <SelectItem value={UserRole.DANISAN}>Danışan</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => setEditRoleOpen(false)}>İptal</Button>
-            <Button variant="primary" onClick={submitRoleUpdate}>Kaydet</Button>
+            <Button variant="outline" onClick={() => setEditRoleOpen(false)} disabled={updateRoleMutation.isPending}>
+              İptal
+            </Button>
+            <Button variant="primary" onClick={submitRoleUpdate} disabled={updateRoleMutation.isPending} loading={updateRoleMutation.isPending}>
+              Kaydet
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
       {/* Kullanıcı detay modalı — API'deki tüm alanlar */}
       <Modal open={profileOpen} onOpenChange={setProfileOpen}>
-        <ModalContent>
+        <ModalContent className="max-w-lg">
           <ModalHeader>
-            <ModalTitle>Kullanıcı detayı</ModalTitle>
+            <ModalTitle>Kullanıcı Detayı</ModalTitle>
             <ModalDescription>Seçilen kullanıcının bilgileri</ModalDescription>
           </ModalHeader>
           {profileUser && (
-            <ModalBody className="space-y-4">
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-50">
+            <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
                 <Avatar name={`${profileUser.firstName} ${profileUser.lastName}`} size="lg" />
                 <div>
                   <p className="font-semibold text-surface-900">
                     {profileUser.firstName} {profileUser.lastName}
                   </p>
-                  <p className="text-sm text-surface-500">{profileUser.email}</p>
+                  <p className="text-[13px] text-surface-500">{profileUser.email}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-2 gap-3 text-[13px]">
                 <div className="rounded-lg border border-surface-200 p-3">
-                  <p className="text-surface-500 text-xs mb-1">Ad</p>
+                  <p className="text-surface-500 text-[11px] mb-1">Ad</p>
                   <p className="font-medium text-surface-800">{profileUser.firstName}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3">
-                  <p className="text-surface-500 text-xs mb-1">Soyad</p>
+                  <p className="text-surface-500 text-[11px] mb-1">Soyad</p>
                   <p className="font-medium text-surface-800">{profileUser.lastName}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3">
-                  <p className="text-surface-500 text-xs mb-1">Telefon</p>
+                  <p className="text-surface-500 text-[11px] mb-1">Telefon</p>
                   <p className="font-medium text-surface-800">{profileUser.phone || '-'}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3">
-                  <p className="text-surface-500 text-xs mb-1">E-posta</p>
+                  <p className="text-surface-500 text-[11px] mb-1">E-posta</p>
                   <p className="font-medium text-surface-800">{profileUser.email}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3">
-                  <p className="text-surface-500 text-xs mb-1">Rol</p>
+                  <p className="text-surface-500 text-[11px] mb-1">Rol</p>
                   <p className="font-medium text-surface-800">{USER_ROLE_LABELS[profileUser.role]}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3">
-                  <p className="text-surface-500 text-xs mb-1">Onay</p>
+                  <p className="text-surface-500 text-[11px] mb-1">Onay</p>
                   <p className="font-medium text-surface-800">{profileUser.isVerified === true ? 'Onaylı' : profileUser.isVerified === false ? 'Beklemede' : '-'}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3">
-                  <p className="text-surface-500 text-xs mb-1">Oluşturulma</p>
+                  <p className="text-surface-500 text-[11px] mb-1">Oluşturulma</p>
                   <p className="font-medium text-surface-800">{formatDate(profileUser.createdAt)}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3">
-                  <p className="text-surface-500 text-xs mb-1">Güncellenme</p>
+                  <p className="text-surface-500 text-[11px] mb-1">Güncellenme</p>
                   <p className="font-medium text-surface-800">{formatDate(profileUser.updatedAt)}</p>
                 </div>
                 <div className="rounded-lg border border-surface-200 p-3 col-span-2">
-                  <p className="text-surface-500 text-xs mb-1">Silinme (deletedAt)</p>
+                  <p className="text-surface-500 text-[11px] mb-1">Silinme (deletedAt)</p>
                   <p className="font-medium text-surface-800">{profileUser.deletedAt ? formatDate(profileUser.deletedAt) : '-'}</p>
                 </div>
               </div>

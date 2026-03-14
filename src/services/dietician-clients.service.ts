@@ -67,6 +67,7 @@ export interface DieticianClientsByDieticianItem {
   clientUserId?: number
   clientName?: string
   clientEmail?: string
+  clientPhone?: string
   createdAt?: string
 }
 
@@ -121,6 +122,7 @@ export async function getClientsByDietician(params?: {
       clientUserId: toNumber((clientUser?.id ?? client?.userId) as unknown, 0) || undefined,
       clientName: `${firstName} ${lastName}`.trim() || undefined,
       clientEmail: typeof clientUser?.email === 'string' ? clientUser.email : undefined,
+      clientPhone: typeof clientUser?.phone === 'string' ? clientUser.phone : (typeof client?.phone === 'string' ? client.phone : undefined),
       createdAt: typeof item.createdAt === 'string' ? item.createdAt : undefined,
     }
   })

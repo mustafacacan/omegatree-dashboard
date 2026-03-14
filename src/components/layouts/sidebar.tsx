@@ -72,7 +72,6 @@ function getNavGroups(role: UserRole): NavGroup[] {
         { title: '', items: [{ label: 'Dashboard', href: ROUTES.DIYETISYEN, icon: LayoutDashboard }] },
         { title: 'Danisanlar', items: [
           { label: 'Danisanlarim', href: ROUTES.DIYETISYEN_DANISANLAR, icon: Users },
-          { label: 'Yeni Danisan Ekle', href: ROUTES.DIYETISYEN_DANISANLAR_YENI, icon: UserPlus },
         ]},
         { title: 'Kit & Stok', items: [
           { label: 'Kitlerim', href: ROUTES.DIYETISYEN_KITLER, icon: FlaskConical },

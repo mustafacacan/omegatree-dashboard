@@ -416,14 +416,15 @@ export function PricingPage() {
 
       {/* Create Modal */}
       <Modal open={createOpen} onOpenChange={setCreateOpen}>
-        <ModalContent>
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
-            <ModalTitle>Yeni satış kiti</ModalTitle>
+            <ModalTitle>Yeni Satış Kiti</ModalTitle>
             <ModalDescription>Ad, açıklama, miktar, fiyat ve isteğe bağlı görsel girin</ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-4">
+          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
+            <p className="form-section-title">Temel Bilgiler</p>
             <Input
-              label="Ad"
+              label="Ad *"
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
               placeholder="Örn: Standart Paket"
@@ -434,27 +435,32 @@ export function PricingPage() {
               onChange={(e) => setFormDescription(e.target.value)}
               placeholder="Kısa açıklama veya avantajlar (isteğe bağlı)"
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Miktar (stok adedi)"
-                type="number"
-                min={0}
-                value={formQuantity}
-                onChange={(e) => setFormQuantity(e.target.value)}
-                placeholder="100"
-              />
-              <Input
-                label="Fiyat (₺)"
-                type="number"
-                min={0}
-                step={0.01}
-                value={formPrice}
-                onChange={(e) => setFormPrice(e.target.value)}
-                placeholder="49.99"
-              />
+            
+            <div className="panel-section">
+              <p className="form-section-title">Fiyat ve Stok</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Miktar (stok adedi) *"
+                  type="number"
+                  min={0}
+                  value={formQuantity}
+                  onChange={(e) => setFormQuantity(e.target.value)}
+                  placeholder="100"
+                />
+                <Input
+                  label="Fiyat (₺) *"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={formPrice}
+                  onChange={(e) => setFormPrice(e.target.value)}
+                  placeholder="49.99"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-surface-700 block mb-2">Görsel (isteğe bağlı)</label>
+
+            <div className="panel-section">
+              <label className="text-[13px] font-medium text-surface-700 block mb-2">Görsel (isteğe bağlı)</label>
               <input
                 type="file"
                 accept="image/*"
@@ -473,8 +479,10 @@ export function PricingPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>İptal</Button>
-            <Button variant="primary" onClick={handleCreate} disabled={createMutation.isPending}>
+            <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={createMutation.isPending}>
+              İptal
+            </Button>
+            <Button variant="primary" onClick={handleCreate} disabled={createMutation.isPending} loading={createMutation.isPending}>
               Oluştur
             </Button>
           </ModalFooter>
@@ -505,14 +513,15 @@ export function PricingPage() {
 
       {/* Edit Modal */}
       <Modal open={!!editKit} onOpenChange={(open) => !open && setEditKit(null)}>
-        <ModalContent>
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
-            <ModalTitle>Satış kitini düzenle</ModalTitle>
+            <ModalTitle>Satış Kitini Düzenle</ModalTitle>
             <ModalDescription>Ad, açıklama, miktar, fiyat ve isteğe bağlı yeni görsel</ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-4">
+          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
+            <p className="form-section-title">Temel Bilgiler</p>
             <Input
-              label="Ad"
+              label="Ad *"
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
               placeholder="Örn: Standart Paket"
@@ -523,34 +532,43 @@ export function PricingPage() {
               onChange={(e) => setFormDescription(e.target.value)}
               placeholder="Kısa açıklama (isteğe bağlı)"
             />
-            <div className="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-50/50 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-surface-800">Aktif</p>
-                <p className="text-xs text-surface-500">Pasif kitler listelerde gösterilmeyebilir.</p>
+            
+            <div className="panel-section">
+              <p className="form-section-title">Durum</p>
+              <div className="flex items-center justify-between rounded-xl border border-surface-200 bg-surface-50/50 px-4 py-3">
+                <div>
+                  <p className="text-[13px] font-medium text-surface-800">Aktif</p>
+                  <p className="text-[11px] text-surface-500">Pasif kitler listelerde gösterilmeyebilir.</p>
+                </div>
+                <Switch checked={formIsActive} onCheckedChange={setFormIsActive} />
               </div>
-              <Switch checked={formIsActive} onCheckedChange={setFormIsActive} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Miktar (stok adedi)"
-                type="number"
-                min={0}
-                value={formQuantity}
-                onChange={(e) => setFormQuantity(e.target.value)}
-                placeholder="100"
-              />
-              <Input
-                label="Fiyat (₺)"
-                type="number"
-                min={0}
-                step={0.01}
-                value={formPrice}
-                onChange={(e) => setFormPrice(e.target.value)}
-                placeholder="49.99"
-              />
+
+            <div className="panel-section">
+              <p className="form-section-title">Fiyat ve Stok</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Miktar (stok adedi) *"
+                  type="number"
+                  min={0}
+                  value={formQuantity}
+                  onChange={(e) => setFormQuantity(e.target.value)}
+                  placeholder="100"
+                />
+                <Input
+                  label="Fiyat (₺) *"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={formPrice}
+                  onChange={(e) => setFormPrice(e.target.value)}
+                  placeholder="49.99"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-surface-700 block mb-2">Görsel</label>
+
+            <div className="panel-section">
+              <label className="text-[13px] font-medium text-surface-700 block mb-2">Görsel</label>
               <input
                 type="file"
                 accept="image/*"
@@ -577,8 +595,10 @@ export function PricingPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => setEditKit(null)}>İptal</Button>
-            <Button variant="primary" onClick={handleUpdate} disabled={updateMutation.isPending}>
+            <Button variant="outline" onClick={() => setEditKit(null)} disabled={updateMutation.isPending}>
+              İptal
+            </Button>
+            <Button variant="primary" onClick={handleUpdate} disabled={updateMutation.isPending} loading={updateMutation.isPending}>
               Kaydet
             </Button>
           </ModalFooter>

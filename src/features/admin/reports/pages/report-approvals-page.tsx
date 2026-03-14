@@ -1,19 +1,23 @@
 import { useMemo, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
+import { PanelHeader } from '@/components/shared/panel-header'
 import { PdfViewer } from '@/components/shared/pdf-viewer'
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription,
   Button, Badge, Avatar,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody,
 } from '@/components/ui'
-import { FileText, Check,  Calendar, Loader2, Eye, Mail, Phone } from 'lucide-react'
+import { FileText, Check, Calendar, Loader2, Eye, Mail, Phone } from 'lucide-react'
 import { toast } from 'sonner'
+import { motion } from 'framer-motion'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { getPendingResultsPage, getResultById, updateResult, type Result } from '@/services/results.service'
+
+const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 type ResultDecisionStatus = 'approved' | 'rejected'
 
@@ -253,118 +257,131 @@ export function ReportApprovalsPage() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
 
-      <Card className="border-surface-200">
-        <CardHeader className="border-b border-surface-100">
-          <CardTitle>Rapor Onaylari</CardTitle>
-          <CardDescription>
-            Uzman tarafindan gonderilen raporlar burada listelenir. Onayladiginizda rapor yayina alinmis olur.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
+      <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
+        <div className="panel">
+          <PanelHeader
+            title="Rapor Onayları"
+            description="Uzman tarafından gönderilen raporlar burada listelenir. Onayladığınızda rapor yayına alınmış olur."
+          />
+
           {pendingQuery.isLoading ? (
-            <div className="py-14 text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
-              <p className="text-sm text-surface-500">Raporlar yukleniyor...</p>
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
             </div>
           ) : pendingQuery.isError ? (
-            <div className="py-14 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100">
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100">
                 <FileText className="h-7 w-7 text-surface-400" />
               </div>
-              <p className="text-sm font-medium text-surface-600">Raporlar yuklenemedi</p>
-              <p className="text-xs text-surface-500 mt-1">Lutfen tekrar deneyin</p>
-              <div className="mt-4 flex justify-center">
-                <Button variant="outline" size="sm" onClick={() => pendingQuery.refetch()}>
-                  Yenile
-                </Button>
-              </div>
+              <p className="text-sm font-medium text-surface-700">Raporlar yüklenemedi</p>
+              <p className="text-xs text-surface-500">Lütfen tekrar deneyin</p>
+              <Button variant="outline" size="sm" onClick={() => pendingQuery.refetch()}>
+                Yenile
+              </Button>
             </div>
           ) : pendingItems.length === 0 ? (
-            <div className="py-14 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100">
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100">
                 <FileText className="h-7 w-7 text-surface-400" />
               </div>
-              <p className="text-sm font-medium text-surface-600">Onay bekleyen rapor yok</p>
-              <p className="text-xs text-surface-500 mt-1">Uzman rapor gonderdiginde burada gorunecek</p>
+              <p className="text-sm font-medium text-surface-700">Onay bekleyen rapor yok</p>
+              <p className="text-xs text-surface-500">Uzman rapor gönderdiğinde burada görünecek</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-surface-500 mb-1">{totalItems} rapor onay bekliyor</p>
-              {pendingItems.map((r, idx) => (
-                <div
-                  key={String(r.id ?? `row-${idx}`)}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-surface-200 bg-panel p-4"
-                >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-surface-200 bg-surface-50">
-                      <FileText className="h-6 w-6 text-warning" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-surface-900">
-                        <span className="font-mono text-sm">#{r.id ?? '-'}</span>
-                        <Badge variant="warning" className="ml-2 bg-surface-100 text-warning dark:bg-surface-200/60">{getResultStatusLabel(r.status)}</Badge>
-                      </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-500">
-                       
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" /> {r.createdAt ? formatDate(r.createdAt) : '-'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleView(r)}
-                      disabled={r.id == null}
-                    >
-                      <Eye className="h-4 w-4" />
-                      Görüntüle
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={decisionMutation.isPending}
-                      loading={decisionInFlight?.id === Number(r.id) && decisionInFlight.status === 'rejected'}
-                      onClick={() => openConfirmFor(r, 'rejected')}
-                    >
-                      İptal
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={decisionMutation.isPending}
-                      loading={decisionInFlight?.id === Number(r.id) && decisionInFlight.status === 'approved'}
-                      onClick={() => openConfirmFor(r, 'approved')}
-                      leftIcon={<Check className="h-4 w-4" />}
-                    >
-                      Onayla
-                    </Button>
-                  </div>
+            <>
+              <div className="p-5">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Rapor</th>
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Tarih</th>
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                        <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">İşlem</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingItems.map((r, idx) => (
+                        <tr
+                          key={String(r.id ?? `row-${idx}`)}
+                          className="border-b border-surface-200 last:border-0 hover:bg-surface-50"
+                        >
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-surface-200 bg-surface-50">
+                                <FileText className="h-5 w-5 text-warning" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-mono text-[13px] font-semibold text-surface-900">#{r.id ?? '-'}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 text-[12px] text-surface-600">
+                            {r.createdAt ? formatDate(r.createdAt) : '-'}
+                          </td>
+                          <td className="px-5 py-3">
+                            <Badge variant="warning">{getResultStatusLabel(r.status)}</Badge>
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleView(r)}
+                                disabled={r.id == null}
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                Görüntüle
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={decisionMutation.isPending}
+                                loading={decisionInFlight?.id === Number(r.id) && decisionInFlight.status === 'rejected'}
+                                onClick={() => openConfirmFor(r, 'rejected')}
+                              >
+                                İptal
+                              </Button>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                disabled={decisionMutation.isPending}
+                                loading={decisionInFlight?.id === Number(r.id) && decisionInFlight.status === 'approved'}
+                                onClick={() => openConfirmFor(r, 'approved')}
+                                leftIcon={<Check className="h-4 w-4" />}
+                              >
+                                Onayla
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
+              </div>
 
-              <TablePagination
-                totalItems={totalItems}
-                page={page}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={(next) => {
-                  setPageSize(next)
-                  setPage(1)
-                }}
-                className="rounded-xl"
-              />
-            </div>
+              <div className="border-t border-surface-200 px-5 py-4">
+                <TablePagination
+                  totalItems={totalItems}
+                  page={page}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(next) => {
+                    setPageSize(next)
+                    setPage(1)
+                  }}
+                />
+              </div>
+            </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </motion.div>
 
       <Modal open={viewId != null} onOpenChange={(open) => !open && setViewId(null)}>
-        <ModalContent className={detailMediaUrl ? 'max-w-4xl w-full' : 'max-w-md'}>
+        <ModalContent className={detailMediaUrl ? 'max-w-4xl w-full' : 'max-w-lg'}>
           <ModalHeader>
-            <ModalTitle>Rapor Detayi</ModalTitle>
+            <ModalTitle>Rapor Detayı</ModalTitle>
             <ModalDescription>
               {detailTitle}
               {hasParties ? (

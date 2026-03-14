@@ -35,6 +35,7 @@ import {
   type LaboratoryStatisticsItem,
 } from '@/services/laboratories.service'
 import { getDieticians } from '@/services/kits.service'
+import { getProvinces, getDistricts } from '@/services/turkey-addresses.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 const W = { olive: '#8B9A4B', orange: '#E8913A', amber: '#F5C842', green: '#6ABF69', warmGray: '#8A8578' }
@@ -87,6 +88,18 @@ export function LaboratoriesPage() {
     postalCode: '',
     country: 'Turkiye',
     addressTitle: 'work' as string,
+  })
+  const [selectedProvinceId, setSelectedProvinceId] = useState<number | null>(null)
+
+  const { data: provinces = [] } = useQuery({
+    queryKey: ['turkey', 'provinces'],
+    queryFn: getProvinces,
+    enabled: newLabOpen,
+  })
+  const { data: districts = [], isLoading: districtsLoading } = useQuery({
+    queryKey: ['turkey', 'districts', selectedProvinceId],
+    queryFn: () => getDistricts(selectedProvinceId!),
+    enabled: newLabOpen && selectedProvinceId != null,
   })
 
   const { data: laboratories = [], isLoading, isError: labsError } = useQuery({
@@ -279,6 +292,7 @@ export function LaboratoriesPage() {
   })
 
   const resetNewLabForm = () => {
+    setSelectedProvinceId(null)
     setNewLabForm({
       firstName: '',
       lastName: '',
@@ -996,31 +1010,60 @@ export function LaboratoriesPage() {
             <div className="panel-section">
               <p className="form-section-title">Adres Bilgileri</p>
               <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label="Şehir *"
-                  value={newLabForm.city}
-                  onChange={(e) => setNewLabForm((s) => ({ ...s, city: e.target.value }))}
-                  placeholder="Örn: İstanbul"
-                />
-                <Input
-                  label="İlçe *"
+                <Select
+                  value={selectedProvinceId != null ? String(selectedProvinceId) : ''}
+                  onValueChange={(v) => {
+                    const id = v ? Number(v) : null
+                    const province = id ? provinces.find((p) => p.id === id) : null
+                    setSelectedProvinceId(id)
+                    setNewLabForm((s) => ({
+                      ...s,
+                      city: province?.name ?? '',
+                      district: '',
+                    }))
+                  }}
+                >
+                  <SelectTrigger label="Şehir *" className="w-full">
+                    <SelectValue placeholder="İl seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {provinces.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
                   value={newLabForm.district}
-                  onChange={(e) => setNewLabForm((s) => ({ ...s, district: e.target.value }))}
-                  placeholder="Örn: Kadıköy"
-                />
+                  onValueChange={(v) => setNewLabForm((s) => ({ ...s, district: v }))}
+                  disabled={!selectedProvinceId || districtsLoading}
+                >
+                  <SelectTrigger label="İlçe *" className="w-full">
+                    <SelectValue placeholder={districtsLoading ? 'Yükleniyor...' : selectedProvinceId ? 'İlçe seçin' : 'Önce il seçin'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {districts.map((d) => (
+                      <SelectItem key={d.id} value={d.name}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-3">
-                <Input
-                  label="Sokak"
-                  value={newLabForm.street}
-                  onChange={(e) => setNewLabForm((s) => ({ ...s, street: e.target.value }))}
-                  placeholder="Sokak adı"
-                />
+               
                 <Input
                   label="Mahalle"
                   value={newLabForm.neighborhood}
                   onChange={(e) => setNewLabForm((s) => ({ ...s, neighborhood: e.target.value }))}
                   placeholder="Mahalle"
+                />
+                 <Input
+                  label="Sokak"
+                  value={newLabForm.street}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, street: e.target.value }))}
+                  placeholder="Sokak adı"
                 />
               </div>
               <div className="grid grid-cols-3 gap-3 mt-3">
