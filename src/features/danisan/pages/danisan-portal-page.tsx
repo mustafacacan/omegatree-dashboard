@@ -2,31 +2,89 @@ import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/utils/routes'
 import { useCurrentUser } from '@/stores/auth.store'
 import { Timeline } from '@/components/shared/timeline'
+import { Card, CardContent, Button } from '@/components/ui'
 import '@/components/ui'
 import { motion } from 'framer-motion'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { getDieticianClientKits } from '@/services/dietician-client-kits.service'
+import { getResultsPage } from '@/services/results.service'
+import { getDieticianClientKitStatusLabel } from '@/utils/constants'
 import {
-  Package, FileCheck, Heart, ArrowRight, CheckCircle,
-  Clock, FlaskConical, Calendar, Info,
+  Package,
+  FileCheck,
+  Heart,
+  ArrowRight,
+  CheckCircle,
+  Clock,
+  FlaskConical,
+  Calendar,
+  Info,
 } from 'lucide-react'
 
-const W = {
-  olive: '#8B9A4B', oliveLight: '#EEF2DE',
-  orange: '#E8913A', orangeLight: '#FDF0E2',
-  amber: '#F5C842', amberLight: '#FDF8E8',
-  green: '#6ABF69', greenLight: '#E8F5E8',
-  cream: '#F9F7F3', creamDark: '#F0EDE7',
-  warmBorder: '#E8E4DE', dark: '#2D2A26',
-  text: '#4A4640', textLight: '#9C968D', warmGrayLight: '#B5AFA5',
+type KitTimelineStatus = 'completed' | 'current' | 'upcoming' | 'error'
+
+function buildKitTimeline(status?: string): Array<{ label: string; description?: string; status: KitTimelineStatus }> {
+  const steps: Array<{ label: string; description?: string; status: KitTimelineStatus }> = [
+    { label: 'Kit Talep Edildi', description: 'Diyetisyeniniz tarafindan', status: 'upcoming' },
+    { label: 'Kit Teslim Alindi', description: 'Kargo ile gonderildi', status: 'upcoming' },
+    { label: 'Numune Gonderildi', description: 'Kargo ile gonderildi', status: 'upcoming' },
+    { label: 'Laboratuvar Analizi', description: 'Sonuclar hazirlaniyor...', status: 'upcoming' },
+    { label: 'Uzman Degerlendirmesi', status: 'upcoming' },
+    { label: 'Rapor Teslimi', status: 'upcoming' },
+  ]
+
+  if (!status) {
+    steps[0].status = 'current'
+    steps[0].description = 'Kit kaydi bulunamadi'
+    return steps
+  }
+
+  if (status === 'cancelled') {
+    steps[0].status = 'error'
+    steps[0].description = 'Surec iptal edildi'
+    return steps
+  }
+
+  const completeUntilIndex = (() => {
+    if (status === 'delivered' || status === 'in_client') return 1
+    if (status === 'in_laboratory') return 2
+    if (status === 'in_expert') return 3
+    if (status === 'completed') return 5
+    return 0
+  })()
+
+  for (let i = 0; i <= completeUntilIndex; i += 1) {
+    steps[i].status = 'completed'
+  }
+
+  if (status !== 'completed') {
+    const currentIndex = Math.min(steps.length - 1, completeUntilIndex + 1)
+    steps[currentIndex].status = 'current'
+  }
+
+  return steps
 }
 
-const kitTimeline = [
-  { label: 'Kit Talep Edildi', description: 'Diyetisyeniniz tarafindan', date: '10 Haz', status: 'completed' as const },
-  { label: 'Kit Teslim Alindi', description: 'Kargo ile gonderildi', date: '12 Haz', status: 'completed' as const },
-  { label: 'Numune Gonderildi', description: 'Kargo: YK-12345', date: '14 Haz', status: 'completed' as const },
-  { label: 'Laboratuvar Analizi', description: 'Sonuclar hazirlaniyor...', status: 'current' as const },
-  { label: 'Uzman Degerlendirmesi', status: 'upcoming' as const },
-  { label: 'Rapor Teslimi', status: 'upcoming' as const },
-]
+function getStatusTitle(status?: string): string {
+  if (!status) return 'Kit Sureci'
+  if (status === 'delivered' || status === 'in_client') return 'Numune Bekleniyor'
+  if (status === 'in_laboratory') return 'Analiz Devam Ediyor'
+  if (status === 'in_expert') return 'Uzman Degerlendiriyor'
+  if (status === 'completed') return 'Rapor Hazir'
+  if (status === 'cancelled') return 'Iptal Edildi'
+  return 'Kit Sureci'
+}
+
+function getStatusDescription(status?: string): string {
+  if (!status) return 'Surec baslamadi veya kitiniz henuz tanimlanmadi.'
+  if (status === 'delivered' || status === 'in_client') return 'Kit teslim alindi. Numunenizi gonderdikten sonra surec ilerleyecek.'
+  if (status === 'in_laboratory') return 'Numuneniz laboratuvarda inceleniyor.'
+  if (status === 'in_expert') return 'Uzman degerlendirmesi devam ediyor.'
+  if (status === 'completed') return 'Raporunuz hazir. Raporlarim sayfasindan goruntuleyebilirsiniz.'
+  if (status === 'cancelled') return 'Surec iptal edildi.'
+  return 'Surec devam ediyor.'
+}
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -35,6 +93,46 @@ export function DanisanPortalPage() {
   const navigate = useNavigate()
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Gunaydin' : hour < 18 ? 'Iyi gunler' : 'Iyi aksamlar'
+
+  const currentUserId = useMemo(() => {
+    if (user?.id == null) return null
+    const n = typeof user.id === 'number' ? user.id : Number(user.id)
+    return Number.isFinite(n) ? n : null
+  }, [user?.id])
+
+  const kitsQuery = useQuery({
+    queryKey: ['dietician-client-kits', 'danisan', 'page-1', 'limit-200', currentUserId],
+    queryFn: () => getDieticianClientKits(1, 200),
+    enabled: user != null,
+    retry: 1,
+    staleTime: 30_000,
+  })
+
+  const activeKit = useMemo(() => {
+    const all = kitsQuery.data ?? []
+    const list = currentUserId != null
+      ? all.filter((k) => k.clientUserId === currentUserId || k.clientId === currentUserId)
+      : all
+
+    const sorted = [...list].sort((a, b) => {
+      const aT = new Date(a.updatedAt || a.createdAt || 0).getTime()
+      const bT = new Date(b.updatedAt || b.createdAt || 0).getTime()
+      return bT - aT
+    })
+
+    return sorted.find((k) => k.status !== 'cancelled') ?? sorted[0] ?? null
+  }, [kitsQuery.data, currentUserId])
+
+  const kitTimeline = useMemo(() => buildKitTimeline(activeKit?.status), [activeKit?.status])
+
+  const reportsQuery = useQuery({
+    queryKey: ['results', 'danisan', 'approved', 'portal'],
+    queryFn: () => getResultsPage({ page: 1, limit: 1, status: 'approved' }),
+    retry: 1,
+    staleTime: 30_000,
+  })
+
+  const approvedReportCount = reportsQuery.data?.totalItems ?? 0
 
   const completedSteps = kitTimeline.filter(s => s.status === 'completed').length
   const totalSteps = kitTimeline.length
@@ -45,64 +143,76 @@ export function DanisanPortalPage() {
 
       {/* ═══ GREETING ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35 }}>
-        <h1 className="text-[22px] font-bold" style={{ color: W.dark }}>
+        <h1 className="text-[22px] font-bold text-surface-900">
           {greeting}, {user?.firstName ?? 'Danisan'}! <span className="inline-block">&#x1F44B;</span>
         </h1>
-        <p className="text-[13px] mt-0.5" style={{ color: W.textLight }}>
+        <p className="text-[13px] mt-0.5 text-surface-500">
           Omega-3 Index kit ve raporlariniza buradan ulasabilirsiniz
         </p>
       </motion.div>
 
       {/* ═══ PROGRESS SUMMARY ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
-        <div className="rounded-2xl p-6" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Kit Surecim</h3>
-              <p className="text-[12px] mt-0.5" style={{ color: W.textLight }}>Mevcut kitinizin durumu</p>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-[15px] font-semibold text-surface-900">Kit Surecim</h3>
+                <p className="text-[12px] mt-0.5 text-surface-500">Mevcut kitinizin durumu</p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-black text-primary-600">
+                  {kitsQuery.isLoading ? '—' : `${progressPct}%`}
+                </p>
+                <p className="text-[10px] text-surface-500">Tamamlanan</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-black" style={{ color: W.olive }}>{progressPct}%</p>
-              <p className="text-[10px]" style={{ color: W.textLight }}>Tamamlanan</p>
+
+            {/* Progress bar */}
+            <div className="w-full h-3 rounded-full overflow-hidden mb-1 bg-surface-200">
+              <motion.div
+                className="h-full rounded-full bg-primary-600"
+                initial={{ width: 0 }}
+                animate={{ width: `${kitsQuery.isLoading ? 0 : progressPct}%` }}
+                transition={{ duration: 0.6 }}
+              />
             </div>
-          </div>
+            <p className="text-[10px] text-right text-surface-500">
+              {kitsQuery.isLoading ? 'Yukleniyor...' : `${completedSteps}/${totalSteps} adim tamamlandi`}
+            </p>
 
-          {/* Progress bar */}
-          <div className="w-full h-3 rounded-full overflow-hidden mb-1" style={{ background: W.creamDark }}>
-            <motion.div
-              className="h-full rounded-full"
-              style={{ background: `linear-gradient(90deg, ${W.olive}, ${W.green})` }}
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPct}%` }}
-              transition={{ duration: 1, delay: 0.3 }}
-            />
-          </div>
-          <p className="text-[10px] text-right" style={{ color: W.textLight }}>{completedSteps}/{totalSteps} adim tamamlandi</p>
+            {/* Step indicators */}
+            <div className="flex items-center gap-2 mt-4">
+              {kitTimeline.map((step, i) => {
+                const isComplete = step.status === 'completed'
+                const isCurrent = step.status === 'current'
 
-          {/* Step indicators */}
-          <div className="flex items-center gap-2 mt-4">
-            {kitTimeline.map((step, i) => {
-              const isComplete = step.status === 'completed'
-              const isCurrent = step.status === 'current'
-              return (
-                <div key={i} className="flex items-center gap-2 flex-1">
-                  <div
-                    className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold"
-                    style={{
-                      background: isComplete ? W.olive : isCurrent ? W.orangeLight : W.creamDark,
-                      color: isComplete ? '#fff' : isCurrent ? W.orange : W.warmGrayLight,
-                    }}
-                  >
-                    {isComplete ? <CheckCircle className="h-4 w-4" /> : i + 1}
+                const stepClass = isComplete
+                  ? 'bg-primary-600 text-white'
+                  : isCurrent
+                    ? 'bg-warning/10 text-warning border border-warning/30'
+                    : 'bg-surface-200 text-surface-500'
+
+                const lineClass = isComplete ? 'bg-primary-600' : 'bg-surface-200'
+
+                return (
+                  <div key={i} className="flex items-center gap-2 flex-1">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${stepClass}`}>
+                      {isComplete ? <CheckCircle className="h-4 w-4" /> : i + 1}
+                    </div>
+                    {i < kitTimeline.length - 1 && <div className={`flex-1 h-0.5 rounded-full ${lineClass}`} />}
                   </div>
-                  {i < kitTimeline.length - 1 && (
-                    <div className="flex-1 h-0.5 rounded-full" style={{ background: isComplete ? W.olive : W.creamDark }} />
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
+                )
+              })}
+            </div>
+
+            {!kitsQuery.isLoading && !activeKit ? (
+              <div className="mt-4 rounded-xl border border-surface-200 bg-surface-50 p-3 text-xs text-surface-600">
+                Henuz kit kaydiniz bulunamadi.
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* ═══ MAIN GRID ═══ */}
@@ -110,15 +220,17 @@ export function DanisanPortalPage() {
 
         {/* Kit Timeline Detail */}
         <motion.div className="col-span-12 lg:col-span-5" {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
-          <div className="rounded-2xl p-5 h-full" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[15px] font-semibold" style={{ color: W.dark }}>Detayli Surec</h3>
-              <button type="button" onClick={() => navigate(ROUTES.DANISAN_KIT)} className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: W.olive }}>
-                Detay <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
-            <Timeline steps={kitTimeline} />
-          </div>
+          <Card className="h-full">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[15px] font-semibold text-surface-900">Detayli Surec</h3>
+                <Button variant="link" size="sm" onClick={() => navigate(ROUTES.DANISAN_KIT)} className="h-auto p-0 text-[11px]">
+                  Detay <ArrowRight className="h-3 w-3" />
+                </Button>
+              </div>
+              <Timeline steps={kitTimeline} />
+            </CardContent>
+          </Card>
         </motion.div>
 
         {/* Quick Info Cards */}
@@ -126,78 +238,99 @@ export function DanisanPortalPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 h-full">
 
             {/* Kit Status */}
-            <div className="rounded-2xl p-5 cursor-pointer transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }} onClick={() => navigate(ROUTES.DANISAN_KIT)}>
-              <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3" style={{ background: W.orangeLight }}>
-                <FlaskConical className="h-5 w-5" style={{ color: W.orange }} />
-              </div>
-              <h4 className="text-[14px] font-semibold mb-1" style={{ color: W.dark }}>Analiz Devam Ediyor</h4>
-              <p className="text-[12px] leading-relaxed" style={{ color: W.textLight }}>
-                Numuneniz laboratuvarda inceleniyor. Tahmini tamamlanma suresi 2-3 gun.
-              </p>
-              <div className="flex items-center gap-1.5 mt-3 text-[11px] font-medium" style={{ color: W.orange }}>
-                <Clock className="h-3 w-3" /> Tahmini: 2 gun
-              </div>
+            <div
+              className="cursor-pointer"
+              onClick={() => navigate(ROUTES.DANISAN_KIT)}
+            >
+              <Card className="h-full">
+                <CardContent className="p-5">
+                  <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3 bg-warning/10">
+                    <FlaskConical className="h-5 w-5 text-warning" />
+                  </div>
+                  <h4 className="text-[14px] font-semibold mb-1 text-surface-900">{getStatusTitle(activeKit?.status)}</h4>
+                  <p className="text-[12px] leading-relaxed text-surface-500">{getStatusDescription(activeKit?.status)}</p>
+                  <div className="flex items-center gap-1.5 mt-3 text-[11px] font-medium text-warning">
+                    <Clock className="h-3 w-3" /> {`Durum: ${getDieticianClientKitStatusLabel(activeKit?.status)}`}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Reports */}
-            <div className="rounded-2xl p-5 cursor-pointer transition-shadow hover:shadow-md" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }} onClick={() => navigate(ROUTES.DANISAN_RAPORLAR)}>
-              <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3" style={{ background: W.oliveLight }}>
-                <FileCheck className="h-5 w-5" style={{ color: W.olive }} />
-              </div>
-              <h4 className="text-[14px] font-semibold mb-1" style={{ color: W.dark }}>Raporlarim</h4>
-              <p className="text-[12px] leading-relaxed" style={{ color: W.textLight }}>
-                Tamamlanan analiz raporlarinizi goruntuleyebilir ve indirebilirsiniz.
-              </p>
-              <span className="inline-flex items-center gap-1.5 mt-3 text-[11px] font-medium" style={{ color: W.olive }}>
-                Raporlara Git <ArrowRight className="h-3 w-3" />
-              </span>
+            <div
+              className="cursor-pointer"
+              onClick={() => navigate(ROUTES.DANISAN_RAPORLAR)}
+            >
+              <Card className="h-full">
+                <CardContent className="p-5">
+                  <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3 bg-primary-50">
+                    <FileCheck className="h-5 w-5 text-primary-600" />
+                  </div>
+                  <h4 className="text-[14px] font-semibold mb-1 text-surface-900">Raporlarim</h4>
+                  <p className="text-[12px] leading-relaxed text-surface-500">
+                    Tamamlanan analiz raporlarinizi goruntuleyebilir ve indirebilirsiniz.
+                  </p>
+                  <p className="text-[11px] mt-2 text-surface-400">
+                    {reportsQuery.isLoading ? 'Yukleniyor...' : `Onayli rapor: ${approvedReportCount}`}
+                  </p>
+                  <span className="inline-flex items-center gap-1.5 mt-3 text-[11px] font-medium text-primary-600">
+                    Raporlara Git <ArrowRight className="h-3 w-3" />
+                  </span>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Dietitian Info */}
-            <div className="rounded-2xl p-5" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-              <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3" style={{ background: W.greenLight }}>
-                <Calendar className="h-5 w-5" style={{ color: W.green }} />
-              </div>
-              <h4 className="text-[14px] font-semibold mb-1" style={{ color: W.dark }}>Diyetisyenim</h4>
-              <p className="text-[12px]" style={{ color: W.textLight }}>Dr. Ayse Yilmaz</p>
-              <p className="text-[11px] mt-1" style={{ color: W.warmGrayLight }}>Son gorusme: 10 Haz 2025</p>
-            </div>
+            <Card className="h-full">
+              <CardContent className="p-5">
+                <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3 bg-success/10">
+                  <Calendar className="h-5 w-5 text-success" />
+                </div>
+                <h4 className="text-[14px] font-semibold mb-1 text-surface-900">Diyetisyenim</h4>
+                <p className="text-[12px] text-surface-500">{activeKit?.dieticianName ?? '—'}</p>
+                <p className="text-[11px] mt-1 text-surface-400">{activeKit?.dieticianPhone ?? '—'}</p>
+              </CardContent>
+            </Card>
 
             {/* Kit Info */}
-            <div className="rounded-2xl p-5" style={{ background: '#fff', border: `1px solid ${W.warmBorder}` }}>
-              <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3" style={{ background: W.amberLight }}>
-                <Package className="h-5 w-5" style={{ color: W.amber }} />
-              </div>
-              <h4 className="text-[14px] font-semibold mb-1" style={{ color: W.dark }}>Kit Bilgilerim</h4>
-              <code className="text-[12px] font-mono" style={{ color: W.olive }}>OT-2025-00142</code>
-              <p className="text-[11px] mt-1" style={{ color: W.warmGrayLight }}>Omega-3 Index Testi</p>
-            </div>
+            <Card className="h-full">
+              <CardContent className="p-5">
+                <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3 bg-surface-100">
+                  <Package className="h-5 w-5 text-surface-600" />
+                </div>
+                <h4 className="text-[14px] font-semibold mb-1 text-surface-900">Kit Bilgilerim</h4>
+                <code className="text-[12px] font-mono text-primary-600">{activeKit?.kitBarcode ?? '—'}</code>
+                <p className="text-[11px] mt-1 text-surface-400">{activeKit?.kitName ?? '—'}</p>
+              </CardContent>
+            </Card>
           </div>
         </motion.div>
       </div>
 
       {/* ═══ INFO CARD ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
-        <div className="rounded-2xl p-5" style={{ background: W.greenLight, border: '1px solid #C8E6C8' }}>
-          <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#B8E0B8' }}>
-              <Heart className="h-6 w-6" style={{ color: '#3D8B3D' }} />
-            </div>
-            <div>
-              <p className="font-semibold" style={{ color: '#2D5A2D' }}>Omega-3 Index Nedir?</p>
-              <p className="text-[13px] mt-1 leading-relaxed" style={{ color: '#4A7A4A' }}>
-                Kaninizdaki omega-3 yag asitleri (EPA ve DHA) seviyesini olcen bir testtir.
-                Ideal deger %8 ve uzeridir. Sonuclar diyetisyeniniz tarafindan degerlendirilecek
-                ve size ozel beslenme onerileri hazirlanacaktir.
-              </p>
-              <div className="flex items-center gap-4 mt-3">
-                <div className="flex items-center gap-1.5 text-[11px] font-medium" style={{ color: '#3D8B3D' }}>
-                  <Info className="h-3 w-3" /> Detayli bilgi
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-success/10">
+                <Heart className="h-6 w-6 text-success" />
+              </div>
+              <div>
+                <p className="font-semibold text-surface-900">Omega-3 Index Nedir?</p>
+                <p className="text-[13px] mt-1 leading-relaxed text-surface-600">
+                  Kaninizdaki omega-3 yag asitleri (EPA ve DHA) seviyesini olcen bir testtir.
+                  Ideal deger %8 ve uzeridir. Sonuclar diyetisyeniniz tarafindan degerlendirilecek
+                  ve size ozel beslenme onerileri hazirlanacaktir.
+                </p>
+                <div className="flex items-center gap-4 mt-3">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-success">
+                    <Info className="h-3 w-3" /> Detayli bilgi
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </motion.div>
     </div>
   )

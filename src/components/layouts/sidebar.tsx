@@ -2,9 +2,8 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar.store'
-import { useCurrentRole, useCurrentUser } from '@/stores/auth.store'
+import { useCurrentRole } from '@/stores/auth.store'
 import { useWorkflowStore } from '@/stores/workflow.store'
-import { useLaboratoriesStore } from '@/stores/laboratories.store'
 import { UserRole, KitStatus } from '@/utils/constants'
 import { ROUTES, ROLE_HOME } from '@/utils/routes'
 import { Tooltip, TooltipProvider } from '@/components/ui'
@@ -15,7 +14,6 @@ import {
   DollarSign,
   Package,
   ShoppingCart,
-  FileText,
   UserPlus,
   FlaskConical,
   Boxes,
@@ -28,7 +26,6 @@ import {
   BookOpen,
   ClipboardList,
   RotateCcw,
-  MapPin,
   Settings,
   History,
 } from 'lucide-react'
@@ -67,7 +64,6 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Rapor Onaylari', href: ROUTES.YONETICI_RAPORLAR, icon: FileCheck },
         ]},
         { title: 'Sistem', items: [
-          { label: 'Sablonlar', href: ROUTES.YONETICI_SABLONLAR, icon: FileText },
           { label: 'Ayarlar', href: ROUTES.YONETICI_AYARLAR, icon: Settings },
         ]},
       ]
@@ -125,19 +121,14 @@ function getNavGroups(role: UserRole): NavGroup[] {
 export function Sidebar() {
   const { collapsed, toggle, mobileOpen, setMobileOpen } = useSidebarStore()
   const role = useCurrentRole()
-  const user = useCurrentUser()
   const location = useLocation()
   const kits = useWorkflowStore((s) => s.kits)
   const orders = useWorkflowStore((s) => s.orders)
-  const laboratories = useLaboratoriesStore((s) => s.laboratories)
   const returnRequestCount = kits.filter((k) => k.status === KitStatus.RETURN_REQUESTED).length
   const pendingOrderCount = orders.filter((o) => o.assignedBarcodes.length < o.qty).length
   const pendingReportApprovalCount = kits.filter(
     (k) => k.status === KitStatus.ADMIN_APPROVAL && (k.reportStatus === 'ADMIN_APPROVAL' || !k.reportStatus)
   ).length
-  const assignedLab = role === UserRole.DIETITIAN && user?.id
-    ? laboratories.find((l) => l.assignedDietitians.includes(user.id))
-    : null
 
   if (!role) return null
 

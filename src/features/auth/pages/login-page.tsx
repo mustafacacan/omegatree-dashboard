@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -15,6 +15,7 @@ import { login as apiLogin } from '@/services/auth.service'
 const loginSchema = z.object({
   email: z.string().email('Gecerli bir e-posta adresi girin'),
   password: z.string().min(6, 'Sifre en az 6 karakter olmali'),
+  rememberMe: z.boolean().optional(),
 })
 
 type LoginForm = z.infer<typeof loginSchema>
@@ -25,18 +26,32 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    try {
+      const key = 'omegatree-auth-expired'
+      const flagged = window.sessionStorage?.getItem(key)
+      if (flagged) {
+        window.sessionStorage?.removeItem(key)
+        toast.error('Oturum süreniz doldu. Lütfen tekrar giriş yapınız.')
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
+    defaultValues: { rememberMe: false },
   })
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true)
     try {
-      const { user, token } = await apiLogin(data.email, data.password)
+      const { user, token } = await apiLogin(data.email, data.password, Boolean(data.rememberMe))
       setAuth({ ...user, status: UserStatus.ACTIVE }, token)
       const displayName = `${user.firstName} ${user.lastName}`.trim()
       toast.success(`Hoş geldiniz, ${displayName}!`)
@@ -115,6 +130,7 @@ export function LoginPage() {
             <input
               type="checkbox"
               className="rounded border-surface-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
+              {...register('rememberMe')}
             />
             <span className="text-sm text-surface-600">Beni hatirla</span>
           </label>

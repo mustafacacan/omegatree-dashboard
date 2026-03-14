@@ -16,6 +16,10 @@ export const api = axios.create({
   },
 })
 
+const AUTH_EXPIRED_TOAST_KEY = 'omegatree-auth-expired'
+let last401HandledAt = 0
+let isHandling401 = false
+
 function getAuthToken(): string | null {
   const fromStore = useAuthStore.getState().token
   if (fromStore) return fromStore
@@ -63,10 +67,48 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const skipAuthRedirect = (error.config as ApiRequestConfig)?.skipAuthRedirect
-    if (error.response?.status === 401 && !skipAuthRedirect) {
-      useAuthStore.getState().logout()
-      window.location.href = '/giris'
+    const status = error?.response?.status
+    const config = (error?.config ?? {}) as ApiRequestConfig
+
+    // If we have a token and backend responds 401, treat as session expiration globally.
+    // (Many service calls set skipAuthRedirect=true; token-expiry should still log out everywhere.)
+    if (status === 401) {
+      const token = getAuthToken()
+      const hasToken = Boolean(token)
+
+      const url = String(config.url ?? '')
+      const isAuthCall = url.includes('/auth/login') || url.includes('/auth/register')
+
+      if (hasToken && !isAuthCall) {
+        const now = Date.now()
+        if (!isHandling401 && now - last401HandledAt > 1000) {
+          isHandling401 = true
+          last401HandledAt = now
+
+          try {
+            window.sessionStorage?.setItem(AUTH_EXPIRED_TOAST_KEY, '1')
+          } catch {
+            // ignore
+          }
+
+          useAuthStore.getState().logout()
+
+          if (typeof window !== 'undefined' && window.location?.pathname !== '/giris') {
+            window.location.href = '/giris'
+          }
+
+          // Allow future 401 handling after navigation settles.
+          setTimeout(() => {
+            isHandling401 = false
+          }, 1500)
+        }
+      } else {
+        // Respect explicit opt-out only when we don't have an authenticated session.
+        const skipAuthRedirect = config.skipAuthRedirect
+        if (!skipAuthRedirect && typeof window !== 'undefined' && window.location?.pathname !== '/giris') {
+          window.location.href = '/giris'
+        }
+      }
     }
     return Promise.reject(error)
   }

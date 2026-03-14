@@ -1,5 +1,4 @@
 import { useMemo, useState, type ChangeEvent } from 'react'
-import { PageHeader } from '@/components/shared/page-header'
 import { PanelHeader } from '@/components/shared/panel-header'
 import { Badge, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Modal, ModalContent, ModalHeader, ModalTitle, ModalBody } from '@/components/ui'
 import { Timeline } from '@/components/shared/timeline'
@@ -7,7 +6,7 @@ import { formatDate } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { motion } from 'framer-motion'
 import {
-  AlertTriangle, Clock, RotateCcw, Image as ImageIcon, Eye, MapPin,
+  Clock, RotateCcw, Image as ImageIcon, Eye, MapPin,
 } from 'lucide-react'
 import { useCurrentUser } from '@/stores/auth.store'
 import { useLaboratoriesStore } from '@/stores/laboratories.store'
@@ -59,8 +58,9 @@ function DieticianKitStatusBadge({ status }: { status: DieticianClientKit['statu
 }
 
 function buildDieticianKitTimeline(status: DieticianClientKit['status']) {
-  const order: Array<DieticianClientKit['status']> = ['delivered', 'in_client', 'in_laboratory', 'in_expert', 'completed']
-  const labels: Record<NonNullable<DieticianClientKit['status']>, string> = {
+  type KitStatus = NonNullable<DieticianClientKit['status']>
+  const order: KitStatus[] = ['delivered', 'in_client', 'in_laboratory', 'in_expert', 'completed']
+  const labels: Record<KitStatus, string> = {
     delivered: 'Teslim Alindi',
     in_client: 'Danisana Atandi',
     in_laboratory: 'Laboratuvara Ulasti',
@@ -305,11 +305,11 @@ export function KitsPage() {
                     <DieticianKitStatusBadge status={kit.status} />
                   </div>
 
-                  <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-3">
+                  <div className="rounded-xl border border-surface-200 dark:border-surface-200 bg-surface-50 dark:bg-panel p-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Kit</p>
-                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-200">{kit.kitName || '—'}</p>
+                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-900">{kit.kitName || '—'}</p>
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Durum</p>
@@ -317,7 +317,7 @@ export function KitsPage() {
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Diyetisyen</p>
-                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-200">{kit.dieticianName || '—'}</p>
+                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-900">{kit.dieticianName || '—'}</p>
                         {(kit.dieticianPhone || kit.dieticianEmail) && (
                           <p className="text-[11px] text-surface-500 mt-0.5">
                             {kit.dieticianPhone ?? ''}{kit.dieticianPhone && kit.dieticianEmail ? ' · ' : ''}{kit.dieticianEmail ?? ''}
@@ -326,7 +326,7 @@ export function KitsPage() {
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Danisan</p>
-                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-200">{kit.clientName || '—'}</p>
+                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-900">{kit.clientName || '—'}</p>
                         {(kit.clientPhone || kit.clientEmail) && (
                           <p className="text-[11px] text-surface-500 mt-0.5">
                             {kit.clientPhone ?? ''}{kit.clientPhone && kit.clientEmail ? ' · ' : ''}{kit.clientEmail ?? ''}

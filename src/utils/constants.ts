@@ -117,3 +117,27 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   [OrderStatus.DELIVERED]: 'Teslim Edildi',
   [OrderStatus.CANCELLED]: 'Iptal Edildi',
 }
+
+// API: /dietician-client-kits status labels (lowercase)
+export type DieticianClientKitStatusApi =
+  | 'in_client'
+  | 'in_laboratory'
+  | 'in_expert'
+  | 'delivered'
+  | 'cancelled'
+  | 'completed'
+
+export const DIETICIAN_CLIENT_KIT_STATUS_LABELS: Record<DieticianClientKitStatusApi, string> = {
+  delivered: 'Teslim Edildi',
+  in_client: 'Danisanda',
+  in_laboratory: 'Laboratuvarda',
+  in_expert: 'Uzmanda',
+  completed: 'Tamamlandi',
+  cancelled: 'Iptal Edildi',
+}
+
+export function getDieticianClientKitStatusLabel(status?: string): string {
+  if (!status) return '—'
+  const key = status as DieticianClientKitStatusApi
+  return DIETICIAN_CLIENT_KIT_STATUS_LABELS[key] ?? status
+}

@@ -29,7 +29,6 @@ const ProductionCenterPage = lazy(() => import('@/features/admin/production/page
 const PricingPage = lazy(() => import('@/features/admin/pricing/pages/pricing-page').then(m => ({ default: m.PricingPage })))
 const StockPage = lazy(() => import('@/features/admin/stock/pages/stock-page').then(m => ({ default: m.StockPage })))
 const OrdersPage = lazy(() => import('@/features/admin/orders/pages/orders-page').then(m => ({ default: m.OrdersPage })))
-const TemplatesPage = lazy(() => import('@/features/admin/templates/pages/templates-page').then(m => ({ default: m.TemplatesPage })))
 const ReturnRequestsPage = lazy(() => import('@/features/admin/returns/pages/return-requests-page').then(m => ({ default: m.ReturnRequestsPage })))
 const LaboratoriesPage = lazy(() => import('@/features/admin/laboratories/pages/laboratories-page').then(m => ({ default: m.LaboratoriesPage })))
 const DietitiansPage = lazy(() => import('@/features/admin/dietitians/pages/dietitians-page'))
@@ -117,7 +116,6 @@ export const router = createBrowserRouter([
       { path: ROUTES.YONETICI_DANISANLAR, element: <SuspensePage><ClientsPage /></SuspensePage> },
       { path: ROUTES.YONETICI_UZMANLAR, element: <SuspensePage><SpecialistsPage /></SuspensePage> },
       { path: ROUTES.YONETICI_RAPORLAR, element: <SuspensePage><ReportApprovalsPage /></SuspensePage> },
-      { path: ROUTES.YONETICI_SABLONLAR, element: <SuspensePage><TemplatesPage /></SuspensePage> },
     ],
   },
 

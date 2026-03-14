@@ -79,11 +79,11 @@ export interface LoginResponse {
 
 /**
  * E-posta veya telefon ile giriş yapar.
- * API: POST /auth/login body: { loginKey, password }
+ * API: POST /auth/login body: { loginKey, password, rememberMe }
  * Cevap: { success, message, data: { user, token } }
  */
-export async function login(loginKey: string, password: string): Promise<{ user: User; token: string }> {
-  const { data: res } = await api.post<LoginResponse>('/auth/login', { loginKey, password })
+export async function login(loginKey: string, password: string, rememberMe = false): Promise<{ user: User; token: string }> {
+  const { data: res } = await api.post<LoginResponse>('/auth/login', { loginKey, password, rememberMe })
 
   const payload = (res?.data ?? res) as { token?: string; access_token?: string; user?: ApiUser } | undefined
   const token = payload?.token ?? payload?.access_token

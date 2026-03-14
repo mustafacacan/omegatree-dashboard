@@ -17,25 +17,20 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts'
-import { getUsers } from '@/services/users.service'
-import { getOrders } from '@/services/orders.service'
-import { getDieticianClientKits } from '@/services/dietician-client-kits.service'
-import { UserRole } from '@/utils/constants'
+import { getAdminDashboard } from '@/services/dashboard.service'
 
-/** API dietician-client-kit status → KitStatus (StatusBadge) */
-function mapKitStatusToDisplay(
-  status: 'in_client' | 'in_laboratory' | 'in_expert' | 'delivered' | 'cancelled' | 'completed' | undefined
-): KitStatus {
+/** Dashboard kit status → KitStatus (StatusBadge) */
+function mapDashboardKitStatusToDisplay(status: string | undefined): KitStatus {
   const map: Record<string, KitStatus> = {
-    in_client: KitStatus.CLIENT_RECEIVED,
-    in_laboratory: KitStatus.IN_ANALYSIS,
-    in_expert: KitStatus.SPECIALIST_POOL,
-    delivered: KitStatus.DELIVERED,
+    pending: KitStatus.LAB_PENDING,
+    in_progress: KitStatus.IN_ANALYSIS,
     completed: KitStatus.COMPLETED,
     cancelled: KitStatus.REJECTED,
   }
-  return (status && map[status]) ?? KitStatus.IN_STOCK
+  return map[(status ?? '').toLowerCase()] ?? KitStatus.IN_STOCK
 }
+
+
 
 /* ─── Nutrigo warm palette ─── */
 const W = {
@@ -57,43 +52,11 @@ const W = {
   textLight: '#9C968D',
 }
 
-/** Aylik gelir (API'de tarih bazli ozet yok; ornek veri veya siparis toplamindan) */
-const monthlyRevenue = [
-  { month: 'Oca', gelir: 45 },
-  { month: 'Sub', gelir: 52 },
-  { month: 'Mar', gelir: 61 },
-  { month: 'Nis', gelir: 58 },
-  { month: 'May', gelir: 71 },
-  { month: 'Haz', gelir: 83 },
-  { month: 'Tem', gelir: 76 },
-  { month: 'Agu', gelir: 89 },
-]
-
-const weeklyKits = [
-  { day: 'Pzt', value: 8 },
-  { day: 'Sal', value: 12 },
-  { day: 'Car', value: 6 },
-  { day: 'Per', value: 15 },
-  { day: 'Cum', value: 9 },
-  { day: 'Cmt', value: 4 },
-  { day: 'Paz', value: 2 },
-]
-
-const recentActivity = [
-  { icon: CheckCircle, color: W.green, bg: W.greenLight, text: 'OT-2025-00142 analizi tamamlandi', time: '2 dk once' },
-  { icon: Truck, color: W.olive, bg: W.oliveLight, text: 'Dr. Ayse Yilmaz siparisi kargolandi', time: '15 dk once' },
-  { icon: Users, color: W.orange, bg: W.orangeLight, text: 'Yeni diyetisyen: Dr. Mehmet Sahin', time: '1 saat once' },
-  { icon: AlertTriangle, color: W.amber, bg: W.amberLight, text: 'Hasarli kit: OT-2025-00138', time: '2 saat once' },
-  { icon: BarChart3, color: W.olive, bg: W.oliveLight, text: 'Uzman raporu onaya gonderildi', time: '3 saat once' },
-]
-
-const kitCategoryLabels: Record<string, string> = {
-  in_client: 'Danışanda',
-  in_laboratory: 'Laboratuvarda',
-  in_expert: 'Uzmanda',
-  delivered: 'Teslim Edildi',
-  completed: 'Tamamlanan',
-  cancelled: 'İptal',
+const kitStatusColor: Record<string, string> = {
+  cancelled: W.warmGray,
+  in_progress: W.orange,
+  completed: W.green,
+  pending: W.amber,
 }
 
 const fadeUp = {
@@ -114,68 +77,104 @@ export function AdminDashboardPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
 
-  const { data: usersRes } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => getUsers({ page: 1, limit: 500 }),
-  })
-  const { data: ordersList } = useQuery({
-    queryKey: ['orders'],
-    queryFn: () => getOrders(),
-  })
-  const { data: assignmentKits = [], isLoading: kitsLoading } = useQuery({
-    queryKey: ['dietician-client-kits', 'dashboard'],
-    queryFn: () => getDieticianClientKits(1, 500),
+  const dashboardQuery = useQuery({
+    queryKey: ['admin', 'dashboard'],
+    queryFn: getAdminDashboard,
+    staleTime: 30_000,
   })
 
-  const usersList = useMemo(() => {
-    return Array.isArray(usersRes) ? usersRes : (usersRes?.users ?? [])
-  }, [usersRes])
-  const dietitiansCount = useMemo(
-    () => usersList.filter((u) => u.role === UserRole.DIETITIAN).length,
-    [usersList]
-  )
+  const dashboard = dashboardQuery.data
+  const isLoading = dashboardQuery.isLoading
 
-  const pendingOrdersCount = useMemo(
-    () => (ordersList ?? []).filter((o) => (o.status ?? '').toLowerCase() === 'pending').length,
-    [ordersList]
-  )
-  const totalRevenue = useMemo(() => {
-    const list = ordersList ?? []
-    return list
-      .filter((o) => (o.status ?? '').toLowerCase() === 'completed' || (o.status ?? '').toLowerCase() === 'delivered')
-      .reduce((sum, o) => sum + Number(o.totalPrice ?? 0), 0)
-  }, [ordersList])
+  const cards = dashboard?.cards
+  const totalKits = Number(dashboard?.kits?.total ?? cards?.totalKits ?? 0)
+  const dietitiansCount = Number(cards?.activeDieticians ?? 0)
+  const pendingOrdersCount = Number(cards?.pendingOrders ?? 0)
+  const totalRevenue = Number(cards?.totalRevenue ?? 0)
 
-  const totalKits = assignmentKits.length
-  const kitPieData = useMemo(() => {
-    const statusCounts: Record<string, number> = {}
-    assignmentKits.forEach((k) => {
-      const s = k.status ?? 'in_client'
-      statusCounts[s] = (statusCounts[s] ?? 0) + 1
-    })
-    const colors: Record<string, string> = {
-      in_client: W.amber,
-      in_laboratory: W.orange,
-      in_expert: W.olive,
-      delivered: W.green,
-      completed: W.green,
-      cancelled: W.warmGray,
-    }
-    return Object.entries(statusCounts).map(([key, value]) => ({
-      name: kitCategoryLabels[key] ?? key,
-      value,
-      color: colors[key] ?? W.olive,
+  const monthlyRevenue = useMemo(() => {
+    const months = dashboard?.revenueTrend?.months ?? []
+    return months.map((m) => ({
+      month: (m.label ?? m.key ?? '').toString(),
+      // UI: "bin TL" — TL -> K TL
+      gelir: Math.round((Number(m.total ?? 0) / 1000) * 10) / 10,
     }))
-  }, [assignmentKits])
+  }, [dashboard?.revenueTrend?.months])
+
+  const revenueTrendChange = dashboard?.revenueTrend?.changePercent ?? null
+
+  const kitByStatus = useMemo(() => {
+    return (dashboard?.kits?.byStatus ?? []).map((s) => ({
+      status: (s.status ?? '').toString(),
+      label: (s.label ?? s.status ?? '—').toString(),
+      count: Number(s.count ?? 0),
+      percent: Number(s.percent ?? 0),
+    }))
+  }, [dashboard?.kits?.byStatus])
+
+  const kitPieData = useMemo(() => {
+    return kitByStatus
+      .filter((s) => s.count > 0)
+      .map((s) => ({
+        name: s.label,
+        value: s.count,
+        color: kitStatusColor[s.status] ?? W.olive,
+      }))
+  }, [kitByStatus])
+
+  const kitCategoriesChart = useMemo(() => {
+    if (kitByStatus.length === 0) return []
+    return kitByStatus.map((s) => ({
+      label: s.label,
+      count: s.count,
+      percent: s.percent,
+      color: kitStatusColor[s.status] ?? W.olive,
+    }))
+  }, [kitByStatus])
+
+  const weeklyKits = useMemo(() => {
+    const days = dashboard?.weeklyKits?.days ?? []
+    return days.map((d) => ({
+      day: (d.label ?? d.key ?? '').toString(),
+      value: Number(d.count ?? 0),
+    }))
+  }, [dashboard?.weeklyKits?.days])
+
+  const weeklyTotal = useMemo(() => {
+    const fromApi = dashboard?.weeklyKits?.total
+    if (fromApi != null) return Number(fromApi)
+    return weeklyKits.reduce((sum, d) => sum + d.value, 0)
+  }, [dashboard?.weeklyKits?.total, weeklyKits])
+
+  const recentActivity = useMemo(() => {
+    const list = dashboard?.liveActivity ?? []
+
+    const pickVisual = (message: string | undefined) => {
+      const m = (message ?? '').toLowerCase()
+      if (m.startsWith('order:')) return { icon: ShoppingCart, color: W.orange, bg: W.orangeLight }
+      if (m.startsWith('laboratory-dietician:')) return { icon: Truck, color: W.olive, bg: W.oliveLight }
+      if (m.startsWith('dieticianclient:')) return { icon: Users, color: W.orange, bg: W.orangeLight }
+      if (m.includes('approve') || m.includes('approved')) return { icon: CheckCircle, color: W.green, bg: W.greenLight }
+      if (m.includes('cancel') || m.includes('reject')) return { icon: AlertTriangle, color: W.amber, bg: W.amberLight }
+      return { icon: BarChart3, color: W.olive, bg: W.oliveLight }
+    }
+
+    return list.slice(0, 6).map((a) => {
+      const v = pickVisual(a.message)
+      const actor = a.actorName ? `${a.actorName}: ` : ''
+      return {
+        icon: v.icon,
+        color: v.color,
+        bg: v.bg,
+        text: `${actor}${a.message ?? '—'}`,
+      }
+    })
+  }, [dashboard?.liveActivity])
 
   const recentKits = useMemo(() => {
-    const sorted = [...assignmentKits].sort((a, b) => {
-      const da = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime()
-      const db = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime()
-      return db - da
-    })
-    return sorted.slice(0, 6).map((k) => {
-      const d = k.updatedAt ?? k.createdAt
+    const list = dashboard?.recentKitMovements ?? []
+    return list.slice(0, 6).map((m) => {
+      const d = m.createdAt
       const dateStr = d ? new Date(d).toLocaleDateString('tr-TR') : ''
       const today = new Date().toLocaleDateString('tr-TR')
       const yesterdayDate = new Date()
@@ -184,26 +183,23 @@ export function AdminDashboardPage() {
       let dateLabel = dateStr
       if (dateStr === today) dateLabel = 'Bugün'
       else if (dateStr === yesterday) dateLabel = 'Dün'
+
       return {
-        barcode: k.kitBarcode ?? `#${k.id}`,
-        status: mapKitStatusToDisplay(k.status),
-        dietitian: k.dieticianName ?? '—',
-        date: dateLabel,
+        barcode: m.kit?.name ?? `#${m.kit?.id ?? m.id ?? ''}`,
+        status: mapDashboardKitStatusToDisplay(m.status),
+        dietitian: m.dietician?.name ?? '—',
+        date: dateLabel || '—',
       }
     })
-  }, [assignmentKits])
+  }, [dashboard?.recentKitMovements])
 
   const topDietitians = useMemo(() => {
-    const byDietitian: Record<string, { name: string; kits: number }> = {}
-    assignmentKits.forEach((k) => {
-      const id = String(k.dieticianId ?? k.dieticianName ?? '')
-      const name = k.dieticianName ?? 'Bilinmeyen'
-      if (!id) return
-      if (!byDietitian[id]) byDietitian[id] = { name, kits: 0 }
-      byDietitian[id].kits += 1
-      if (k.dieticianName) byDietitian[id].name = k.dieticianName
-    })
-    const arr = Object.values(byDietitian)
+    const list = dashboard?.topDieticians ?? []
+    const arr = list
+      .map((d) => ({
+        name: d.name ?? '—',
+        kits: Number(d.kitCount ?? 0),
+      }))
       .sort((a, b) => b.kits - a.kits)
       .slice(0, 3)
     const maxKits = Math.max(1, ...arr.map((a) => a.kits))
@@ -213,21 +209,7 @@ export function AdminDashboardPage() {
       revenue: 0,
       pct: Math.round((a.kits / maxKits) * 100),
     }))
-  }, [assignmentKits])
-
-  const kitCategoriesChart = useMemo(() => {
-    if (kitPieData.length === 0)
-      return [
-        { label: 'Danışanda', count: 0, color: W.amber },
-        { label: 'Laboratuvarda', count: 0, color: W.orange },
-        { label: 'Tamamlanan', count: 0, color: W.green },
-      ]
-    return kitPieData.map((p) => ({
-      label: p.name,
-      count: p.value,
-      color: p.color,
-    }))
-  }, [kitPieData])
+  }, [dashboard?.topDieticians])
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -247,7 +229,7 @@ export function AdminDashboardPage() {
           {/* ═══════ STAT CARDS ═══════ */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
             {[
-              { title: 'Toplam Kit', value: kitsLoading ? '...' : totalKits.toLocaleString('tr-TR'), change: null, icon: Package, iconClass: 'text-brand-500', bgClass: 'from-primary-50 to-primary-100', accent: 'stat-accent-primary' },
+              { title: 'Toplam Kit', value: isLoading ? '...' : totalKits.toLocaleString('tr-TR'), change: null, icon: Package, iconClass: 'text-brand-500', bgClass: 'from-primary-50 to-primary-100', accent: 'stat-accent-primary' },
               { title: 'Aktif Diyetisyen', value: String(dietitiansCount), change: null, icon: Users, iconClass: 'text-accent-amber', bgClass: 'from-orange-50 to-orange-100', accent: 'stat-accent-sky' },
               { title: 'Bekleyen Siparis', value: String(pendingOrdersCount), change: null, icon: ShoppingCart, iconClass: 'text-warning', bgClass: 'from-amber-50 to-amber-100', accent: 'stat-accent-amber' },
               { title: 'Toplam Gelir', value: formatCurrency(totalRevenue), change: null, icon: TrendingUp, iconClass: 'text-success', bgClass: 'from-green-50 to-green-100', accent: 'stat-accent-violet' },
@@ -296,10 +278,18 @@ export function AdminDashboardPage() {
                     <h3 className="text-card-title">Gelir Trendi</h3>
                     <p className="text-[12px] mt-0.5 text-text-secondary">Aylik gelir ozeti (bin TL)</p>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary-100">
-                    <TrendingUp className="h-3.5 w-3.5 text-primary-600" />
-                    <span className="text-[12px] font-bold text-primary-600">+16.9%</span>
-                  </div>
+                  {revenueTrendChange != null ? (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary-100">
+                      {revenueTrendChange >= 0 ? (
+                        <TrendingUp className="h-3.5 w-3.5 text-primary-600" />
+                      ) : (
+                        <TrendingDown className="h-3.5 w-3.5 text-primary-600" />
+                      )}
+                      <span className="text-[12px] font-bold text-primary-600">
+                        {revenueTrendChange >= 0 ? '+' : ''}{revenueTrendChange}%
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
                 <div className="h-[260px] flex-1 min-h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -366,8 +356,8 @@ export function AdminDashboardPage() {
                     </>
                   ) : (
                     <div className="flex flex-col items-center justify-center text-surface-500">
-                      {kitsLoading ? <Loader2 className="h-8 w-8 animate-spin" /> : <Package className="h-10 w-10" />}
-                      <p className="text-[12px] mt-2">{kitsLoading ? 'Yükleniyor...' : 'Veri yok'}</p>
+                      {isLoading ? <Loader2 className="h-8 w-8 animate-spin" /> : <Package className="h-10 w-10" />}
+                      <p className="text-[12px] mt-2">{isLoading ? 'Yükleniyor...' : 'Veri yok'}</p>
                     </div>
                   )}
                 </div>
@@ -397,7 +387,7 @@ export function AdminDashboardPage() {
                     <p className="text-[12px] mt-0.5 text-text-secondary">Bu haftaki kit hareketleri</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-text-primary">56</p>
+                    <p className="text-lg font-bold text-text-primary">{weeklyTotal}</p>
                     <p className="text-[10px] text-text-secondary">toplam</p>
                   </div>
                 </div>
@@ -446,10 +436,7 @@ export function AdminDashboardPage() {
                         </div>
                         <div className="min-w-0 flex-1 pt-1">
                           <p className="text-[12px] font-medium leading-snug text-surface-700">{act.text}</p>
-                          <p className="text-[10px] mt-1 flex items-center gap-1 text-surface-500">
-                            <Clock className="h-2.5 w-2.5" />
-                            {act.time}
-                          </p>
+                          
                         </div>
                       </div>
                     ))}
@@ -466,7 +453,7 @@ export function AdminDashboardPage() {
 
                 <div className="space-y-5 flex-1">
                   {kitCategoriesChart.map((cat, i) => {
-                    const pct = totalKits > 0 ? Math.round((cat.count / totalKits) * 100) : 0
+                    const pct = Number.isFinite(cat.percent) ? cat.percent : (totalKits > 0 ? Math.round((cat.count / totalKits) * 100) : 0)
                     return (
                       <div key={cat.label}>
                         <div className="flex items-center justify-between mb-1.5">

@@ -293,16 +293,16 @@ export function ReportApprovalsPage() {
               {pendingItems.map((r, idx) => (
                 <div
                   key={String(r.id ?? `row-${idx}`)}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-surface-200 bg-amber-50/50 p-4"
+                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-surface-200 bg-panel p-4"
                 >
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-surface-200 bg-white">
-                      <FileText className="h-6 w-6 text-amber-600" />
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-surface-200 bg-surface-50">
+                      <FileText className="h-6 w-6 text-warning" />
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-surface-900">
                         <span className="font-mono text-sm">#{r.id ?? '-'}</span>
-                        <Badge variant="warning" className="ml-2">{getResultStatusLabel(r.status)}</Badge>
+                        <Badge variant="warning" className="ml-2 bg-surface-100 text-warning dark:bg-surface-200/60">{getResultStatusLabel(r.status)}</Badge>
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-500">
                        

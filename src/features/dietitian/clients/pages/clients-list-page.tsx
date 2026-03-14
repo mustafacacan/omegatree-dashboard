@@ -605,14 +605,7 @@ export function ClientsListPage() {
             )}
           </ModalBody>
 
-          <ModalFooter className="gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => setDetailOpen(false)}>Kapat</Button>
-            {detailClientId ? (
-              <Button variant="primary" onClick={() => navigate(danisanDetayPath(String(detailClientId)))}>
-                Profili Ac
-              </Button>
-            ) : null}
-          </ModalFooter>
+          
         </ModalContent>
       </Modal>
 

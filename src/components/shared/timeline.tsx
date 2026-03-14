@@ -36,7 +36,7 @@ export function Timeline({ steps, className }: TimelineProps) {
                 step.status === 'completed'
                   ? { background: W.olive, color: '#fff' }
                   : step.status === 'current'
-                    ? { background: '#fff', border: `2px solid ${W.olive}`, color: W.olive }
+                    ? { background: 'var(--color-panel)', border: `2px solid ${W.olive}`, color: W.olive }
                     : step.status === 'error'
                       ? { background: '#D97070', color: '#fff' }
                       : { background: W.creamDark, color: W.textLight }

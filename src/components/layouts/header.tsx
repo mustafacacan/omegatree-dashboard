@@ -34,7 +34,6 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith(ROUTES.YONETICI_SIPARISLER)) return 'Siparisler'
   if (pathname.startsWith(ROUTES.YONETICI_LABORATUVARLAR)) return 'Laboratuvarlar'
   if (pathname.startsWith(ROUTES.YONETICI_DIYETISYENLER)) return 'Diyetisyenler'
-  if (pathname.startsWith(ROUTES.YONETICI_SABLONLAR)) return 'Sablonlar'
   if (pathname.startsWith(ROUTES.YONETICI_RAPORLAR)) return 'Rapor Onaylari'
   if (pathname.startsWith(ROUTES.YONETICI_BILDIRIMLER)) return 'Bildirimler'
 

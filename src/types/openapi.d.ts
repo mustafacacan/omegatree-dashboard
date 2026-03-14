@@ -4699,6 +4699,11 @@ export interface components {
              * @example password123
              */
             password: string;
+            /**
+             * @description Whether to remember the user for a longer period
+             * @example true
+             */
+            rememberMe?: boolean;
         };
         ChangePassword: {
             /**

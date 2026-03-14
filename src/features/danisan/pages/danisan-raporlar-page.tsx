@@ -120,7 +120,7 @@ export function DanisanRaporlarPage() {
               {items.map((r) => (
                 <div
                   key={String(r.id ?? `${r.dieticianClientId ?? '0'}-${r.createdAt ?? ''}`)}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-surface-200 bg-white p-4 transition-colors hover:border-primary-200 hover:bg-surface-50/50"
+                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-surface-200 bg-panel p-4 transition-colors hover:border-primary-200 hover:bg-surface-50/50"
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-50">
