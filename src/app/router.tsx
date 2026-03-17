@@ -17,6 +17,8 @@ import { ForgotPasswordPage } from '@/features/auth/pages/forgot-password-page'
 import { KvkkConsentPage } from '@/features/auth/pages/kvkk-consent-page'
 import { NotFoundPage } from '@/features/auth/pages/not-found-page'
 
+import { DanisanPrereqGate } from '@/features/danisan/components/danisan-prereq-gate'
+
 // Lazy-loaded pages
 const ProfilePage = lazy(() => import('@/features/auth/pages/profile-page').then(m => ({ default: m.ProfilePage })))
 const SettingsPage = lazy(() => import('@/features/auth/pages/settings-page').then(m => ({ default: m.SettingsPage })))
@@ -63,6 +65,7 @@ const SpecialistResultsPage = lazy(() => import('@/features/specialist/results/p
 const DanisanPortalPage = lazy(() => import('@/features/danisan/pages/danisan-portal-page').then(m => ({ default: m.DanisanPortalPage })))
 const DanisanKitPage = lazy(() => import('@/features/danisan/pages/danisan-kit-page').then(m => ({ default: m.DanisanKitPage })))
 const DanisanRaporlarPage = lazy(() => import('@/features/danisan/pages/danisan-raporlar-page').then(m => ({ default: m.DanisanRaporlarPage })))
+const DanisanBilgilerimPage = lazy(() => import('@/features/danisan/pages/danisan-bilgilerim-page').then(m => ({ default: m.DanisanBilgilerimPage })))
 
 // Public: güvenli paylaşım linki — sadece PDF görüntüleme (auth yok)
 const ShareReportPage = lazy(() => import('@/features/share/pages/share-report-page').then(m => ({ default: m.ShareReportPage })))
@@ -191,12 +194,18 @@ export const router = createBrowserRouter([
       </RoleGuard>
     ),
     children: [
-      { path: ROUTES.DANISAN, element: <SuspensePage><DanisanPortalPage /></SuspensePage> },
-      { path: ROUTES.DANISAN_PROFIL, element: <SuspensePage><ProfilePage /></SuspensePage> },
-      { path: ROUTES.DANISAN_AYARLAR, element: <SuspensePage><SettingsPage /></SuspensePage> },
-      { path: ROUTES.DANISAN_BILDIRIMLER, element: <SuspensePage><NotificationsPage /></SuspensePage> },
-      { path: ROUTES.DANISAN_KIT, element: <SuspensePage><DanisanKitPage /></SuspensePage> },
-      { path: ROUTES.DANISAN_RAPORLAR, element: <SuspensePage><DanisanRaporlarPage /></SuspensePage> },
+      {
+        element: <DanisanPrereqGate />,
+        children: [
+          { path: ROUTES.DANISAN, element: <SuspensePage><DanisanPortalPage /></SuspensePage> },
+          { path: ROUTES.DANISAN_PROFIL, element: <SuspensePage><ProfilePage /></SuspensePage> },
+          { path: ROUTES.DANISAN_AYARLAR, element: <SuspensePage><SettingsPage /></SuspensePage> },
+          { path: ROUTES.DANISAN_BILDIRIMLER, element: <SuspensePage><NotificationsPage /></SuspensePage> },
+          { path: ROUTES.DANISAN_BILGILERIM, element: <SuspensePage><DanisanBilgilerimPage /></SuspensePage> },
+          { path: ROUTES.DANISAN_KIT, element: <SuspensePage><DanisanKitPage /></SuspensePage> },
+          { path: ROUTES.DANISAN_RAPORLAR, element: <SuspensePage><DanisanRaporlarPage /></SuspensePage> },
+        ],
+      },
     ],
   },
 

@@ -109,7 +109,10 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Kit Durumum', href: ROUTES.DANISAN_KIT, icon: Package },
           { label: 'Sonuclar', href: ROUTES.DANISAN_RAPORLAR, icon: FileCheck },
         ]},
-        { title: 'Hesap', items: [{ label: 'Ayarlar', href: ROUTES.DANISAN_AYARLAR, icon: Settings }] },
+        { title: 'Hesap', items: [
+          { label: 'Bilgilerim', href: ROUTES.DANISAN_BILGILERIM, icon: BookOpen },
+          { label: 'Ayarlar', href: ROUTES.DANISAN_AYARLAR, icon: Settings },
+        ] },
       ]
     default:
       return []

@@ -57,6 +57,7 @@ export const ROUTES = {
   DANISAN_PROFIL: '/danisan/profil',
   DANISAN_AYARLAR: '/danisan/ayarlar',
   DANISAN_BILDIRIMLER: '/danisan/bildirimler',
+  DANISAN_BILGILERIM: '/danisan/bilgilerim',
   DANISAN_KIT: '/danisan/kit',
   DANISAN_RAPORLAR: '/danisan/raporlar',
 

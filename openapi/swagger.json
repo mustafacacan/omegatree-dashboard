@@ -166,6 +166,12 @@
                         "description": "User's last name",
                         "example": "Doe"
                     },
+                    "companyName": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "description": "Company name (for dietician/laboratory/expert)",
+                        "example": "Omerga Ltd."
+                    },
                     "phone": {
                         "type": "string",
                         "minLength": 10,
@@ -207,8 +213,6 @@
                     }
                 },
                 "required": [
-                    "firstName",
-                    "lastName",
                     "phone",
                     "role",
                     "gender"
@@ -227,6 +231,12 @@
                         "type": "string",
                         "description": "User's last name",
                         "example": "Doe"
+                    },
+                    "companyName": {
+                        "type": "string",
+                        "maxLength": 255,
+                        "description": "Company name (for dietician/laboratory/expert)",
+                        "example": "Omerga Ltd."
                     },
                     "phone": {
                         "type": "string",
@@ -274,6 +284,11 @@
                     "lastName": {
                         "type": "string",
                         "example": "Doe"
+                    },
+                    "companyName": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "Omerga Ltd."
                     },
                     "phone": {
                         "type": "string",
@@ -612,6 +627,11 @@
                                 "type": "string",
                                 "example": "Doe"
                             },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
+                            },
                             "phone": {
                                 "type": "string",
                                 "example": "1234567890"
@@ -774,6 +794,12 @@
                                 "description": "User's last name",
                                 "example": "Doe"
                             },
+                            "companyName": {
+                                "type": "string",
+                                "maxLength": 255,
+                                "description": "Company name (for dietician/laboratory/expert)",
+                                "example": "Omerga Ltd."
+                            },
                             "phone": {
                                 "type": "string",
                                 "minLength": 10,
@@ -815,8 +841,6 @@
                             }
                         },
                         "required": [
-                            "firstName",
-                            "lastName",
                             "phone",
                             "role",
                             "gender"
@@ -925,6 +949,11 @@
                                 "type": "string",
                                 "example": "Doe"
                             },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
+                            },
                             "phone": {
                                 "type": "string",
                                 "example": "1234567890"
@@ -974,6 +1003,11 @@
                             "lastName": {
                                 "type": "string",
                                 "example": "Doe"
+                            },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
                             },
                             "phone": {
                                 "type": "string",
@@ -1064,6 +1098,11 @@
                             "lastName": {
                                 "type": "string",
                                 "example": "Doe"
+                            },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
                             },
                             "phone": {
                                 "type": "string",
@@ -1204,6 +1243,12 @@
                                 "description": "User's last name",
                                 "example": "Doe"
                             },
+                            "companyName": {
+                                "type": "string",
+                                "maxLength": 255,
+                                "description": "Company name (for dietician/laboratory/expert)",
+                                "example": "Omerga Ltd."
+                            },
                             "phone": {
                                 "type": "string",
                                 "minLength": 10,
@@ -1233,13 +1278,17 @@
                             }
                         },
                         "required": [
-                            "firstName",
-                            "lastName",
                             "phone",
                             "gender"
                         ],
                         "additionalProperties": false,
                         "description": "User details for the dietician"
+                    },
+                    "vkn": {
+                        "type": "string",
+                        "pattern": "^\\d{10}$",
+                        "description": "Vergi Kimlik No (10 digits)",
+                        "example": "1234567890"
                     }
                 },
                 "required": [
@@ -1271,6 +1320,11 @@
                             "lastName": {
                                 "type": "string",
                                 "example": "Doe"
+                            },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
                             },
                             "phone": {
                                 "type": "string",
@@ -1305,6 +1359,11 @@
                             }
                         },
                         "additionalProperties": false
+                    },
+                    "vkn": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "1234567890"
                     }
                 },
                 "required": [
@@ -1336,6 +1395,11 @@
                             "lastName": {
                                 "type": "string",
                                 "example": "Doe"
+                            },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
                             },
                             "phone": {
                                 "type": "string",
@@ -1386,6 +1450,11 @@
                             "lastName": {
                                 "type": "string",
                                 "example": "Doe"
+                            },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
                             },
                             "phone": {
                                 "type": "string",
@@ -1557,6 +1626,11 @@
                                 "type": "string",
                                 "example": "Doe"
                             },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
+                            },
                             "phone": {
                                 "type": "string",
                                 "example": "1234567890"
@@ -1640,6 +1714,11 @@
                             "lastName": {
                                 "type": "string",
                                 "example": "Doe"
+                            },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
                             },
                             "phone": {
                                 "type": "string",
@@ -1772,6 +1851,11 @@
                                 "type": "string",
                                 "example": "Doe"
                             },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
+                            },
                             "phone": {
                                 "type": "string",
                                 "example": "1234567890"
@@ -1821,6 +1905,11 @@
                             "lastName": {
                                 "type": "string",
                                 "example": "Doe"
+                            },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
                             },
                             "phone": {
                                 "type": "string",
@@ -1884,6 +1973,11 @@
                                 "type": "string",
                                 "example": "Doe"
                             },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
+                            },
                             "phone": {
                                 "type": "string",
                                 "example": "1234567890"
@@ -1937,6 +2031,12 @@
                                 "description": "User's last name",
                                 "example": "Doe"
                             },
+                            "companyName": {
+                                "type": "string",
+                                "maxLength": 255,
+                                "description": "Company name (for dietician/laboratory/expert)",
+                                "example": "Omerga Ltd."
+                            },
                             "phone": {
                                 "type": "string",
                                 "minLength": 10,
@@ -1966,8 +2066,6 @@
                             }
                         },
                         "required": [
-                            "firstName",
-                            "lastName",
                             "phone",
                             "gender"
                         ],
@@ -2110,6 +2208,11 @@
                             "lastName": {
                                 "type": "string",
                                 "example": "Doe"
+                            },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
                             },
                             "phone": {
                                 "type": "string",
@@ -2297,6 +2400,11 @@
                                         "type": "string",
                                         "example": "Doe"
                                     },
+                                    "companyName": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "example": "Omerga Ltd."
+                                    },
                                     "phone": {
                                         "type": "string",
                                         "example": "1234567890"
@@ -2474,6 +2582,11 @@
                                         "type": "string",
                                         "example": "Doe"
                                     },
+                                    "companyName": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "example": "Omerga Ltd."
+                                    },
                                     "phone": {
                                         "type": "string",
                                         "example": "1234567890"
@@ -2507,6 +2620,11 @@
                                     }
                                 },
                                 "additionalProperties": false
+                            },
+                            "vkn": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "1234567890"
                             }
                         },
                         "required": [
@@ -2736,6 +2854,11 @@
                                 "type": "string",
                                 "example": "Doe"
                             },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
+                            },
                             "phone": {
                                 "type": "string",
                                 "example": "1234567890"
@@ -2873,6 +2996,11 @@
                             "lastName": {
                                 "type": "string",
                                 "example": "Doe"
+                            },
+                            "companyName": {
+                                "type": "string",
+                                "nullable": true,
+                                "example": "Omerga Ltd."
                             },
                             "phone": {
                                 "type": "string",
@@ -3326,74 +3454,121 @@
                         "description": "ID of the expert",
                         "example": 1
                     },
-                    "userId": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "number",
-                                "format": "float",
-                                "example": 11
-                            },
-                            "firstName": {
-                                "type": "string",
-                                "example": "John"
-                            },
-                            "lastName": {
-                                "type": "string",
-                                "example": "Doe"
-                            },
-                            "phone": {
-                                "type": "string",
-                                "example": "1234567890"
-                            },
-                            "email": {
-                                "type": "string",
-                                "format": "email",
-                                "example": "johndoe@example.com"
-                            }
-                        },
-                        "additionalProperties": false,
-                        "description": "User associated with the expert"
-                    },
                     "kitId": {
+                        "type": "integer",
+                        "description": "ID of the kit",
+                        "example": 1
+                    },
+                    "laboratoryKitId": {
+                        "type": "integer",
+                        "description": "ID of the laboratory kit",
+                        "example": 1
+                    },
+                    "resultMediaId": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "Result media ID",
+                        "example": 10
+                    },
+                    "kitExpert": {
                         "type": "object",
                         "properties": {
-                            "id": {
-                                "type": "integer",
-                                "description": "ID of the kit",
-                                "example": 1
-                            },
                             "barcode": {
                                 "type": "string",
                                 "description": "Barcode of the kit",
-                                "example": "KIT123456"
+                                "example": "KIT123"
                             }
                         },
                         "additionalProperties": false,
-                        "description": "Kit associated with the expert"
+                        "description": "Kit relation"
                     },
-                    "laboratoryKit": {
+                    "laboratoryExpert": {
                         "type": "object",
                         "properties": {
                             "id": {
                                 "type": "integer",
-                                "description": "ID of the laboratory kit",
                                 "example": 1
                             },
                             "status": {
                                 "type": "string",
-                                "enum": [
-                                    "pending",
-                                    "completed",
-                                    "cancelled",
-                                    "in_progress"
-                                ],
-                                "description": "Status of the laboratory kit",
-                                "example": "completed"
+                                "example": "pending"
+                            },
+                            "mediaResult": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer",
+                                        "example": 10
+                                    },
+                                    "url": {
+                                        "type": "string",
+                                        "example": "https://example.com/file.pdf"
+                                    }
+                                },
+                                "additionalProperties": false
                             }
                         },
                         "additionalProperties": false,
-                        "description": "Laboratory kit associated with the expert"
+                        "description": "Laboratory kit relation"
+                    },
+                    "assignedUsers": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "number",
+                                    "format": "float",
+                                    "example": 11
+                                },
+                                "firstName": {
+                                    "type": "string",
+                                    "example": "John"
+                                },
+                                "lastName": {
+                                    "type": "string",
+                                    "example": "Doe"
+                                },
+                                "companyName": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "example": "Omerga Ltd."
+                                },
+                                "phone": {
+                                    "type": "string",
+                                    "example": "1234567890"
+                                },
+                                "email": {
+                                    "type": "string",
+                                    "format": "email",
+                                    "example": "johndoe@example.com"
+                                },
+                                "role": {
+                                    "type": "string",
+                                    "example": "client"
+                                },
+                                "gender": {
+                                    "type": "string",
+                                    "example": "male"
+                                },
+                                "identityNumber": {
+                                    "type": "string",
+                                    "example": "1234567890123456"
+                                },
+                                "createdAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "example": "2023-01-01T00:00:00.000Z"
+                                },
+                                "updatedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "example": "2023-01-01T00:00:00.000Z"
+                                }
+                            },
+                            "additionalProperties": false
+                        },
+                        "description": "Experts (users) assigned to this expert record"
                     },
                     "status": {
                         "type": "string",
@@ -3415,6 +3590,16 @@
                         "type": "boolean",
                         "description": "Indicates if the expert is active",
                         "example": true
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-01T00:00:00Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-02T00:00:00Z"
                     }
                 },
                 "additionalProperties": false
@@ -3606,6 +3791,869 @@
                         "type": "string",
                         "format": "date-time",
                         "description": "Updated at"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CreateFoodConsumptionRecord": {
+                "type": "object",
+                "properties": {
+                    "clientId": {
+                        "type": "integer",
+                        "description": "Client ID (required for admin/expert/dietician)",
+                        "example": 1
+                    },
+                    "mealsPerDay": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10,
+                        "description": "How many meals per day",
+                        "example": 3
+                    },
+                    "alcoholFrequency": {
+                        "type": "string",
+                        "enum": [
+                            "never",
+                            "rarely",
+                            "sometimes",
+                            "often",
+                            "daily"
+                        ],
+                        "description": "Alcohol consumption frequency",
+                        "example": "never"
+                    },
+                    "smokingFrequency": {
+                        "type": "string",
+                        "enum": [
+                            "never",
+                            "rarely",
+                            "sometimes",
+                            "often",
+                            "daily"
+                        ],
+                        "description": "Smoking consumption frequency",
+                        "example": "never"
+                    },
+                    "avoidedFoods": {
+                        "type": "string",
+                        "description": "Foods avoided",
+                        "example": "Gluten, lactose"
+                    },
+                    "dailyWaterLiters": {
+                        "type": "number",
+                        "format": "double",
+                        "minimum": 0,
+                        "maximum": 20,
+                        "description": "Daily water intake in liters",
+                        "example": 2.5
+                    },
+                    "fastFoodMealsPerDay": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10,
+                        "description": "How many meals are from outside/fastfood per day",
+                        "example": 0
+                    },
+                    "defecationFrequency": {
+                        "type": "string",
+                        "description": "Defecation frequency",
+                        "example": "daily"
+                    },
+                    "discomfortFoods": {
+                        "type": "string",
+                        "description": "Foods that cause discomfort",
+                        "example": "Milk"
+                    },
+                    "bowelIssue": {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "diarrhea",
+                            "constipation",
+                            "both"
+                        ],
+                        "description": "Diarrhea/constipation issue",
+                        "example": "none"
+                    },
+                    "gastrointestinalDisease": {
+                        "type": "string",
+                        "description": "GI system disease",
+                        "example": "none"
+                    },
+                    "nightEatingHabit": {
+                        "type": "boolean",
+                        "description": "Night eating habit",
+                        "example": false
+                    },
+                    "eatingDisorderBehaviors": {
+                        "type": "boolean",
+                        "description": "Eating disorder behaviors",
+                        "example": false
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Optional notes",
+                        "example": "Sometimes bloating after legumes"
+                    }
+                },
+                "required": [
+                    "mealsPerDay",
+                    "alcoholFrequency",
+                    "smokingFrequency",
+                    "avoidedFoods",
+                    "dailyWaterLiters",
+                    "fastFoodMealsPerDay",
+                    "defecationFrequency",
+                    "discomfortFoods",
+                    "bowelIssue",
+                    "gastrointestinalDisease",
+                    "nightEatingHabit",
+                    "eatingDisorderBehaviors"
+                ],
+                "additionalProperties": false
+            },
+            "UpdateFoodConsumptionRecord": {
+                "type": "object",
+                "properties": {
+                    "mealsPerDay": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10
+                    },
+                    "alcoholFrequency": {
+                        "type": "string",
+                        "enum": [
+                            "never",
+                            "rarely",
+                            "sometimes",
+                            "often",
+                            "daily"
+                        ],
+                        "description": "Frequency",
+                        "example": "never"
+                    },
+                    "smokingFrequency": {
+                        "type": "string",
+                        "enum": [
+                            "never",
+                            "rarely",
+                            "sometimes",
+                            "often",
+                            "daily"
+                        ],
+                        "description": "Frequency",
+                        "example": "never"
+                    },
+                    "avoidedFoods": {
+                        "type": "string"
+                    },
+                    "dailyWaterLiters": {
+                        "type": "number",
+                        "format": "double",
+                        "minimum": 0,
+                        "maximum": 20
+                    },
+                    "fastFoodMealsPerDay": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10
+                    },
+                    "defecationFrequency": {
+                        "type": "string"
+                    },
+                    "discomfortFoods": {
+                        "type": "string"
+                    },
+                    "bowelIssue": {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "diarrhea",
+                            "constipation",
+                            "both"
+                        ]
+                    },
+                    "gastrointestinalDisease": {
+                        "type": "string"
+                    },
+                    "nightEatingHabit": {
+                        "type": "boolean"
+                    },
+                    "eatingDisorderBehaviors": {
+                        "type": "boolean"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "FoodConsumptionRecordResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "clientId": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "mealsPerDay": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "alcoholFrequency": {
+                        "type": "string",
+                        "enum": [
+                            "never",
+                            "rarely",
+                            "sometimes",
+                            "often",
+                            "daily"
+                        ],
+                        "description": "Frequency",
+                        "example": "never"
+                    },
+                    "smokingFrequency": {
+                        "type": "string",
+                        "enum": [
+                            "never",
+                            "rarely",
+                            "sometimes",
+                            "often",
+                            "daily"
+                        ],
+                        "description": "Frequency",
+                        "example": "never"
+                    },
+                    "avoidedFoods": {
+                        "type": "string",
+                        "example": "Gluten"
+                    },
+                    "dailyWaterLiters": {
+                        "type": "number",
+                        "format": "double",
+                        "example": 2.5
+                    },
+                    "fastFoodMealsPerDay": {
+                        "type": "integer",
+                        "example": 0
+                    },
+                    "defecationFrequency": {
+                        "type": "string",
+                        "example": "daily"
+                    },
+                    "discomfortFoods": {
+                        "type": "string",
+                        "example": "Milk"
+                    },
+                    "bowelIssue": {
+                        "type": "string",
+                        "example": "none"
+                    },
+                    "gastrointestinalDisease": {
+                        "type": "string",
+                        "example": "none"
+                    },
+                    "nightEatingHabit": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "eatingDisorderBehaviors": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "..."
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-01T00:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-01T00:00:00.000Z"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "CreateSleepQualityRecord": {
+                "type": "object",
+                "properties": {
+                    "clientId": {
+                        "type": "integer",
+                        "description": "Client ID (required for admin/expert/dietician)",
+                        "example": 1
+                    },
+                    "recordDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Record date",
+                        "example": "2026-03-17"
+                    },
+                    "usualBedTime": {
+                        "type": "string",
+                        "description": "Usual bedtime",
+                        "example": "23:30"
+                    },
+                    "sleepLatencyMinutes": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 600,
+                        "description": "Minutes to fall asleep",
+                        "example": 20
+                    },
+                    "usualWakeTime": {
+                        "type": "string",
+                        "description": "Usual wake time",
+                        "example": "07:30"
+                    },
+                    "sleepHours": {
+                        "type": "number",
+                        "format": "double",
+                        "minimum": 0,
+                        "maximum": 24,
+                        "description": "Sleep hours",
+                        "example": 7.5
+                    },
+                    "cannotFallAsleepWithin30": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Could not fall asleep within 30 minutes",
+                        "example": 0
+                    },
+                    "wakeToUseBathroom": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Woke up to use the bathroom",
+                        "example": 0
+                    },
+                    "cannotBreatheComfortably": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Could not breathe comfortably",
+                        "example": 0
+                    },
+                    "coughOrSnoreLoudly": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Coughed or snored loudly",
+                        "example": 0
+                    },
+                    "feelTooCold": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Felt too cold",
+                        "example": 0
+                    },
+                    "feelTooHot": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Felt too hot",
+                        "example": 0
+                    },
+                    "badDreams": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Had bad dreams",
+                        "example": 0
+                    },
+                    "pain": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Had pain",
+                        "example": 0
+                    },
+                    "otherReasonFrequency": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Other reasons frequency",
+                        "example": 0
+                    },
+                    "otherReasonText": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Other reasons description"
+                    },
+                    "subjectiveSleepQuality": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Subjective sleep quality (0=very good .. 3=very bad)",
+                        "example": 0
+                    },
+                    "sleepMedicationFrequency": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Sleep medication frequency",
+                        "example": 0
+                    },
+                    "daytimeSleepinessFrequency": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Trouble staying awake frequency",
+                        "example": 0
+                    },
+                    "lackOfEnthusiasmProblem": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Problem keeping enthusiasm (0..3)",
+                        "example": 0
+                    },
+                    "bedPartnerSituation": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Bed partner/roommate situation (0..3)",
+                        "example": 0
+                    },
+                    "partnerLoudTalk": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerLongBreathingPauses": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerLegTwitches": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerDisorientation": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerOtherRestlessness": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerOtherRestlessnessText": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "recordDate",
+                    "usualBedTime",
+                    "sleepLatencyMinutes",
+                    "usualWakeTime",
+                    "sleepHours",
+                    "cannotFallAsleepWithin30",
+                    "wakeToUseBathroom",
+                    "cannotBreatheComfortably",
+                    "coughOrSnoreLoudly",
+                    "feelTooCold",
+                    "feelTooHot",
+                    "badDreams",
+                    "pain",
+                    "subjectiveSleepQuality",
+                    "sleepMedicationFrequency",
+                    "daytimeSleepinessFrequency",
+                    "lackOfEnthusiasmProblem",
+                    "bedPartnerSituation"
+                ],
+                "additionalProperties": false
+            },
+            "UpdateSleepQualityRecord": {
+                "type": "object",
+                "properties": {
+                    "recordDate": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "usualBedTime": {
+                        "type": "string"
+                    },
+                    "sleepLatencyMinutes": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 600
+                    },
+                    "usualWakeTime": {
+                        "type": "string"
+                    },
+                    "sleepHours": {
+                        "type": "number",
+                        "format": "double",
+                        "minimum": 0,
+                        "maximum": 24
+                    },
+                    "cannotFallAsleepWithin30": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "wakeToUseBathroom": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "cannotBreatheComfortably": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "coughOrSnoreLoudly": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "feelTooCold": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "feelTooHot": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "badDreams": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "pain": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "otherReasonFrequency": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "otherReasonText": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "subjectiveSleepQuality": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "sleepMedicationFrequency": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "daytimeSleepinessFrequency": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "lackOfEnthusiasmProblem": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "bedPartnerSituation": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerLoudTalk": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerLongBreathingPauses": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerLegTwitches": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerDisorientation": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerOtherRestlessness": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerOtherRestlessnessText": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "SleepQualityRecordResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "clientId": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "recordDate": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-03-17"
+                    },
+                    "usualBedTime": {
+                        "type": "string",
+                        "example": "23:30"
+                    },
+                    "sleepLatencyMinutes": {
+                        "type": "integer",
+                        "example": 20
+                    },
+                    "usualWakeTime": {
+                        "type": "string",
+                        "example": "07:30"
+                    },
+                    "sleepHours": {
+                        "type": "number",
+                        "format": "double",
+                        "example": 7.5
+                    },
+                    "cannotFallAsleepWithin30": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "wakeToUseBathroom": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "cannotBreatheComfortably": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "coughOrSnoreLoudly": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "feelTooCold": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "feelTooHot": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "badDreams": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "pain": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "otherReasonFrequency": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "otherReasonText": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "..."
+                    },
+                    "subjectiveSleepQuality": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "sleepMedicationFrequency": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "daytimeSleepinessFrequency": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "lackOfEnthusiasmProblem": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "bedPartnerSituation": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerLoudTalk": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerLongBreathingPauses": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerLegTwitches": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerDisorientation": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerOtherRestlessness": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3,
+                        "description": "Frequency score (0..3)",
+                        "example": 0
+                    },
+                    "partnerOtherRestlessnessText": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "..."
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "..."
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-01T00:00:00.000Z"
+                    },
+                    "updatedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2024-01-01T00:00:00.000Z"
                     }
                 },
                 "additionalProperties": false
@@ -5058,6 +6106,80 @@
                 ]
             }
         },
+        "/dashboard/admin": {
+            "get": {
+                "summary": "Get admin dashboard data",
+                "tags": [
+                    "Dashboard"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "months",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 24
+                        },
+                        "description": "Number of months to include in the dashboard data (default: 6)"
+                    },
+                    {
+                        "in": "query",
+                        "name": "activityLimit",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50
+                        },
+                        "description": "Maximum number of recent activities to include (default: 10)"
+                    },
+                    {
+                        "in": "query",
+                        "name": "recentLimit",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20
+                        },
+                        "description": "Maximum number of recent clients/orders to include (default: 5)"
+                    },
+                    {
+                        "in": "query",
+                        "name": "topLimit",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 20
+                        },
+                        "description": "Maximum number of top clients/orders to include (default: 5)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Dashboard data retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "description": "Dashboard data object containing various aggregates and metrics"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Authentication required"
+                    },
+                    "403": {
+                        "description": "Forbidden - Admin access required"
+                    }
+                }
+            }
+        },
         "/dieticians/get-clients-by-dietician": {
             "get": {
                 "summary": "Get clients associated with the authenticated dietician.",
@@ -6281,6 +7403,166 @@
                                 }
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/food-consumption-records/me": {
+            "get": {
+                "summary": "Get authenticated client's food consumption record",
+                "tags": [
+                    "FoodConsumptionRecords"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Record retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FoodConsumptionRecordResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/schemas/UnauthorizedResponse"
+                    }
+                }
+            }
+        },
+        "/food-consumption-records/{id}": {
+            "get": {
+                "summary": "Get a food consumption record by ID",
+                "tags": [
+                    "FoodConsumptionRecords"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Record retrieved successfully"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update a food consumption record",
+                "tags": [
+                    "FoodConsumptionRecords"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateFoodConsumptionRecord"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Record updated successfully"
+                    }
+                }
+            }
+        },
+        "/food-consumption-records": {
+            "post": {
+                "summary": "Create or replace a client's food consumption record",
+                "tags": [
+                    "FoodConsumptionRecords"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateFoodConsumptionRecord"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Record saved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FoodConsumptionRecordResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "List food consumption records",
+                "tags": [
+                    "FoodConsumptionRecords"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": {
+                            "$ref": "#/components/schemas/Pagination"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "clientId",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Filter by clientId (admin/expert only)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Records retrieved successfully"
                     }
                 }
             }
@@ -8153,6 +9435,171 @@
                 }
             }
         },
+        "/sleep-quality-records/me/latest": {
+            "get": {
+                "summary": "Get authenticated client's latest sleep quality record",
+                "tags": [
+                    "SleepQualityRecords"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Record retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SleepQualityRecordResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sleep-quality-records/{id}": {
+            "get": {
+                "summary": "Get a sleep quality record by ID",
+                "tags": [
+                    "SleepQualityRecords"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Record retrieved successfully"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update a sleep quality record",
+                "tags": [
+                    "SleepQualityRecords"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateSleepQualityRecord"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Record updated successfully"
+                    }
+                }
+            }
+        },
+        "/sleep-quality-records": {
+            "post": {
+                "summary": "Create or replace a client's sleep quality record (by date)",
+                "tags": [
+                    "SleepQualityRecords"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateSleepQualityRecord"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Record saved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SleepQualityRecordResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "List sleep quality records",
+                "tags": [
+                    "SleepQualityRecords"
+                ],
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "page",
+                        "schema": {
+                            "$ref": "#/components/schemas/Pagination"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "clientId",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "Filter by clientId (admin/expert only)"
+                    },
+                    {
+                        "in": "query",
+                        "name": "recordDate",
+                        "schema": {
+                            "type": "string",
+                            "example": "2026-03-17"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Records retrieved successfully"
+                    }
+                }
+            }
+        },
         "/stocks/my-stock": {
             "get": {
                 "summary": "Get the authenticated user's stock information",
@@ -8705,6 +10152,10 @@
             "description": "API endpoints for managing experts"
         },
         {
+            "name": "FoodConsumptionRecords",
+            "description": "Client food consumption record form"
+        },
+        {
             "name": "Kits",
             "description": "Kit management and retrieval"
         },
@@ -8731,6 +10182,10 @@
         {
             "name": "Sales Kits",
             "description": "API endpoints for managing sales kits"
+        },
+        {
+            "name": "SleepQualityRecords",
+            "description": "Client sleep quality (PSQI) form"
         },
         {
             "name": "Stocks",

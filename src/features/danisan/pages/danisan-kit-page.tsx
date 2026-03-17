@@ -6,24 +6,34 @@ import { formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { getDieticianClientKits } from '@/services/dietician-client-kits.service'
+import type { DieticianClientKit } from '@/services/dietician-client-kits.service'
 import { getDieticianClientKitStatusLabel } from '@/utils/constants'
+
+function kitBelongsToCurrentUser(kit: DieticianClientKit, user: ReturnType<typeof useCurrentUser>): boolean {
+  if (!user) return false
+
+  const userEmail = typeof user.email === 'string' ? user.email.trim().toLowerCase() : ''
+  const kitEmail = typeof kit.clientEmail === 'string' ? kit.clientEmail.trim().toLowerCase() : ''
+  if (userEmail && kitEmail && userEmail === kitEmail) return true
+
+  const n = typeof user.id === 'number' ? user.id : Number(user.id)
+  if (!Number.isFinite(n)) return false
+
+  return kit.clientUserId === n || kit.clientId === n
+}
 
 export function DanisanKitPage() {
   const user = useCurrentUser()
-  const currentUserId = user?.id != null ? Number(user.id) : null
 
   const apiKitsQuery = useQuery({
-    queryKey: ['dietician-client-kits', 'danisan', 'page-1', 'limit-200', currentUserId],
+    queryKey: ['dietician-client-kits', 'danisan', 'page-1', 'limit-200', user?.id ?? null, user?.email ?? null],
     queryFn: () => getDieticianClientKits(1, 200),
-    enabled: currentUserId != null,
+    enabled: user != null,
     retry: 1,
     staleTime: 30_000,
   })
 
-  const apiKits = (apiKitsQuery.data ?? []).filter((k) => {
-    if (currentUserId == null) return true
-    return k.clientUserId === currentUserId || k.clientId === currentUserId
-  })
+  const apiKits = (apiKitsQuery.data ?? []).filter((k) => kitBelongsToCurrentUser(k, user))
 
   return (
     <div className="space-y-8 animate-fade-in">

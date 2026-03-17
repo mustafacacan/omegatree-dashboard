@@ -23,45 +23,107 @@ export interface AnamnezForm {
   updatedAt: string
 }
 
-function mapApiAnamnez(item: ApiAnamnezResponse): AnamnezForm {
-  const client = item.clientId
-  return {
-    id: item.id ?? 0,
-    clientId: client?.id,
-    clientName: client ? `${client.firstName ?? ''} ${client.lastName ?? ''}`.trim() : undefined,
-    chronicIllness: item.chronic_illness,
-    medicationUsed: item.medication_used,
-    foodAllergy: item.food_allergy,
-    bodyWeight: item.body_weight,
-    bodyHeight: item.body_height,
-    waistCircumference: item.waist_circumference,
-    hipCircumference: item.hip_circumference,
-    profession: item.profession,
-    education: item.education,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === 'object' ? (v as Record<string, unknown>) : null
+}
+
+function toNumberMaybe(v: unknown): number | undefined {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v === 'string') {
+    const n = Number(v.replace(',', '.'))
+    return Number.isFinite(n) ? n : undefined
   }
+  return undefined
+}
+
+function toStringMaybe(v: unknown): string | undefined {
+  return typeof v === 'string' ? v : undefined
+}
+
+function mapApiAnamnez(item: unknown): AnamnezForm {
+  // OpenAPI says AnamnezFormResponse, but backend may return different shapes.
+  const rec = asRecord(item) ?? {}
+
+  const id = toNumberMaybe(rec.id) ?? 0
+  const createdAt = toStringMaybe(rec.createdAt) ?? ''
+  const updatedAt = toStringMaybe(rec.updatedAt) ?? ''
+
+  // clientId: can be a number or an object, and sometimes a separate `client` object exists.
+  const clientIdValue = rec.clientId
+  const clientObj = asRecord(clientIdValue) ?? asRecord(rec.client)
+  const clientId =
+    toNumberMaybe(clientIdValue) ??
+    toNumberMaybe(clientObj?.id) ??
+    toNumberMaybe(asRecord(clientObj?.user)?.id)
+
+  const userObj = asRecord(clientObj?.user)
+  const clientName = (() => {
+    const firstName = toStringMaybe(clientObj?.firstName) ?? toStringMaybe(userObj?.firstName) ?? ''
+    const lastName = toStringMaybe(clientObj?.lastName) ?? toStringMaybe(userObj?.lastName) ?? ''
+    const out = `${firstName} ${lastName}`.trim()
+    return out || undefined
+  })()
+
+  return {
+    id,
+    clientId: clientId ?? undefined,
+    clientName,
+    chronicIllness: toStringMaybe(rec.chronic_illness),
+    medicationUsed: toStringMaybe(rec.medication_used),
+    foodAllergy: toStringMaybe(rec.food_allergy),
+    bodyWeight: toNumberMaybe(rec.body_weight),
+    bodyHeight: toNumberMaybe(rec.body_height),
+    waistCircumference: toNumberMaybe(rec.waist_circumference),
+    hipCircumference: toNumberMaybe(rec.hip_circumference),
+    profession: toStringMaybe(rec.profession),
+    education: toStringMaybe(rec.education),
+    createdAt,
+    updatedAt,
+  }
+}
+
+/**
+ * Backend responses are not fully consistent with the OpenAPI spec.
+ * Supports:
+ * - { data: T }
+ * - { success, message, data: T }
+ * - { data: { items: T[] } } (pagination wrapper)
+ */
+function unwrapData(v: unknown): unknown {
+  const top = asRecord(v)
+  if (!top || !('data' in top)) return v
+  return (top as { data?: unknown }).data
+}
+
+function unwrapItems(v: unknown): unknown[] {
+  const payload = unwrapData(v)
+  if (Array.isArray(payload)) return payload
+  const rec = asRecord(payload)
+  const items = rec && 'items' in rec ? (rec as { items?: unknown }).items : undefined
+  return Array.isArray(items) ? items : []
+}
+
+function unwrapSingle(v: unknown): unknown {
+  const payload = unwrapData(v)
+  return payload
 }
 
 /** GET /anamnez */
 export async function getAnamnezForms(): Promise<AnamnezForm[]> {
   const { data } = await api.get<unknown>('/anamnez', skipAuth)
-  const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
-  const payload = top && 'data' in top ? top.data : data
-  const list: ApiAnamnezResponse[] = Array.isArray(payload) ? payload : []
-  return list.map(mapApiAnamnez)
+  return unwrapItems(data).map(mapApiAnamnez)
 }
 
 /** GET /anamnez/{id} */
 export async function getAnamnezById(id: number | string): Promise<AnamnezForm> {
-  const { data } = await api.get<ApiAnamnezResponse>(`/anamnez/${id}`, skipAuth)
-  return mapApiAnamnez(data)
+  const { data } = await api.get<unknown>(`/anamnez/${id}`, skipAuth)
+  return mapApiAnamnez(unwrapSingle(data))
 }
 
 /** POST /anamnez */
 export async function createAnamnez(payload: ApiCreateAnamnez): Promise<AnamnezForm> {
-  const { data } = await api.post<ApiAnamnezResponse>('/anamnez', payload, skipAuth)
-  return mapApiAnamnez(data)
+  const { data } = await api.post<unknown>('/anamnez', payload, skipAuth)
+  return mapApiAnamnez(unwrapSingle(data))
 }
 
 /** PUT /anamnez/{id} */
@@ -69,6 +131,6 @@ export async function updateAnamnez(
   id: number | string,
   payload: Partial<ApiCreateAnamnez>
 ): Promise<AnamnezForm> {
-  const { data } = await api.put<ApiAnamnezResponse>(`/anamnez/${id}`, payload, skipAuth)
-  return mapApiAnamnez(data)
+  const { data } = await api.put<unknown>(`/anamnez/${id}`, payload, skipAuth)
+  return mapApiAnamnez(unwrapSingle(data))
 }

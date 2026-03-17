@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getDieticianClientKits } from '@/services/dietician-client-kits.service'
+import type { DieticianClientKit } from '@/services/dietician-client-kits.service'
 import { getResultsPage } from '@/services/results.service'
 import { getDieticianClientKitStatusLabel } from '@/utils/constants'
 import {
@@ -23,6 +24,19 @@ import {
 } from 'lucide-react'
 
 type KitTimelineStatus = 'completed' | 'current' | 'upcoming' | 'error'
+
+function kitBelongsToCurrentUser(kit: DieticianClientKit, user: ReturnType<typeof useCurrentUser>): boolean {
+  if (!user) return false
+
+  const userEmail = typeof user.email === 'string' ? user.email.trim().toLowerCase() : ''
+  const kitEmail = typeof kit.clientEmail === 'string' ? kit.clientEmail.trim().toLowerCase() : ''
+  if (userEmail && kitEmail && userEmail === kitEmail) return true
+
+  const n = typeof user.id === 'number' ? user.id : Number(user.id)
+  if (!Number.isFinite(n)) return false
+
+  return kit.clientUserId === n || kit.clientId === n
+}
 
 function buildKitTimeline(status?: string): Array<{ label: string; description?: string; status: KitTimelineStatus }> {
   const steps: Array<{ label: string; description?: string; status: KitTimelineStatus }> = [
@@ -101,7 +115,7 @@ export function DanisanPortalPage() {
   }, [user?.id])
 
   const kitsQuery = useQuery({
-    queryKey: ['dietician-client-kits', 'danisan', 'page-1', 'limit-200', currentUserId],
+    queryKey: ['dietician-client-kits', 'danisan', 'page-1', 'limit-200', currentUserId, user?.email ?? null],
     queryFn: () => getDieticianClientKits(1, 200),
     enabled: user != null,
     retry: 1,
@@ -110,9 +124,10 @@ export function DanisanPortalPage() {
 
   const activeKit = useMemo(() => {
     const all = kitsQuery.data ?? []
-    const list = currentUserId != null
-      ? all.filter((k) => k.clientUserId === currentUserId || k.clientId === currentUserId)
-      : all
+
+    // Safety: if backend returns more than current user's records,
+    // ensure we still match even when user.id is not numeric.
+    const list = user ? all.filter((k) => kitBelongsToCurrentUser(k, user)) : []
 
     const sorted = [...list].sort((a, b) => {
       const aT = new Date(a.updatedAt || a.createdAt || 0).getTime()
@@ -121,7 +136,7 @@ export function DanisanPortalPage() {
     })
 
     return sorted.find((k) => k.status !== 'cancelled') ?? sorted[0] ?? null
-  }, [kitsQuery.data, currentUserId])
+  }, [kitsQuery.data, user])
 
   const kitTimeline = useMemo(() => buildKitTimeline(activeKit?.status), [activeKit?.status])
 

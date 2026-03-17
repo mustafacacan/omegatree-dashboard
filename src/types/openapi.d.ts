@@ -1276,6 +1276,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get admin dashboard data */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Number of months to include in the dashboard data (default: 6) */
+                    months?: number;
+                    /** @description Maximum number of recent activities to include (default: 10) */
+                    activityLimit?: number;
+                    /** @description Maximum number of recent clients/orders to include (default: 5) */
+                    recentLimit?: number;
+                    /** @description Maximum number of top clients/orders to include (default: 5) */
+                    topLimit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Dashboard data retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Dashboard data object containing various aggregates and metrics */
+                            data?: Record<string, never>;
+                        };
+                    };
+                };
+                /** @description Unauthorized - Authentication required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden - Admin access required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dieticians/get-clients-by-dietician": {
         parameters: {
             query?: never;
@@ -2365,6 +2427,165 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["UnauthorizedResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/food-consumption-records/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get authenticated client's food consumption record */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Record retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FoodConsumptionRecordResponse"];
+                    };
+                };
+                401: components["schemas"]["UnauthorizedResponse"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/food-consumption-records/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a food consumption record by ID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Record retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /** Update a food consumption record */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateFoodConsumptionRecord"];
+                };
+            };
+            responses: {
+                /** @description Record updated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/food-consumption-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List food consumption records */
+        get: {
+            parameters: {
+                query?: {
+                    page?: components["schemas"]["Pagination"];
+                    /** @description Filter by clientId (admin/expert only) */
+                    clientId?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Records retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Create or replace a client's food consumption record */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateFoodConsumptionRecord"];
+                };
+            };
+            responses: {
+                /** @description Record saved successfully */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FoodConsumptionRecordResponse"];
                     };
                 };
             };
@@ -4132,6 +4353,165 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sleep-quality-records/me/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get authenticated client's latest sleep quality record */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Record retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SleepQualityRecordResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sleep-quality-records/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a sleep quality record by ID */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Record retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /** Update a sleep quality record */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateSleepQualityRecord"];
+                };
+            };
+            responses: {
+                /** @description Record updated successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sleep-quality-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List sleep quality records */
+        get: {
+            parameters: {
+                query?: {
+                    page?: components["schemas"]["Pagination"];
+                    /** @description Filter by clientId (admin/expert only) */
+                    clientId?: number;
+                    recordDate?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Records retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Create or replace a client's sleep quality record (by date) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateSleepQualityRecord"];
+                };
+            };
+            responses: {
+                /** @description Record saved successfully */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SleepQualityRecordResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/stocks/my-stock": {
         parameters: {
             query?: never;
@@ -4749,12 +5129,17 @@ export interface components {
              * @description User's first name
              * @example John
              */
-            firstName: string;
+            firstName?: string;
             /**
              * @description User's last name
              * @example Doe
              */
-            lastName: string;
+            lastName?: string;
+            /**
+             * @description Company name (for dietician/laboratory/expert)
+             * @example Omerga Ltd.
+             */
+            companyName?: string;
             /**
              * @description User's phone number
              * @example 1234567890
@@ -4796,6 +5181,11 @@ export interface components {
              */
             lastName?: string;
             /**
+             * @description Company name (for dietician/laboratory/expert)
+             * @example Omerga Ltd.
+             */
+            companyName?: string;
+            /**
              * @description User's phone number
              * @example 0555555555
              */
@@ -4828,6 +5218,8 @@ export interface components {
             firstName?: string;
             /** @example Doe */
             lastName?: string;
+            /** @example Omerga Ltd. */
+            companyName?: string | null;
             /** @example 1234567890 */
             phone?: string;
             /**
@@ -5086,6 +5478,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5206,12 +5600,17 @@ export interface components {
                  * @description User's first name
                  * @example John
                  */
-                firstName: string;
+                firstName?: string;
                 /**
                  * @description User's last name
                  * @example Doe
                  */
-                lastName: string;
+                lastName?: string;
+                /**
+                 * @description Company name (for dietician/laboratory/expert)
+                 * @example Omerga Ltd.
+                 */
+                companyName?: string;
                 /**
                  * @description User's phone number
                  * @example 1234567890
@@ -5315,6 +5714,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5349,6 +5750,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5409,6 +5812,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5503,12 +5908,17 @@ export interface components {
                  * @description User's first name
                  * @example John
                  */
-                firstName: string;
+                firstName?: string;
                 /**
                  * @description User's last name
                  * @example Doe
                  */
-                lastName: string;
+                lastName?: string;
+                /**
+                 * @description Company name (for dietician/laboratory/expert)
+                 * @example Omerga Ltd.
+                 */
+                companyName?: string;
                 /**
                  * @description User's phone number
                  * @example 1234567890
@@ -5532,6 +5942,11 @@ export interface components {
                  */
                 gender: "male" | "female";
             };
+            /**
+             * @description Vergi Kimlik No (10 digits)
+             * @example 1234567890
+             */
+            vkn?: string;
         };
         DieticianResponse: {
             /**
@@ -5550,6 +5965,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5574,6 +5991,8 @@ export interface components {
                  */
                 updatedAt?: string;
             };
+            /** @example 1234567890 */
+            vkn?: string | null;
         };
         DieticianWithClientsResponse: {
             /**
@@ -5592,6 +6011,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5626,6 +6047,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5732,6 +6155,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5790,6 +6215,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5877,6 +6304,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5911,6 +6340,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5953,6 +6384,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -5984,12 +6417,17 @@ export interface components {
                  * @description User's first name
                  * @example John
                  */
-                firstName: string;
+                firstName?: string;
                 /**
                  * @description User's last name
                  * @example Doe
                  */
-                lastName: string;
+                lastName?: string;
+                /**
+                 * @description Company name (for dietician/laboratory/expert)
+                 * @example Omerga Ltd.
+                 */
+                companyName?: string;
                 /**
                  * @description User's phone number
                  * @example 1234567890
@@ -6113,6 +6551,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -6255,6 +6695,8 @@ export interface components {
                     firstName?: string;
                     /** @example Doe */
                     lastName?: string;
+                    /** @example Omerga Ltd. */
+                    companyName?: string | null;
                     /** @example 1234567890 */
                     phone?: string;
                     /**
@@ -6390,6 +6832,8 @@ export interface components {
                     firstName?: string;
                     /** @example Doe */
                     lastName?: string;
+                    /** @example Omerga Ltd. */
+                    companyName?: string | null;
                     /** @example 1234567890 */
                     phone?: string;
                     /**
@@ -6414,6 +6858,8 @@ export interface components {
                      */
                     updatedAt?: string;
                 };
+                /** @example 1234567890 */
+                vkn?: string | null;
             };
             /**
              * Format: date-time
@@ -6570,6 +7016,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -6639,6 +7087,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -6924,8 +7374,44 @@ export interface components {
              * @example 1
              */
             id?: number;
-            /** @description User associated with the expert */
-            userId?: {
+            /**
+             * @description ID of the kit
+             * @example 1
+             */
+            kitId?: number;
+            /**
+             * @description ID of the laboratory kit
+             * @example 1
+             */
+            laboratoryKitId?: number;
+            /**
+             * @description Result media ID
+             * @example 10
+             */
+            resultMediaId?: number | null;
+            /** @description Kit relation */
+            kitExpert?: {
+                /**
+                 * @description Barcode of the kit
+                 * @example KIT123
+                 */
+                barcode?: string;
+            };
+            /** @description Laboratory kit relation */
+            laboratoryExpert?: {
+                /** @example 1 */
+                id?: number;
+                /** @example pending */
+                status?: string;
+                mediaResult?: {
+                    /** @example 10 */
+                    id?: number;
+                    /** @example https://example.com/file.pdf */
+                    url?: string;
+                };
+            };
+            /** @description Experts (users) assigned to this expert record */
+            assignedUsers?: {
                 /**
                  * Format: float
                  * @example 11
@@ -6935,6 +7421,8 @@ export interface components {
                 firstName?: string;
                 /** @example Doe */
                 lastName?: string;
+                /** @example Omerga Ltd. */
+                companyName?: string | null;
                 /** @example 1234567890 */
                 phone?: string;
                 /**
@@ -6942,34 +7430,23 @@ export interface components {
                  * @example johndoe@example.com
                  */
                 email?: string;
-            };
-            /** @description Kit associated with the expert */
-            kitId?: {
+                /** @example client */
+                role?: string;
+                /** @example male */
+                gender?: string;
+                /** @example 1234567890123456 */
+                identityNumber?: string;
                 /**
-                 * @description ID of the kit
-                 * @example 1
+                 * Format: date-time
+                 * @example 2023-01-01T00:00:00.000Z
                  */
-                id?: number;
+                createdAt?: string;
                 /**
-                 * @description Barcode of the kit
-                 * @example KIT123456
+                 * Format: date-time
+                 * @example 2023-01-01T00:00:00.000Z
                  */
-                barcode?: string;
-            };
-            /** @description Laboratory kit associated with the expert */
-            laboratoryKit?: {
-                /**
-                 * @description ID of the laboratory kit
-                 * @example 1
-                 */
-                id?: number;
-                /**
-                 * @description Status of the laboratory kit
-                 * @example completed
-                 * @enum {string}
-                 */
-                status?: "pending" | "completed" | "cancelled" | "in_progress";
-            };
+                updatedAt?: string;
+            }[];
             /**
              * @description Status of the expert
              * @example completed
@@ -6986,6 +7463,16 @@ export interface components {
              * @example true
              */
             isActive?: boolean;
+            /**
+             * Format: date-time
+             * @example 2024-01-01T00:00:00Z
+             */
+            createdAt?: string;
+            /**
+             * Format: date-time
+             * @example 2024-01-02T00:00:00Z
+             */
+            updatedAt?: string;
         };
         CreateResult: {
             /**
@@ -7116,6 +7603,535 @@ export interface components {
             /**
              * Format: date-time
              * @description Updated at
+             */
+            updatedAt?: string;
+        };
+        CreateFoodConsumptionRecord: {
+            /**
+             * @description Client ID (required for admin/expert/dietician)
+             * @example 1
+             */
+            clientId?: number;
+            /**
+             * @description How many meals per day
+             * @example 3
+             */
+            mealsPerDay: number;
+            /**
+             * @description Alcohol consumption frequency
+             * @example never
+             * @enum {string}
+             */
+            alcoholFrequency: "never" | "rarely" | "sometimes" | "often" | "daily";
+            /**
+             * @description Smoking consumption frequency
+             * @example never
+             * @enum {string}
+             */
+            smokingFrequency: "never" | "rarely" | "sometimes" | "often" | "daily";
+            /**
+             * @description Foods avoided
+             * @example Gluten, lactose
+             */
+            avoidedFoods: string;
+            /**
+             * Format: double
+             * @description Daily water intake in liters
+             * @example 2.5
+             */
+            dailyWaterLiters: number;
+            /**
+             * @description How many meals are from outside/fastfood per day
+             * @example 0
+             */
+            fastFoodMealsPerDay: number;
+            /**
+             * @description Defecation frequency
+             * @example daily
+             */
+            defecationFrequency: string;
+            /**
+             * @description Foods that cause discomfort
+             * @example Milk
+             */
+            discomfortFoods: string;
+            /**
+             * @description Diarrhea/constipation issue
+             * @example none
+             * @enum {string}
+             */
+            bowelIssue: "none" | "diarrhea" | "constipation" | "both";
+            /**
+             * @description GI system disease
+             * @example none
+             */
+            gastrointestinalDisease: string;
+            /**
+             * @description Night eating habit
+             * @example false
+             */
+            nightEatingHabit: boolean;
+            /**
+             * @description Eating disorder behaviors
+             * @example false
+             */
+            eatingDisorderBehaviors: boolean;
+            /**
+             * @description Optional notes
+             * @example Sometimes bloating after legumes
+             */
+            notes?: string | null;
+        };
+        UpdateFoodConsumptionRecord: {
+            mealsPerDay?: number;
+            /**
+             * @description Frequency
+             * @example never
+             * @enum {string}
+             */
+            alcoholFrequency?: "never" | "rarely" | "sometimes" | "often" | "daily";
+            /**
+             * @description Frequency
+             * @example never
+             * @enum {string}
+             */
+            smokingFrequency?: "never" | "rarely" | "sometimes" | "often" | "daily";
+            avoidedFoods?: string;
+            /** Format: double */
+            dailyWaterLiters?: number;
+            fastFoodMealsPerDay?: number;
+            defecationFrequency?: string;
+            discomfortFoods?: string;
+            /** @enum {string} */
+            bowelIssue?: "none" | "diarrhea" | "constipation" | "both";
+            gastrointestinalDisease?: string;
+            nightEatingHabit?: boolean;
+            eatingDisorderBehaviors?: boolean;
+            notes?: string | null;
+        };
+        FoodConsumptionRecordResponse: {
+            /** @example 1 */
+            id?: number;
+            /** @example 1 */
+            clientId?: number;
+            /** @example 3 */
+            mealsPerDay?: number;
+            /**
+             * @description Frequency
+             * @example never
+             * @enum {string}
+             */
+            alcoholFrequency?: "never" | "rarely" | "sometimes" | "often" | "daily";
+            /**
+             * @description Frequency
+             * @example never
+             * @enum {string}
+             */
+            smokingFrequency?: "never" | "rarely" | "sometimes" | "often" | "daily";
+            /** @example Gluten */
+            avoidedFoods?: string;
+            /**
+             * Format: double
+             * @example 2.5
+             */
+            dailyWaterLiters?: number;
+            /** @example 0 */
+            fastFoodMealsPerDay?: number;
+            /** @example daily */
+            defecationFrequency?: string;
+            /** @example Milk */
+            discomfortFoods?: string;
+            /** @example none */
+            bowelIssue?: string;
+            /** @example none */
+            gastrointestinalDisease?: string;
+            /** @example false */
+            nightEatingHabit?: boolean;
+            /** @example false */
+            eatingDisorderBehaviors?: boolean;
+            /** @example ... */
+            notes?: string | null;
+            /**
+             * Format: date-time
+             * @example 2024-01-01T00:00:00.000Z
+             */
+            createdAt?: string;
+            /**
+             * Format: date-time
+             * @example 2024-01-01T00:00:00.000Z
+             */
+            updatedAt?: string;
+        };
+        CreateSleepQualityRecord: {
+            /**
+             * @description Client ID (required for admin/expert/dietician)
+             * @example 1
+             */
+            clientId?: number;
+            /**
+             * Format: date-time
+             * @description Record date
+             * @example 2026-03-17
+             */
+            recordDate: string;
+            /**
+             * @description Usual bedtime
+             * @example 23:30
+             */
+            usualBedTime: string;
+            /**
+             * @description Minutes to fall asleep
+             * @example 20
+             */
+            sleepLatencyMinutes: number;
+            /**
+             * @description Usual wake time
+             * @example 07:30
+             */
+            usualWakeTime: string;
+            /**
+             * Format: double
+             * @description Sleep hours
+             * @example 7.5
+             */
+            sleepHours: number;
+            /**
+             * @description Could not fall asleep within 30 minutes
+             * @example 0
+             */
+            cannotFallAsleepWithin30: number;
+            /**
+             * @description Woke up to use the bathroom
+             * @example 0
+             */
+            wakeToUseBathroom: number;
+            /**
+             * @description Could not breathe comfortably
+             * @example 0
+             */
+            cannotBreatheComfortably: number;
+            /**
+             * @description Coughed or snored loudly
+             * @example 0
+             */
+            coughOrSnoreLoudly: number;
+            /**
+             * @description Felt too cold
+             * @example 0
+             */
+            feelTooCold: number;
+            /**
+             * @description Felt too hot
+             * @example 0
+             */
+            feelTooHot: number;
+            /**
+             * @description Had bad dreams
+             * @example 0
+             */
+            badDreams: number;
+            /**
+             * @description Had pain
+             * @example 0
+             */
+            pain: number;
+            /**
+             * @description Other reasons frequency
+             * @example 0
+             */
+            otherReasonFrequency?: number;
+            /** @description Other reasons description */
+            otherReasonText?: string | null;
+            /**
+             * @description Subjective sleep quality (0=very good .. 3=very bad)
+             * @example 0
+             */
+            subjectiveSleepQuality: number;
+            /**
+             * @description Sleep medication frequency
+             * @example 0
+             */
+            sleepMedicationFrequency: number;
+            /**
+             * @description Trouble staying awake frequency
+             * @example 0
+             */
+            daytimeSleepinessFrequency: number;
+            /**
+             * @description Problem keeping enthusiasm (0..3)
+             * @example 0
+             */
+            lackOfEnthusiasmProblem: number;
+            /**
+             * @description Bed partner/roommate situation (0..3)
+             * @example 0
+             */
+            bedPartnerSituation: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerLoudTalk?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerLongBreathingPauses?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerLegTwitches?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerDisorientation?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerOtherRestlessness?: number;
+            partnerOtherRestlessnessText?: string | null;
+            notes?: string | null;
+        };
+        UpdateSleepQualityRecord: {
+            /** Format: date-time */
+            recordDate?: string;
+            usualBedTime?: string;
+            sleepLatencyMinutes?: number;
+            usualWakeTime?: string;
+            /** Format: double */
+            sleepHours?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            cannotFallAsleepWithin30?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            wakeToUseBathroom?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            cannotBreatheComfortably?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            coughOrSnoreLoudly?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            feelTooCold?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            feelTooHot?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            badDreams?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            pain?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            otherReasonFrequency?: number;
+            otherReasonText?: string | null;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            subjectiveSleepQuality?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            sleepMedicationFrequency?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            daytimeSleepinessFrequency?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            lackOfEnthusiasmProblem?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            bedPartnerSituation?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerLoudTalk?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerLongBreathingPauses?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerLegTwitches?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerDisorientation?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerOtherRestlessness?: number;
+            partnerOtherRestlessnessText?: string | null;
+            notes?: string | null;
+        };
+        SleepQualityRecordResponse: {
+            /** @example 1 */
+            id?: number;
+            /** @example 1 */
+            clientId?: number;
+            /**
+             * Format: date-time
+             * @example 2026-03-17
+             */
+            recordDate?: string;
+            /** @example 23:30 */
+            usualBedTime?: string;
+            /** @example 20 */
+            sleepLatencyMinutes?: number;
+            /** @example 07:30 */
+            usualWakeTime?: string;
+            /**
+             * Format: double
+             * @example 7.5
+             */
+            sleepHours?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            cannotFallAsleepWithin30?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            wakeToUseBathroom?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            cannotBreatheComfortably?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            coughOrSnoreLoudly?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            feelTooCold?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            feelTooHot?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            badDreams?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            pain?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            otherReasonFrequency?: number;
+            /** @example ... */
+            otherReasonText?: string | null;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            subjectiveSleepQuality?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            sleepMedicationFrequency?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            daytimeSleepinessFrequency?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            lackOfEnthusiasmProblem?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            bedPartnerSituation?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerLoudTalk?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerLongBreathingPauses?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerLegTwitches?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerDisorientation?: number;
+            /**
+             * @description Frequency score (0..3)
+             * @example 0
+             */
+            partnerOtherRestlessness?: number;
+            /** @example ... */
+            partnerOtherRestlessnessText?: string | null;
+            /** @example ... */
+            notes?: string | null;
+            /**
+             * Format: date-time
+             * @example 2024-01-01T00:00:00.000Z
+             */
+            createdAt?: string;
+            /**
+             * Format: date-time
+             * @example 2024-01-01T00:00:00.000Z
              */
             updatedAt?: string;
         };
