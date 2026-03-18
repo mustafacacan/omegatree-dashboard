@@ -20,6 +20,7 @@ import { getClients, createClient, getClientDetail } from '@/services/clients.se
 import type { AppClient } from '@/services/clients.service'
 import type { ClientDetail } from '@/services/clients.service'
 import { useCurrentUser } from '@/stores/auth.store'
+import { UserRole } from '@/utils/constants'
 import { getDieticians, type DieticianOption } from '@/services/kits.service'
 import { addDieticianToClient, updateDieticianClient } from '@/services/dietician-clients.service'
 
@@ -175,7 +176,7 @@ export function ClientsPage() {
       toast.error('Ad, soyad ve telefon zorunludur')
       return
     }
-    const dieticianId = currentUser?.role === 'dietician' && currentUser?.id ? Number(currentUser.id) : undefined
+    const dieticianId = currentUser?.role === UserRole.DIETITIAN && currentUser?.id ? Number(currentUser.id) : undefined
 
     const anamnezForm = (() => {
       const h = form.bodyHeight.trim() ? Number(form.bodyHeight) : undefined
@@ -584,6 +585,66 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
           </div>
         </div>
       )}
+
+      {detail.foodConsumptionRecord && (
+        <div>
+          <p className="form-section-title mb-2">Beslenme Kaydı</p>
+          <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50 space-y-2 text-sm">
+            <div className="grid grid-cols-2 gap-2">
+              <div><span className="text-surface-500">Öğün/gün:</span> {detail.foodConsumptionRecord.mealsPerDay ?? '—'}</div>
+              <div><span className="text-surface-500">Fastfood öğün:</span> {detail.foodConsumptionRecord.fastFoodMealsPerDay ?? '—'}</div>
+              <div><span className="text-surface-500">Su (L):</span> {detail.foodConsumptionRecord.dailyWaterLiters ?? '—'}</div>
+              <div><span className="text-surface-500">Dışkılama:</span> {detail.foodConsumptionRecord.defecationFrequency ?? '—'}</div>
+              <div><span className="text-surface-500">Alkol:</span> {detail.foodConsumptionRecord.alcoholFrequency ?? '—'}</div>
+              <div><span className="text-surface-500">Sigara:</span> {detail.foodConsumptionRecord.smokingFrequency ?? '—'}</div>
+              <div><span className="text-surface-500">Bağırsak:</span> {detail.foodConsumptionRecord.bowelIssue ?? '—'}</div>
+              <div><span className="text-surface-500">GIS:</span> {detail.foodConsumptionRecord.gastrointestinalDisease ?? '—'}</div>
+              <div className="col-span-2"><span className="text-surface-500">Kaçınılanlar:</span> {detail.foodConsumptionRecord.avoidedFoods ?? '—'}</div>
+              <div className="col-span-2"><span className="text-surface-500">Rahatsız edenler:</span> {detail.foodConsumptionRecord.discomfortFoods ?? '—'}</div>
+              <div><span className="text-surface-500">Gece yeme:</span> {detail.foodConsumptionRecord.nightEatingHabit == null ? '—' : detail.foodConsumptionRecord.nightEatingHabit ? 'Evet' : 'Hayır'}</div>
+              <div><span className="text-surface-500">Yeme bozukluğu:</span> {detail.foodConsumptionRecord.eatingDisorderBehaviors == null ? '—' : detail.foodConsumptionRecord.eatingDisorderBehaviors ? 'Evet' : 'Hayır'}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detail.sleepQualityRecords && detail.sleepQualityRecords.length > 0 && (() => {
+        const latest = detail.sleepQualityRecords.reduce((acc, cur) => {
+          const a = acc?.recordDate ?? acc?.createdAt
+          const b = cur?.recordDate ?? cur?.createdAt
+          if (!a) return cur
+          if (!b) return acc
+          return new Date(b).getTime() >= new Date(a).getTime() ? cur : acc
+        }, detail.sleepQualityRecords[0])
+
+        return (
+          <div>
+            <p className="form-section-title mb-2">Uyku Kaydı</p>
+            <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50 space-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div><span className="text-surface-500">Tarih:</span> {latest.recordDate ? formatDate(latest.recordDate) : '—'}</div>
+                <div><span className="text-surface-500">Uyku (saat):</span> {latest.sleepHours ?? '—'}</div>
+                <div><span className="text-surface-500">Yatış:</span> {latest.usualBedTime ?? '—'}</div>
+                <div><span className="text-surface-500">Kalkış:</span> {latest.usualWakeTime ?? '—'}</div>
+                <div><span className="text-surface-500">Dalma (dk):</span> {latest.sleepLatencyMinutes ?? '—'}</div>
+                <div><span className="text-surface-500">Öznel kalite (0-3):</span> {latest.subjectiveSleepQuality ?? '—'}</div>
+                <div><span className="text-surface-500">30dk içinde uyuyamama (0-3):</span> {latest.cannotFallAsleepWithin30 ?? '—'}</div>
+                <div><span className="text-surface-500">Tuvalet için uyanma (0-3):</span> {latest.wakeToUseBathroom ?? '—'}</div>
+                <div><span className="text-surface-500">Uyku ilacı (0-3):</span> {latest.sleepMedicationFrequency ?? '—'}</div>
+                <div><span className="text-surface-500">Gündüz uykululuk (0-3):</span> {latest.daytimeSleepinessFrequency ?? '—'}</div>
+                <div><span className="text-surface-500">İstek/enerji (0-3):</span> {latest.lackOfEnthusiasmProblem ?? '—'}</div>
+                <div><span className="text-surface-500">Eş durumu (0-3):</span> {latest.bedPartnerSituation ?? '—'}</div>
+              </div>
+
+              {latest.notes ? (
+                <div className="pt-2 border-t border-surface-200">
+                  <span className="text-surface-500">Not:</span> {latest.notes}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )
+      })()}
 
       {detail.createdAt && (
         <div className="pt-1 border-t border-surface-200 text-xs text-surface-500 dark:text-surface-600">

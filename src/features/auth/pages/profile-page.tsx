@@ -14,7 +14,7 @@ import {
   ModalHeader,
   ModalTitle,
 } from '@/components/ui'
-import { USER_ROLE_LABELS } from '@/utils/constants'
+import { USER_ROLE_LABELS, UserRole as USER_ROLE } from '@/utils/constants'
 import type { UserRole } from '@/utils/constants'
 import { formatDate } from '@/lib/utils'
 import { Mail, Shield, Calendar, Edit2, Lock, Phone, User } from 'lucide-react'
@@ -48,6 +48,7 @@ export function ProfilePage() {
   const [editForm, setEditForm] = useState({
     firstName: '',
     lastName: '',
+    companyName: '',
     phone: '',
     email: '',
     identityNumber: '',
@@ -85,10 +86,16 @@ export function ProfilePage() {
 
   if (!user) return null
 
+  const shouldShowCompanyName =
+    user.role === USER_ROLE.DIETITIAN ||
+    user.role === USER_ROLE.LAB ||
+    user.role === USER_ROLE.SPECIALIST
+
   const openEditModal = () => {
     setEditForm({
       firstName: user.firstName ?? '',
       lastName: user.lastName ?? '',
+      companyName: user.companyName ?? '',
       phone: limitDigits(user.phone ?? '', 11),
       email: user.email ?? '',
       identityNumber: limitDigits(user.identityNumber ?? '', 11),
@@ -112,6 +119,7 @@ export function ProfilePage() {
     const payload: components['schemas']['UpdateUser'] = {
       firstName: editForm.firstName.trim(),
       lastName: editForm.lastName.trim(),
+      ...(shouldShowCompanyName ? { companyName: editForm.companyName.trim() || undefined } : {}),
       phone: editForm.phone.trim() || undefined,
       email: editForm.email.trim() || undefined,
       identityNumber: editForm.identityNumber.trim() || undefined,
@@ -150,6 +158,9 @@ export function ProfilePage() {
   }
 
   const infoRows = [
+    ...(shouldShowCompanyName
+      ? [{ icon: User, label: 'Kurum Adı', value: user.companyName || '—' }]
+      : []),
     { icon: Mail, label: 'E-posta', value: user.email },
     { icon: Phone, label: 'Telefon', value: user.phone || '—' },
     { icon: User, label: 'T.C. Kimlik No', value: user.identityNumber || '—' },
@@ -293,6 +304,15 @@ export function ProfilePage() {
                 onChange={(e) => setEditForm((p) => ({ ...p, lastName: e.target.value }))}
               />
             </div>
+
+            {shouldShowCompanyName ? (
+              <Input
+                label="Kurum Adı"
+                value={editForm.companyName}
+                onChange={(e) => setEditForm((p) => ({ ...p, companyName: e.target.value }))}
+                placeholder="(opsiyonel)"
+              />
+            ) : null}
 
             <Input
               label="Telefon"

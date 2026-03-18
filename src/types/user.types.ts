@@ -5,6 +5,8 @@ export interface User {
   email: string
   firstName: string
   lastName: string
+  /** dietician/laboratory/expert gibi rollerde API'den gelebilir */
+  companyName?: string | null
   phone?: string
   identityNumber?: string
   role: UserRole

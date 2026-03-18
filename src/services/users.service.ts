@@ -40,6 +40,7 @@ function mapApiUserToAppUser(apiUser: ApiUser & { isVerified?: boolean; deletedA
     email: apiUser.email ?? '',
     firstName: apiUser.firstName ?? '',
     lastName: apiUser.lastName ?? '',
+    companyName: (apiUser as ApiUser & { companyName?: string | null }).companyName ?? null,
     phone: apiUser.phone,
     role: mapApiRoleToAppRole(apiUser.role),
     status,
@@ -111,23 +112,27 @@ export async function getUser(id: string): Promise<User> {
 
 /** POST /users — yeni kullanıcı (admin) */
 export async function createUser(payload: {
-  firstName: string
-  lastName: string
+  firstName?: string
+  lastName?: string
   phone: string
   email?: string
+  companyName?: string
   role: UserRole
   gender: 'male' | 'female'
   identityNumber?: string
 }): Promise<User> {
-  const { data } = await api.post<ApiUser & { isVerified?: boolean }>('/users', {
-    firstName: payload.firstName,
-    lastName: payload.lastName,
+  const body: Record<string, unknown> = {
     phone: payload.phone,
     email: payload.email,
+    companyName: payload.companyName,
     role: mapAppRoleToApiRole(payload.role),
     gender: payload.gender,
     identityNumber: payload.identityNumber,
-  })
+  }
+  if (payload.firstName != null && String(payload.firstName).trim()) body.firstName = String(payload.firstName).trim()
+  if (payload.lastName != null && String(payload.lastName).trim()) body.lastName = String(payload.lastName).trim()
+
+  const { data } = await api.post<ApiUser & { isVerified?: boolean }>('/users', body)
   return mapApiUserToAppUser(data)
 }
 

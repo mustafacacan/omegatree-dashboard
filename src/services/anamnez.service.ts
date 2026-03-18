@@ -3,7 +3,6 @@ import type { components } from '@/types/openapi'
 
 const skipAuth: ApiRequestConfig = { skipAuthRedirect: true }
 
-type ApiAnamnezResponse = components['schemas']['AnamnezFormResponse']
 type ApiCreateAnamnez = components['schemas']['CreateAnamnezForm']
 
 export interface AnamnezForm {
@@ -38,6 +37,11 @@ function toNumberMaybe(v: unknown): number | undefined {
 
 function toStringMaybe(v: unknown): string | undefined {
   return typeof v === 'string' ? v : undefined
+}
+
+function getHttpStatus(err: unknown): number | undefined {
+  const e = err as { response?: { status?: unknown } }
+  return typeof e?.response?.status === 'number' ? e.response.status : undefined
 }
 
 function mapApiAnamnez(item: unknown): AnamnezForm {
@@ -110,8 +114,15 @@ function unwrapSingle(v: unknown): unknown {
 
 /** GET /anamnez */
 export async function getAnamnezForms(): Promise<AnamnezForm[]> {
-  const { data } = await api.get<unknown>('/anamnez', skipAuth)
-  return unwrapItems(data).map(mapApiAnamnez)
+  try {
+    const { data } = await api.get<unknown>('/anamnez', skipAuth)
+    return unwrapItems(data).map(mapApiAnamnez)
+  } catch (err: unknown) {
+    const status = getHttpStatus(err)
+    // Some environments return 404 when the authenticated user has no anamnez.
+    if (status === 404) return []
+    throw err
+  }
 }
 
 /** GET /anamnez/{id} */

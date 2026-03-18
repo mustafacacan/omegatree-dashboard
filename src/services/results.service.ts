@@ -1,7 +1,34 @@
 import { api, type ApiRequestConfig } from '@/lib/axios'
 import type { components } from '@/types/openapi'
 
-export type Result = components['schemas']['ResultResponse']
+export type Result = components['schemas']['ResultResponse'] & {
+    client?: {
+        id?: number
+        user?: {
+            id?: number
+            firstName?: string | null
+            lastName?: string | null
+            phone?: string | null
+            email?: string | null
+        } | null
+    } | null
+
+    dieticianClient?: {
+        id?: number
+        clientId?: number
+        client?: {
+            id?: number
+            userId?: number
+            user?: {
+                id?: number
+                firstName?: string | null
+                lastName?: string | null
+                phone?: string | null
+                email?: string | null
+            } | null
+        } | null
+    } | null
+}
 
 export type ResultStatus = 'pending' | 'completed' | 'approved' | 'rejected'
 

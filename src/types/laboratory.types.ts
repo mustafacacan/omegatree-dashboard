@@ -1,6 +1,7 @@
 export interface Laboratory {
   id: string
   name: string
+  companyName?: string
   address: string
   city: string
   district?: string

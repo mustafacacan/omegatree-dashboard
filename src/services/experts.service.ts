@@ -24,6 +24,42 @@ function asBoolean(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined
 }
 
+function deepFindByKey<T>(
+  root: unknown,
+  keys: string[],
+  guard: (value: unknown) => value is T,
+  maxDepth = 7
+): T | null {
+  const keysSet = new Set(keys)
+  const visited = new Set<object>()
+  const stack: Array<{ value: unknown; depth: number }> = [{ value: root, depth: 0 }]
+
+  while (stack.length) {
+    const current = stack.pop()!
+    if (current.depth > maxDepth) continue
+
+    const v = current.value
+    if (Array.isArray(v)) {
+      // Hard limit to avoid pathological payloads
+      for (let i = 0; i < Math.min(v.length, 50); i++) {
+        stack.push({ value: v[i], depth: current.depth + 1 })
+      }
+      continue
+    }
+
+    if (!isRecord(v)) continue
+    if (visited.has(v)) continue
+    visited.add(v)
+
+    for (const [k, child] of Object.entries(v)) {
+      if (keysSet.has(k) && guard(child)) return child
+      stack.push({ value: child, depth: current.depth + 1 })
+    }
+  }
+
+  return null
+}
+
 export interface Expert {
   id: number
   userId?: number
@@ -42,26 +78,81 @@ export interface Expert {
   /** Analiz sonucu media dosyasi (backend `mediaResult` ile dondurebilir) */
   resultMediaUrl?: string
   resultMediaId?: number
+
+  /** Danışan bilgileri (uzman detayında gelebiliyor) */
+  anamnezForm?: {
+    id?: number
+    clientId?: number
+    chronic_illness?: string
+    medication_used?: string
+    food_allergy?: string
+    body_weight?: string
+    body_height?: number
+    waist_circumference?: string
+    hip_circumference?: string
+    profession?: string
+    education?: string
+    createdAt?: string
+    updatedAt?: string
+  } | null
+  foodConsumptionRecord?: {
+    id?: number
+    clientId?: number
+    mealsPerDay?: number
+    alcoholFrequency?: string
+    smokingFrequency?: string
+    avoidedFoods?: string
+    dailyWaterLiters?: string
+    fastFoodMealsPerDay?: number
+    defecationFrequency?: string
+    discomfortFoods?: string
+    bowelIssue?: string
+    gastrointestinalDisea?: string
+    nightEatingHabit?: boolean
+    eatingDisorderBehavio?: boolean
+    notes?: string | null
+    createdAt?: string
+    updatedAt?: string
+  } | null
+  sleepQualityRecords?: Array<{
+    id?: number
+    clientId?: number
+    recordDate?: string
+    usualBedTime?: string
+    sleepLatencyMinutes?: number
+    usualWakeTime?: string
+    sleepHours?: string
+    subjectiveSleepQuality?: number
+    notes?: string | null
+    createdAt?: string
+    updatedAt?: string
+  }> | null
 }
 
 function mapApiExpert(item: ApiExpertResponse): Expert {
   const withDates = item as ApiExpertWithDates
+  const assignedUser = Array.isArray(item.assignedUsers) ? item.assignedUsers[0] : undefined
+  const userName = assignedUser
+    ? `${assignedUser.firstName ?? ''} ${assignedUser.lastName ?? ''}`.trim()
+    : undefined
+  const cleanUserName = userName && userName.length > 0 ? userName : undefined
+
   return {
     id: item.id ?? 0,
-    userId: item.userId?.id,
-    userName: item.userId
-      ? `${item.userId.firstName ?? ''} ${item.userId.lastName ?? ''}`.trim()
-      : undefined,
-    userPhone: item.userId?.phone,
-    userEmail: item.userId?.email,
-    kitId: item.kitId?.id,
-    kitBarcode: item.kitId?.barcode,
-    laboratoryKitId: item.laboratoryKit?.id,
-    laboratoryKitStatus: item.laboratoryKit?.status,
+    userId: assignedUser?.id,
+    userName: cleanUserName,
+    userPhone: assignedUser?.phone,
+    userEmail: assignedUser?.email,
+    kitId: item.kitId,
+    kitBarcode: item.kitExpert?.barcode,
+    laboratoryKitId: item.laboratoryKitId ?? item.laboratoryExpert?.id,
+    laboratoryKitStatus: (item.laboratoryExpert?.status as Expert['laboratoryKitStatus']) ?? undefined,
     status: item.status,
     reason: item.reason,
     isActive: item.isActive,
     assignedAt: withDates.assignedAt ?? withDates.createdAt,
+    resultMediaUrl: item.laboratoryExpert?.mediaResult?.url,
+    resultMediaId: item.laboratoryExpert?.mediaResult?.id ?? (item.resultMediaId ?? undefined),
   }
 }
 
@@ -113,6 +204,73 @@ function mapApiExpertLoose(raw: unknown): Expert {
   const status = asString(raw.status) as 'pending' | 'in_progress' | 'completed' | 'cancelled' | undefined
   const assignedAt = asString(raw.assignedAt) ?? asString(raw.createdAt)
 
+  const nestedClient = isRecord(raw.client) ? raw.client : undefined
+  const nestedKit = isRecord(raw.kit) ? raw.kit : undefined
+  const kitClient = nestedKitId && isRecord((nestedKitId as Record<string, unknown>).client)
+    ? ((nestedKitId as Record<string, unknown>).client as Record<string, unknown>)
+    : undefined
+  const kitClient2 = nestedKit && isRecord((nestedKit as Record<string, unknown>).client)
+    ? ((nestedKit as Record<string, unknown>).client as Record<string, unknown>)
+    : undefined
+  const kitExpertClient = kitExpert && isRecord((kitExpert as Record<string, unknown>).client)
+    ? ((kitExpert as Record<string, unknown>).client as Record<string, unknown>)
+    : undefined
+
+  const candidateScopes: Array<Record<string, unknown> | undefined> = [
+    raw,
+    nestedClient,
+    nestedKit,
+    nestedKitId,
+    kitClient,
+    kitClient2,
+    kitExpert,
+    kitExpertClient,
+    laboratoryExpert,
+  ]
+
+  const anamnezForm =
+    candidateScopes
+      .map((s) => (s && isRecord(s.anamnezForm) ? (s.anamnezForm as Record<string, unknown>) : null))
+      .find(Boolean) ??
+    deepFindByKey<Record<string, unknown>>(
+      raw,
+      ['anamnezForm', 'anamnez_form'],
+      isRecord
+    ) ??
+    null
+
+  const foodConsumptionRecord =
+    candidateScopes
+      .map((s) => {
+        if (!s) return null
+        if (isRecord(s.foodConsumptionRecord)) return s.foodConsumptionRecord as Record<string, unknown>
+        if (isRecord(s.food_consumption_record)) return s.food_consumption_record as Record<string, unknown>
+        if (isRecord(s.foodConsumptionRecords)) return s.foodConsumptionRecords as Record<string, unknown>
+        return null
+      })
+      .find(Boolean) ??
+    deepFindByKey<Record<string, unknown>>(
+      raw,
+      ['foodConsumptionRecord', 'food_consumption_record', 'foodConsumptionRecords'],
+      isRecord
+    ) ??
+    null
+
+  const sleepQualityRecords =
+    candidateScopes
+      .map((s) => {
+        if (!s) return null
+        const v = (s.sleepQualityRecords ?? s.sleepQualityRecord ?? s.sleep_quality_records ?? s.sleep_quality_record) as unknown
+        return Array.isArray(v) ? v : null
+      })
+      .find(Boolean) ??
+    deepFindByKey<unknown[]>(
+      raw,
+      ['sleepQualityRecords', 'sleepQualityRecord', 'sleep_quality_records', 'sleep_quality_record'],
+      Array.isArray
+    ) ??
+    null
+
   return {
     id: asNumber(raw.id) ?? 0,
     userId: asNumber(nestedUser?.id),
@@ -129,6 +287,10 @@ function mapApiExpertLoose(raw: unknown): Expert {
     assignedAt,
     resultMediaUrl,
     resultMediaId,
+
+    anamnezForm: anamnezForm as Expert['anamnezForm'],
+    foodConsumptionRecord: foodConsumptionRecord as Expert['foodConsumptionRecord'],
+    sleepQualityRecords: sleepQualityRecords as Expert['sleepQualityRecords'],
   }
 }
 
@@ -204,13 +366,9 @@ export async function getExpertById(id: number | string): Promise<Expert> {
   const top = isRecord(data) ? data : null
   const inner = top && isRecord(top.data) ? top.data : data
 
-  // Prod shape (kitExpert/laboratoryExpert) veya karma shape
-  if (isRecord(inner) && ('kitExpert' in inner || typeof inner.kitId === 'number')) {
-    return mapApiExpertLoose(inner)
-  }
-
-  // Swagger shape
-  if (isRecord(inner)) return mapApiExpert(inner as ApiExpertResponse)
+  // Note: backend bazı ortamlarda swagger dışı alanlar döndürüyor.
+  // UI'da kritik olan alanları kaybetmemek için record olan her response'u defansif map'liyoruz.
+  if (isRecord(inner)) return mapApiExpertLoose(inner)
   return { id: typeof id === 'number' ? id : Number(id) || 0 }
 }
 

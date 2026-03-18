@@ -5,6 +5,7 @@ interface ApiLabUser {
   id?: number
   firstName?: string
   lastName?: string
+  companyName?: string | null
   phone?: string
   email?: string
   password?: string
@@ -89,6 +90,7 @@ function mapApiLabToLab(item: ApiLaboratoryItem): Laboratory {
   return {
     id: String(item.id ?? ''),
     name: fullName || `Laboratuvar #${item.id ?? ''}`,
+    companyName: user?.companyName ?? undefined,
     address: buildDisplayAddress(addr),
     city: addr?.city ?? '',
     district: addr?.district,
@@ -161,8 +163,9 @@ export async function getLaboratoryById(id: string | number): Promise<Laboratory
  * Body: { user, cargofirm, cargoNumber, address }
  */
 export async function createLaboratory(payload: {
-  firstName: string
-  lastName: string
+  companyName: string
+  firstName?: string
+  lastName?: string
   phone: string
   gender: 'male' | 'female'
   email?: string
@@ -184,8 +187,7 @@ export async function createLaboratory(payload: {
   const now = new Date().toISOString()
   const body: Record<string, unknown> = {
     user: {
-      firstName: payload.firstName,
-      lastName: payload.lastName,
+      companyName: payload.companyName,
       phone: payload.phone,
       gender: payload.gender,
       ...(payload.email ? { email: payload.email } : {}),
@@ -207,6 +209,10 @@ export async function createLaboratory(payload: {
       updatedAt: now,
     },
   }
+
+  const user = body.user as Record<string, unknown>
+  if (payload.firstName != null && String(payload.firstName).trim()) user.firstName = String(payload.firstName).trim()
+  if (payload.lastName != null && String(payload.lastName).trim()) user.lastName = String(payload.lastName).trim()
 
   console.log('[createLaboratory] request body:', JSON.stringify(body, null, 2))
 

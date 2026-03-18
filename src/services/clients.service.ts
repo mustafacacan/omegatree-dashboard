@@ -136,6 +136,51 @@ export interface ClientDetail {
     updatedAt?: string
     deletedAt?: string | null
   }
+  foodConsumptionRecord?: {
+    id?: number
+    clientId?: number
+    mealsPerDay?: number
+    alcoholFrequency?: string
+    smokingFrequency?: string
+    avoidedFoods?: string
+    dailyWaterLiters?: number
+    fastFoodMealsPerDay?: number
+    defecationFrequency?: string
+    discomfortFoods?: string
+    bowelIssue?: string
+    gastrointestinalDisease?: string
+    nightEatingHabit?: boolean
+    eatingDisorderBehaviors?: boolean
+    createdAt?: string
+    updatedAt?: string
+    deletedAt?: string | null
+  }
+  sleepQualityRecords?: Array<{
+    id?: number
+    clientId?: number
+    recordDate?: string
+    usualBedTime?: string
+    sleepLatencyMinutes?: number
+    usualWakeTime?: string
+    sleepHours?: number
+    cannotFallAsleepWithin30?: number
+    wakeToUseBathroom?: number
+    cannotBreatheComfortably?: number
+    coughOrSnoreLoudly?: number
+    feelTooCold?: number
+    feelTooHot?: number
+    badDreams?: number
+    pain?: number
+    subjectiveSleepQuality?: number
+    sleepMedicationFrequency?: number
+    daytimeSleepinessFrequency?: number
+    lackOfEnthusiasmProblem?: number
+    bedPartnerSituation?: number
+    notes?: string
+    createdAt?: string
+    updatedAt?: string
+    deletedAt?: string | null
+  }>
   dietician?: {
     id?: number
     userId?: number
@@ -163,6 +208,17 @@ function asString(v: unknown): string | undefined {
   return typeof v === 'string' ? v : undefined
 }
 
+function asBoolean(v: unknown): boolean | undefined {
+  if (typeof v === 'boolean') return v
+  if (typeof v === 'number') return v === 1
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase()
+    if (s === 'true' || s === '1') return true
+    if (s === 'false' || s === '0') return false
+  }
+  return undefined
+}
+
 /** GET /clients/{clientId} — full client detail (user + anamnezForm + dieticianClient) */
 export async function getClientDetail(clientId: number | string): Promise<ClientDetail> {
   const { data } = await api.get<unknown>(`/clients/${clientId}`, skipAuth)
@@ -172,6 +228,9 @@ export async function getClientDetail(clientId: number | string): Promise<Client
 
   const user = asObj(item.user)
   const anamnez = asObj(item.anamnezForm)
+  const food = asObj(item.foodConsumptionRecord ?? item.food_consumption_record)
+  const sleepListRaw = (item.sleepQualityRecords ?? item.sleep_quality_records) as unknown
+  const sleepList = Array.isArray(sleepListRaw) ? sleepListRaw.map(asObj).filter(Boolean) : []
   const dieticianClient = asObj(item.dieticianClient)
   const dietician = asObj(dieticianClient?.dietician)
   const dieticianUser = asObj(dietician?.user)
@@ -214,6 +273,55 @@ export async function getClientDetail(clientId: number | string): Promise<Client
         updatedAt: asString(anamnez.updatedAt),
         deletedAt: (asString(anamnez.deletedAt) ?? null) as string | null,
       }
+      : undefined,
+    foodConsumptionRecord: food
+      ? {
+        id: asNumber(food.id),
+        clientId: asNumber(food.clientId ?? food.client_id),
+        mealsPerDay: asNumber(food.mealsPerDay ?? food.meals_per_day),
+        alcoholFrequency: asString(food.alcoholFrequency ?? food.alcohol_frequency),
+        smokingFrequency: asString(food.smokingFrequency ?? food.smoking_frequency),
+        avoidedFoods: asString(food.avoidedFoods ?? food.avoided_foods),
+        dailyWaterLiters: asNumber(food.dailyWaterLiters ?? food.daily_water_liters),
+        fastFoodMealsPerDay: asNumber(food.fastFoodMealsPerDay ?? food.fast_food_meals_per_day),
+        defecationFrequency: asString(food.defecationFrequency ?? food.defecation_frequency),
+        discomfortFoods: asString(food.discomfortFoods ?? food.discomfort_foods),
+        bowelIssue: asString(food.bowelIssue ?? food.bowel_issue),
+        gastrointestinalDisease: asString(food.gastrointestinalDisease ?? food.gastrointestinal_disease),
+        nightEatingHabit: asBoolean(food.nightEatingHabit ?? food.night_eating_habit),
+        eatingDisorderBehaviors: asBoolean(food.eatingDisorderBehaviors ?? food.eating_disorder_behaviors),
+        createdAt: asString(food.createdAt),
+        updatedAt: asString(food.updatedAt),
+        deletedAt: (asString(food.deletedAt) ?? null) as string | null,
+      }
+      : undefined,
+    sleepQualityRecords: sleepList.length
+      ? sleepList.map((r) => ({
+        id: asNumber(r?.id),
+        clientId: asNumber(r?.clientId ?? r?.client_id),
+        recordDate: asString(r?.recordDate ?? r?.record_date),
+        usualBedTime: asString(r?.usualBedTime ?? r?.usual_bed_time),
+        sleepLatencyMinutes: asNumber(r?.sleepLatencyMinutes ?? r?.sleep_latency_minutes),
+        usualWakeTime: asString(r?.usualWakeTime ?? r?.usual_wake_time),
+        sleepHours: (asNumber(r?.sleepHours ?? r?.sleep_hours) as number | undefined) ?? undefined,
+        cannotFallAsleepWithin30: asNumber(r?.cannotFallAsleepWithin30 ?? r?.cannot_fall_asleep_within_30),
+        wakeToUseBathroom: asNumber(r?.wakeToUseBathroom ?? r?.wake_to_use_bathroom),
+        cannotBreatheComfortably: asNumber(r?.cannotBreatheComfortably ?? r?.cannot_breathe_comfortably),
+        coughOrSnoreLoudly: asNumber(r?.coughOrSnoreLoudly ?? r?.cough_or_snore_loudly),
+        feelTooCold: asNumber(r?.feelTooCold ?? r?.feel_too_cold),
+        feelTooHot: asNumber(r?.feelTooHot ?? r?.feel_too_hot),
+        badDreams: asNumber(r?.badDreams ?? r?.bad_dreams),
+        pain: asNumber(r?.pain),
+        subjectiveSleepQuality: asNumber(r?.subjectiveSleepQuality ?? r?.subjective_sleep_quality),
+        sleepMedicationFrequency: asNumber(r?.sleepMedicationFrequency ?? r?.sleep_medication_frequency),
+        daytimeSleepinessFrequency: asNumber(r?.daytimeSleepinessFrequency ?? r?.daytime_sleepiness_frequency),
+        lackOfEnthusiasmProblem: asNumber(r?.lackOfEnthusiasmProblem ?? r?.lack_of_enthusiasm_problem),
+        bedPartnerSituation: asNumber(r?.bedPartnerSituation ?? r?.bed_partner_situation),
+        notes: asString(r?.notes),
+        createdAt: asString(r?.createdAt),
+        updatedAt: asString(r?.updatedAt),
+        deletedAt: (asString(r?.deletedAt) ?? null) as string | null,
+      }))
       : undefined,
     dietician: dieticianUser
       ? {

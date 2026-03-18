@@ -43,6 +43,7 @@ function DietitiansPage() {
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
+    companyName: '',
     email: '',
     phone: '',
     gender: 'male' as 'male' | 'female',
@@ -118,6 +119,7 @@ function DietitiansPage() {
     setForm({
       firstName: '',
       lastName: '',
+      companyName: '',
       email: '',
       phone: '',
       gender: 'male',
@@ -133,6 +135,7 @@ function DietitiansPage() {
     setForm({
       firstName: user.firstName ?? '',
       lastName: user.lastName ?? '',
+      companyName: user.companyName ?? '',
       email: user.email ?? '',
       phone: user.phone ?? '',
       gender: (user.gender as 'male' | 'female') ?? 'male',
@@ -145,13 +148,14 @@ function DietitiansPage() {
   }
 
   const submitNew = () => {
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim()) {
-      toast.error('Ad, soyad ve telefon zorunludur')
+    if (!form.phone.trim() || !form.companyName.trim()) {
+      toast.error('Kurum adı ve telefon zorunludur')
       return
     }
     createMutation.mutate({
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
+      firstName: form.firstName.trim() || undefined,
+      lastName: form.lastName.trim() || undefined,
+      companyName: form.companyName.trim(),
       email: form.email.trim() || undefined,
       phone: form.phone.trim(),
       role: UserRole.DIETITIAN,
@@ -294,18 +298,24 @@ function DietitiansPage() {
             <p className="form-section-title">Kişisel Bilgiler</p>
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Ad *"
+                label="Ad"
                 value={form.firstName}
                 onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
                 placeholder="Ad"
               />
               <Input
-                label="Soyad *"
+                label="Soyad"
                 value={form.lastName}
                 onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
                 placeholder="Soyad"
               />
             </div>
+            <Input
+              label="Kurum Adı *"
+              value={form.companyName}
+              onChange={(e) => setForm((s) => ({ ...s, companyName: e.target.value }))}
+              placeholder="Kurum adı"
+            />
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Telefon *"
@@ -445,6 +455,7 @@ function DietitiansTable({
           <thead>
             <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Ad Soyad</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kurum</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">E-posta</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Telefon</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
@@ -455,7 +466,7 @@ function DietitiansTable({
           <tbody>
             {dietitians.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-12 text-center text-[12px] text-surface-500">
+                <td colSpan={7} className="px-5 py-12 text-center text-[12px] text-surface-500">
                   Diyetisyen bulunamadı.
                 </td>
               </tr>
@@ -472,6 +483,11 @@ function DietitiansTable({
                         {[u.firstName, u.lastName].filter(Boolean).join(' ') || '-'}
                       </span>
                     </div>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="text-[12px] text-surface-700 truncate max-w-[180px] block" title={u.companyName ?? ''}>
+                      {u.companyName || '-'}
+                    </span>
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-1.5 text-[12px] text-surface-700">

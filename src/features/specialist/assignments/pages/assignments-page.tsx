@@ -10,11 +10,9 @@ import {
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Spinner,
 } from '@/components/ui'
-import { PenTool, Eye } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
-import { raporDuzenleyiciPath } from '@/utils/routes'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/lib/api-error'
@@ -46,7 +44,7 @@ function normalizeStatus(v: unknown): AssignmentRow['status'] {
 
 function isProbablyPdf(url?: string | null) {
   if (!url) return false
-  return url.toLowerCase().includes('.pdf')
+  return /\.pdf($|\?|#)/i.test(url)
 }
 
 function isProbablyImage(url?: string | null) {
@@ -55,8 +53,29 @@ function isProbablyImage(url?: string | null) {
   return u.includes('.png') || u.includes('.jpg') || u.includes('.jpeg') || u.includes('.webp') || u.includes('.gif')
 }
 
+function resolveMediaUrl(raw?: string | null): string | null {
+  if (!raw) return null
+  const url = String(raw).trim()
+  if (!url) return null
+  if (/^(data:|blob:|https?:\/\/)/i.test(url)) return url
+
+  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3005/api'
+  const origin = new URL(apiBase).origin
+
+  if (url.startsWith('/')) return `${origin}${url}`
+  return `${origin}/${url}`
+}
+
+function DetailField({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-surface-200 bg-panel p-3">
+      <p className="text-xs text-surface-500">{label}</p>
+      <div className="mt-2 text-sm font-medium text-surface-800 break-words">{value}</div>
+    </div>
+  )
+}
+
 export function AssignmentsPage() {
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   const [page, setPage] = useState(1)
@@ -111,7 +130,7 @@ export function AssignmentsPage() {
   const [dataBarcode, setDataBarcode] = useState<string | null>(null)
   const [approvingExpertId, setApprovingExpertId] = useState<number | null>(null)
   const expertDetailQuery = useQuery({
-    queryKey: ['expert', dataExpertId],
+    queryKey: ['expert', dataExpertId, 'detail'],
     queryFn: () => {
       if (dataExpertId == null) throw new Error('Expert id is required')
       return getExpertById(dataExpertId)
@@ -135,6 +154,7 @@ export function AssignmentsPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['experts', 'assignments', 'pending'] }),
         queryClient.invalidateQueries({ queryKey: ['expert', id] }),
+        queryClient.invalidateQueries({ queryKey: ['expert', id, 'detail'] }),
       ])
       toast.success('Analiz onaylandi')
     },
@@ -225,11 +245,7 @@ export function AssignmentsPage() {
             }}
             statusLabel="Hazirlaniyor"
             statusBadge={<Badge variant="info" dot pulse>Hazirlaniyor</Badge>}
-            renderAction={(a) => (
-              <Button variant="default" size="sm" onClick={() => navigate(raporDuzenleyiciPath(a.barcode))}>
-                <PenTool className="h-4 w-4" /> Devam Et
-              </Button>
-            )}
+            renderAction={() => null}
           />
         </TabsContent>
 
@@ -302,22 +318,19 @@ export function AssignmentsPage() {
 
                 {expertDetailQuery.data.resultMediaUrl ? (
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <p className="text-sm font-medium text-surface-700">Sonuc Dosyasi</p>
-                      <Button
-                        variant="link"
-                        onClick={() => window.open(expertDetailQuery.data!.resultMediaUrl!, '_blank', 'noopener,noreferrer')}
-                      >
-                        Rapor Goster
-                      </Button>
-                    </div>
+                    <p className="text-sm font-medium text-surface-700">Sonuc Dosyasi</p>
 
                     {isProbablyPdf(expertDetailQuery.data.resultMediaUrl) ? (
-                      <PdfViewer file={expertDetailQuery.data.resultMediaUrl} maxHeight="55vh" className="flex-1" />
+                      <PdfViewer
+                        file={resolveMediaUrl(expertDetailQuery.data.resultMediaUrl)}
+                        maxHeight="55vh"
+                        className="flex-1"
+                        mode="iframe"
+                      />
                     ) : isProbablyImage(expertDetailQuery.data.resultMediaUrl) ? (
                       <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
                         <img
-                          src={expertDetailQuery.data.resultMediaUrl}
+                          src={resolveMediaUrl(expertDetailQuery.data.resultMediaUrl) ?? undefined}
                           alt="Sonuc Dosyasi"
                           className="w-full max-h-[55vh] object-contain rounded-lg"
                           loading="lazy"
@@ -338,6 +351,93 @@ export function AssignmentsPage() {
                     <p className="text-xs text-surface-500 mt-1">Bu kayit icin medya yuklenmemis olabilir.</p>
                   </div>
                 )}
+
+                {(expertDetailQuery.data.anamnezForm || expertDetailQuery.data.foodConsumptionRecord || (expertDetailQuery.data.sleepQualityRecords?.length ?? 0) > 0) ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <p className="text-sm font-medium text-surface-700">Danışan Bilgileri</p>
+                    </div>
+
+                    {expertDetailQuery.data.anamnezForm ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-surface-600 uppercase tracking-wider">Anamnez</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <DetailField label="Kronik Hastalık" value={expertDetailQuery.data.anamnezForm.chronic_illness || '—'} />
+                          <DetailField label="Kullanılan İlaç" value={expertDetailQuery.data.anamnezForm.medication_used || '—'} />
+                          <DetailField label="Gıda Alerjisi" value={expertDetailQuery.data.anamnezForm.food_allergy || '—'} />
+                          <DetailField label="Meslek" value={expertDetailQuery.data.anamnezForm.profession || '—'} />
+                          <DetailField label="Eğitim" value={expertDetailQuery.data.anamnezForm.education || '—'} />
+                          <DetailField
+                            label="Boy / Kilo"
+                            value={
+                              [
+                                expertDetailQuery.data.anamnezForm.body_height != null ? `${expertDetailQuery.data.anamnezForm.body_height} cm` : null,
+                                expertDetailQuery.data.anamnezForm.body_weight ? `${expertDetailQuery.data.anamnezForm.body_weight} kg` : null,
+                              ].filter(Boolean).join(' / ') || '—'
+                            }
+                          />
+                          <DetailField label="Bel Çevresi" value={expertDetailQuery.data.anamnezForm.waist_circumference || '—'} />
+                          <DetailField label="Kalça Çevresi" value={expertDetailQuery.data.anamnezForm.hip_circumference || '—'} />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {expertDetailQuery.data.foodConsumptionRecord ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-surface-600 uppercase tracking-wider">Beslenme Kaydı</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <DetailField label="Öğün Sayısı (Günlük)" value={expertDetailQuery.data.foodConsumptionRecord.mealsPerDay ?? '—'} />
+                          <DetailField label="Günlük Su (L)" value={expertDetailQuery.data.foodConsumptionRecord.dailyWaterLiters || '—'} />
+                          <DetailField label="Alkol" value={expertDetailQuery.data.foodConsumptionRecord.alcoholFrequency || '—'} />
+                          <DetailField label="Sigara" value={expertDetailQuery.data.foodConsumptionRecord.smokingFrequency || '—'} />
+                          <DetailField label="Kaçınılan Gıdalar" value={expertDetailQuery.data.foodConsumptionRecord.avoidedFoods || '—'} />
+                          <DetailField label="Rahatsız Eden Gıdalar" value={expertDetailQuery.data.foodConsumptionRecord.discomfortFoods || '—'} />
+                          <DetailField label="Fast Food (Günlük)" value={expertDetailQuery.data.foodConsumptionRecord.fastFoodMealsPerDay ?? '—'} />
+                          <DetailField label="Dışkılama Sıklığı" value={expertDetailQuery.data.foodConsumptionRecord.defecationFrequency || '—'} />
+                          <DetailField label="Bağırsak Sorunu" value={expertDetailQuery.data.foodConsumptionRecord.bowelIssue || '—'} />
+                          <DetailField label="Gastrointestinal" value={expertDetailQuery.data.foodConsumptionRecord.gastrointestinalDisea || '—'} />
+                          <DetailField label="Gece Yeme Alışkanlığı" value={expertDetailQuery.data.foodConsumptionRecord.nightEatingHabit == null ? '—' : (expertDetailQuery.data.foodConsumptionRecord.nightEatingHabit ? 'Evet' : 'Hayır')} />
+                          <DetailField label="Yeme Bozukluğu Davranışı" value={expertDetailQuery.data.foodConsumptionRecord.eatingDisorderBehavio == null ? '—' : (expertDetailQuery.data.foodConsumptionRecord.eatingDisorderBehavio ? 'Evet' : 'Hayır')} />
+                        </div>
+                        {expertDetailQuery.data.foodConsumptionRecord.notes ? (
+                          <div className="rounded-xl border border-surface-200 bg-panel p-3">
+                            <p className="text-xs text-surface-500">Not</p>
+                            <p className="mt-2 text-sm text-surface-700 whitespace-pre-wrap">{expertDetailQuery.data.foodConsumptionRecord.notes}</p>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {(expertDetailQuery.data.sleepQualityRecords?.length ?? 0) > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-surface-600 uppercase tracking-wider">Uyku Kaydı</p>
+                        <div className="space-y-3">
+                          {(expertDetailQuery.data.sleepQualityRecords ?? []).map((r, idx) => (
+                            <div key={String(r.id ?? idx)} className="rounded-xl border border-surface-200 bg-panel p-3">
+                              <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <p className="text-sm font-semibold text-surface-800">{r.recordDate || `Kayıt #${idx + 1}`}</p>
+                                <p className="text-xs text-surface-500">
+                                  {(r.usualBedTime || r.usualWakeTime) ? `${r.usualBedTime || '—'} → ${r.usualWakeTime || '—'}` : ''}
+                                </p>
+                              </div>
+                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <DetailField label="Uyku Saati" value={r.sleepHours || '—'} />
+                                <DetailField label="Uykuya Dalma (dk)" value={r.sleepLatencyMinutes ?? '—'} />
+                                <DetailField label="Öznel Kalite" value={r.subjectiveSleepQuality ?? '—'} />
+                              </div>
+                              {r.notes ? (
+                                <div className="mt-3 rounded-xl border border-surface-200 bg-surface-50 p-3">
+                                  <p className="text-xs text-surface-500">Not</p>
+                                  <p className="mt-1 text-sm text-surface-700 whitespace-pre-wrap">{r.notes}</p>
+                                </div>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <div className="rounded-xl border border-surface-200 bg-panel p-3">
                   <p className="text-xs text-surface-500">Laboratuvar Durumu</p>

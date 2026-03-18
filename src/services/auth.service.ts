@@ -55,6 +55,7 @@ function mapApiUserToAppUser(apiUser: ApiUser): User {
     email: apiUser.email ?? '',
     firstName: apiUser.firstName ?? '',
     lastName: apiUser.lastName ?? '',
+    companyName: apiUser.companyName ?? null,
     phone: apiUser.phone,
     identityNumber: apiUser.identityNumber,
     role: mapApiRoleToAppRole(apiUser.role),

@@ -17,6 +17,7 @@ import {
   Heart,
   ArrowRight,
   CheckCircle,
+  AlertCircle,
   Clock,
   FlaskConical,
   Calendar,
@@ -38,7 +39,31 @@ function kitBelongsToCurrentUser(kit: DieticianClientKit, user: ReturnType<typeo
   return kit.clientUserId === n || kit.clientId === n
 }
 
-function buildKitTimeline(status?: string): Array<{ label: string; description?: string; status: KitTimelineStatus }> {
+type DieticianClientKitStatusNormalized =
+  | 'in_client'
+  | 'in_laboratory'
+  | 'in_expert'
+  | 'delivered'
+  | 'cancelled'
+  | 'completed'
+
+function normalizeKitStatus(status?: string | null): DieticianClientKitStatusNormalized | undefined {
+  if (!status) return undefined
+  const s = String(status).trim().toLowerCase().replace(/-/g, '_')
+  if (
+    s === 'in_client' ||
+    s === 'in_laboratory' ||
+    s === 'in_expert' ||
+    s === 'delivered' ||
+    s === 'cancelled' ||
+    s === 'completed'
+  ) {
+    return s
+  }
+  return undefined
+}
+
+function buildKitTimeline(rawStatus?: string): Array<{ label: string; description?: string; status: KitTimelineStatus }> {
   const steps: Array<{ label: string; description?: string; status: KitTimelineStatus }> = [
     { label: 'Kit Talep Edildi', description: 'Diyetisyeniniz tarafindan', status: 'upcoming' },
     { label: 'Kit Teslim Alindi', description: 'Kargo ile gonderildi', status: 'upcoming' },
@@ -48,6 +73,8 @@ function buildKitTimeline(status?: string): Array<{ label: string; description?:
     { label: 'Rapor Teslimi', status: 'upcoming' },
   ]
 
+  const status = normalizeKitStatus(rawStatus)
+
   if (!status) {
     steps[0].status = 'current'
     steps[0].description = 'Kit kaydi bulunamadi'
@@ -55,32 +82,34 @@ function buildKitTimeline(status?: string): Array<{ label: string; description?:
   }
 
   if (status === 'cancelled') {
+    // Keep template; show cancellation as an error on the most relevant step.
+    // We can't reliably infer the last completed stage, so mark the first step as error.
     steps[0].status = 'error'
     steps[0].description = 'Surec iptal edildi'
     return steps
   }
 
-  const completeUntilIndex = (() => {
+  // Map status -> the step that is currently active.
+  // Earlier steps are completed, later steps are upcoming.
+  const currentIndex = (() => {
     if (status === 'delivered' || status === 'in_client') return 1
-    if (status === 'in_laboratory') return 2
-    if (status === 'in_expert') return 3
+    if (status === 'in_laboratory') return 3
+    if (status === 'in_expert') return 4
     if (status === 'completed') return 5
     return 0
   })()
 
-  for (let i = 0; i <= completeUntilIndex; i += 1) {
-    steps[i].status = 'completed'
-  }
-
-  if (status !== 'completed') {
-    const currentIndex = Math.min(steps.length - 1, completeUntilIndex + 1)
-    steps[currentIndex].status = 'current'
+  for (let i = 0; i < steps.length; i += 1) {
+    if (i < currentIndex) steps[i].status = 'completed'
+    else if (i === currentIndex) steps[i].status = status === 'completed' ? 'completed' : 'current'
+    else steps[i].status = 'upcoming'
   }
 
   return steps
 }
 
-function getStatusTitle(status?: string): string {
+function getStatusTitle(rawStatus?: string): string {
+  const status = normalizeKitStatus(rawStatus)
   if (!status) return 'Kit Sureci'
   if (status === 'delivered' || status === 'in_client') return 'Numune Bekleniyor'
   if (status === 'in_laboratory') return 'Analiz Devam Ediyor'
@@ -90,7 +119,8 @@ function getStatusTitle(status?: string): string {
   return 'Kit Sureci'
 }
 
-function getStatusDescription(status?: string): string {
+function getStatusDescription(rawStatus?: string): string {
+  const status = normalizeKitStatus(rawStatus)
   if (!status) return 'Surec baslamadi veya kitiniz henuz tanimlanmadi.'
   if (status === 'delivered' || status === 'in_client') return 'Kit teslim alindi. Numunenizi gonderdikten sonra surec ilerleyecek.'
   if (status === 'in_laboratory') return 'Numuneniz laboratuvarda inceleniyor.'
@@ -201,21 +231,52 @@ export function DanisanPortalPage() {
               {kitTimeline.map((step, i) => {
                 const isComplete = step.status === 'completed'
                 const isCurrent = step.status === 'current'
+                const isError = step.status === 'error'
 
                 const stepClass = isComplete
                   ? 'bg-primary-600 text-white'
-                  : isCurrent
-                    ? 'bg-warning/10 text-warning border border-warning/30'
-                    : 'bg-surface-200 text-surface-500'
+                  : isError
+                    ? 'bg-danger/10 text-danger border border-danger/30'
+                    : isCurrent
+                      ? 'bg-warning/10 text-warning border border-warning/30'
+                      : 'bg-surface-200 text-surface-500'
 
-                const lineClass = isComplete ? 'bg-primary-600' : 'bg-surface-200'
+                const lineClass = isComplete ? 'bg-primary-600' : isError ? 'bg-danger/30' : isCurrent ? 'bg-warning/30' : 'bg-surface-200'
 
                 return (
                   <div key={i} className="flex items-center gap-2 flex-1">
                     <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${stepClass}`}>
-                      {isComplete ? <CheckCircle className="h-4 w-4" /> : i + 1}
+                      {isComplete ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : isError ? (
+                        <AlertCircle className="h-4 w-4" />
+                      ) : isCurrent ? (
+                        <Clock className="h-4 w-4" />
+                      ) : (
+                        i + 1
+                      )}
                     </div>
                     {i < kitTimeline.length - 1 && <div className={`flex-1 h-0.5 rounded-full ${lineClass}`} />}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Step names */}
+            <div className="hidden sm:grid mt-2 gap-2" style={{ gridTemplateColumns: `repeat(${kitTimeline.length}, minmax(0, 1fr))` }}>
+              {kitTimeline.map((step, i) => {
+                const cls =
+                  step.status === 'completed'
+                    ? 'text-primary-700'
+                    : step.status === 'error'
+                      ? 'text-danger'
+                      : step.status === 'current'
+                        ? 'text-warning'
+                        : 'text-surface-400'
+
+                return (
+                  <div key={i} className="min-w-0">
+                    <p className={`text-[10px] leading-tight text-center truncate ${cls}`}>{step.label}</p>
                   </div>
                 )
               })}

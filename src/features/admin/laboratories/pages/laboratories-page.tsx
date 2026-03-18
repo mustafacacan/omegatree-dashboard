@@ -72,6 +72,7 @@ export function LaboratoriesPage() {
   const [selectedLabIdForStats, setSelectedLabIdForStats] = useState('all')
 
   const [newLabForm, setNewLabForm] = useState({
+    companyName: '',
     firstName: '',
     lastName: '',
     phone: '',
@@ -294,6 +295,7 @@ export function LaboratoriesPage() {
   const resetNewLabForm = () => {
     setSelectedProvinceId(null)
     setNewLabForm({
+      companyName: '',
       firstName: '',
       lastName: '',
       phone: '',
@@ -314,8 +316,8 @@ export function LaboratoriesPage() {
   }
 
   const submitNewLab = () => {
-    if (!newLabForm.firstName.trim() || !newLabForm.lastName.trim()) {
-      toast.error('Lab sorumlusu adı ve soyadı zorunludur')
+    if (!newLabForm.companyName.trim()) {
+      toast.error('Kurum adı zorunludur')
       return
     }
     const phoneDigits = newLabForm.phone.replace(/\D/g, '')
@@ -348,8 +350,9 @@ export function LaboratoriesPage() {
         .join(', ')
 
     createMutation.mutate({
-      firstName: newLabForm.firstName.trim(),
-      lastName: newLabForm.lastName.trim(),
+      companyName: newLabForm.companyName.trim(),
+      firstName: newLabForm.firstName.trim() || undefined,
+      lastName: newLabForm.lastName.trim() || undefined,
       phone: phoneDigits,
       gender: newLabForm.gender,
       email: newLabForm.email.trim() || undefined,
@@ -949,6 +952,12 @@ export function LaboratoriesPage() {
           </ModalHeader>
           <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
             <p className="form-section-title">Lab Sorumlusu</p>
+            <Input
+              label="Kurum Adı *"
+              value={newLabForm.companyName}
+              onChange={(e) => setNewLabForm((s) => ({ ...s, companyName: e.target.value }))}
+              placeholder="Laboratuvar adı"
+            />
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Ad"
@@ -1308,9 +1317,16 @@ function LaboratoryTable({
                   className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
                 >
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <Avatar name={lab.name} size="sm" className="shrink-0" />
-                      <span className="text-[12px] font-medium text-surface-700">{lab.name}</span>
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-medium text-surface-700 truncate">{lab.name}</p>
+                        {lab.companyName ? (
+                          <p className="text-[11px] text-surface-500 truncate" title={lab.companyName}>
+                            {lab.companyName}
+                          </p>
+                        ) : null}
+                      </div>
                     </div>
                   </td>
                   <td className="px-5 py-3.5">

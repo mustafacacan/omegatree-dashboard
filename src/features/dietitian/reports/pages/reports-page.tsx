@@ -31,6 +31,14 @@ function getResultMediaUrl(result: Result): string | null {
   return result.mediaResult?.url ?? result.resultMedia ?? null
 }
 
+function getClientLabel(result: Result): string | null {
+  const user = result.dieticianClient?.client?.user ?? result.client?.user
+  if (!user) return null
+  const name = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+  if (name) return name
+  return user.phone ?? user.email ?? null
+}
+
 function getResultStatusLabel(status?: string): string {
   if (status === 'pending') return 'Bekliyor'
   if (status === 'completed') return 'Sonuclandi'
@@ -60,6 +68,16 @@ export function ReportsPage() {
     })
   }, [resultsQuery.data?.items])
 
+  const listClientLabelById = useMemo(() => {
+    const map = new Map<number, string>()
+    for (const r of items) {
+      if (r.id == null) continue
+      const label = getClientLabel(r)
+      if (label) map.set(r.id, label)
+    }
+    return map
+  }, [items])
+
   const detailQuery = useQuery({
     queryKey: ['results', 'dietitian', 'detail', detailId],
     queryFn: () => getResultById(detailId as number),
@@ -83,9 +101,9 @@ export function ReportsPage() {
       <Card className="border-surface-200 dark:border-surface-700">
         <CardHeader className="border-b border-surface-100 dark:border-surface-700">
           <div>
-            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Sonuclar</h2>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Sonuçlar</h2>
             <p className="text-sm text-surface-500 mt-0.5">
-              Sonuclanan raporlari buradan goruntuleyebilirsiniz.
+              Sonuçlanan raporları buradan görüntüleyebilirsiniz.
             </p>
           </div>
         </CardHeader>
@@ -93,15 +111,15 @@ export function ReportsPage() {
           {resultsQuery.isLoading ? (
             <div className="py-14 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
-              <p className="text-sm text-surface-500">Sonuclar yukleniyor...</p>
+              <p className="text-sm text-surface-500">Sonuçlar yükleniyor...</p>
             </div>
           ) : resultsQuery.isError ? (
             <div className="py-14 text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100 dark:bg-surface-200/80">
                 <FileText className="h-7 w-7 text-surface-400" />
               </div>
-              <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Sonuclar yuklenemedi</p>
-              <p className="text-xs text-surface-500 mt-1">{getApiErrorMessage(resultsQuery.error, { fallback: 'Lutfen tekrar deneyin' })}</p>
+              <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Sonuçlar yüklenemedi</p>
+              <p className="text-xs text-surface-500 mt-1">{getApiErrorMessage(resultsQuery.error, { fallback: 'Lütfen tekrar deneyin.' })}</p>
               <div className="mt-4 flex justify-center">
                 <Button variant="outline" size="sm" onClick={() => resultsQuery.refetch()}>
                   Yenile
@@ -113,8 +131,8 @@ export function ReportsPage() {
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100 dark:bg-surface-200/80">
                 <FileText className="h-7 w-7 text-surface-400" />
               </div>
-              <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Henuz sonuc yok</p>
-              <p className="text-xs text-surface-500 mt-1">Sonuclanan raporlar burada listelenecek.</p>
+              <p className="text-sm font-medium text-surface-600 dark:text-surface-400">Henüz sonuç bulunmuyor</p>
+              <p className="text-xs text-surface-500 mt-1">Sonuçlanan raporlar burada listelenecektir.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -135,7 +153,8 @@ export function ReportsPage() {
                         </Badge>
                       </p>
                       <p className="mt-1 text-xs text-surface-500 truncate">
-                        {r.updatedAt || r.createdAt ? formatDateTime(r.updatedAt || r.createdAt!) : '—'} · Eslesme: {r.dieticianClientId ?? '—'}
+                        {r.updatedAt || r.createdAt ? formatDateTime(r.updatedAt || r.createdAt!) : '—'} · Eşleşme ID: {r.dieticianClientId ?? '—'}
+                        {getClientLabel(r) ? ` · Danışan: ${getClientLabel(r)}` : ''}
                       </p>
                     </div>
                   </div>
@@ -146,7 +165,7 @@ export function ReportsPage() {
                       onClick={() => setDetailId(r.id ?? null)}
                       disabled={r.id == null}
                     >
-                      <Eye className="h-4 w-4" /> Goruntule
+                      <Eye className="h-4 w-4" /> Görüntüle
                     </Button>
                   </div>
                 </div>
@@ -171,18 +190,18 @@ export function ReportsPage() {
       <Modal open={detailId != null} onOpenChange={(open) => !open && setDetailId(null)}>
         <ModalContent className={detailMediaUrl ? 'max-w-4xl w-full' : 'max-w-md'}>
           <ModalHeader>
-            <ModalTitle>Sonuc Detayi</ModalTitle>
+            <ModalTitle>Sonuç Detayı</ModalTitle>
             <ModalDescription>{detailId != null ? `#${detailId}` : '—'}</ModalDescription>
           </ModalHeader>
           <ModalBody className="space-y-4">
             {detailQuery.isLoading ? (
               <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-4 text-sm text-surface-600 dark:text-surface-400">
-                Yukleniyor...
+                Yükleniyor...
               </div>
             ) : detailQuery.isError ? (
               <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-4">
-                <p className="text-sm font-medium text-surface-700 dark:text-surface-300">Detay yuklenemedi</p>
-                <p className="text-xs text-surface-500 mt-1">{getApiErrorMessage(detailQuery.error, { fallback: 'Lutfen daha sonra tekrar deneyin.' })}</p>
+                <p className="text-sm font-medium text-surface-700 dark:text-surface-300">Detay yüklenemedi</p>
+                <p className="text-xs text-surface-500 mt-1">{getApiErrorMessage(detailQuery.error, { fallback: 'Lütfen daha sonra tekrar deneyin.' })}</p>
               </div>
             ) : detailResult ? (
               <>
@@ -192,15 +211,19 @@ export function ReportsPage() {
                     <p>{getResultStatusLabel(detailResult.status)}</p>
                   </div>
                   <div>
-                    <p className="text-surface-500 text-xs">Eslesme</p>
+                    <p className="text-surface-500 text-xs">Eşleşme ID</p>
                     <p className="font-mono font-semibold">{detailResult.dieticianClientId ?? '—'}</p>
                   </div>
                   <div>
-                    <p className="text-surface-500 text-xs">Olusturma</p>
+                    <p className="text-surface-500 text-xs">Danışan</p>
+                    <p>{getClientLabel(detailResult) ?? (detailId != null ? (listClientLabelById.get(detailId) ?? '—') : '—')}</p>
+                  </div>
+                  <div>
+                    <p className="text-surface-500 text-xs">Oluşturma</p>
                     <p>{detailResult.createdAt ? formatDateTime(detailResult.createdAt) : '—'}</p>
                   </div>
                   <div>
-                    <p className="text-surface-500 text-xs">Guncelleme</p>
+                    <p className="text-surface-500 text-xs">Güncelleme</p>
                     <p>{detailResult.updatedAt ? formatDateTime(detailResult.updatedAt) : '—'}</p>
                   </div>
                 </div>
@@ -231,24 +254,24 @@ export function ReportsPage() {
                 {detailMediaUrl ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <p className="text-sm font-medium text-surface-700">Sonuc Dosyasi</p>
+                      <p className="text-sm font-medium text-surface-700">Sonuç Dosyası</p>
                       <Button variant="link" onClick={() => window.open(detailMediaUrl, '_blank', 'noopener,noreferrer')}>
-                        Linkten Ac
+                        Bağlantıyı Aç
                       </Button>
                     </div>
                     {isProbablyPdf(detailMediaUrl) ? (
                       <PdfViewer file={detailMediaUrl} maxHeight="55vh" className="flex-1" />
                     ) : (
                       <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-4">
-                        <p className="text-sm text-surface-600 dark:text-surface-400">Dosya onizlemesi sadece PDF icin destekleniyor.</p>
-                        <p className="text-xs text-surface-500 mt-1">Linkten acarak goruntuleyebilirsiniz.</p>
+                        <p className="text-sm text-surface-600 dark:text-surface-400">Dosya önizlemesi yalnızca PDF formatı için desteklenir.</p>
+                        <p className="text-xs text-surface-500 mt-1">Bağlantıyı açarak görüntüleyebilirsiniz.</p>
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-4">
-                    <p className="text-sm text-surface-600 dark:text-surface-400">Sonuc dosyasi bulunamadi.</p>
-                    <p className="text-xs text-surface-500 mt-1">Bu kayit icin medya yuklenmemis olabilir.</p>
+                    <p className="text-sm text-surface-600 dark:text-surface-400">Sonuç dosyası bulunamadı.</p>
+                    <p className="text-xs text-surface-500 mt-1">Bu kayıt için medya yüklenmemiş olabilir.</p>
                   </div>
                 )}
               </>
