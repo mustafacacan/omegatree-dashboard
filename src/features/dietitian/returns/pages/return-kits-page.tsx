@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { RotateCcw, Search } from 'lucide-react'
+import { Eye, RotateCcw, Search } from 'lucide-react'
 
 import { PageHeader } from '@/components/shared/page-header'
 import { TablePagination } from '@/components/shared/table-pagination'
-import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui'
+import { Badge, Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { getDamagedKitsWithPagination, type DamagedKit } from '@/services/damaged-kits.service'
+import { getDamagedKitDetails, getDamagedKitsWithPagination, type DamagedKit } from '@/services/damaged-kits.service'
+import { getApiOrigin } from '@/lib/env'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -28,10 +29,54 @@ function statusBadge(item: DamagedKit) {
   return <Badge variant="info" dot>—</Badge>
 }
 
+/** Media rows store absolute URLs with server BACKEND_URL; dev/ngrok değişince host uyuşmaz. /uploads yolunu her zaman API origin ile eşle. */
+function resolveMediaUrl(url: unknown): string | null {
+  if (typeof url !== 'string') return null
+  const trimmed = url.trim()
+  if (!trimmed) return null
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return trimmed
+
+  const apiOrigin = getApiOrigin().replace(/\/$/, '')
+
+  const withOriginPath = (pathname: string, search: string, hash: string) => {
+    const path = pathname.startsWith('/') ? pathname : `/${pathname}`
+    return `${apiOrigin}${path}${search}${hash}`
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed)
+      if (parsed.pathname.includes('/uploads')) {
+        return withOriginPath(parsed.pathname, parsed.search, parsed.hash)
+      }
+    } catch {
+      return trimmed
+    }
+    return trimmed
+  }
+
+  return withOriginPath(trimmed, '', '')
+}
+
+function pickDamageImageUrl(detail: Record<string, unknown> | null): string | null {
+  if (!detail) return null
+  const node = detail.damageImage
+  if (node && typeof node === 'object') {
+    const o = node as Record<string, unknown>
+    const raw = o.url ?? o.path
+    const resolved = resolveMediaUrl(raw)
+    if (resolved) return resolved
+  }
+  return resolveMediaUrl(detail.damageImageUrl) ?? resolveMediaUrl(detail.imageUrl)
+}
+
 export function ReturnKitsPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailId, setDetailId] = useState<number | string | null>(null)
+  const [imageLoadError, setImageLoadError] = useState(false)
 
   const trimmed = useMemo(() => search.trim(), [search])
 
@@ -65,6 +110,26 @@ export function ReturnKitsPage() {
       return barcode.includes(q) || reason.includes(q) || String((it as unknown as { id?: unknown }).id ?? '').includes(q)
     })
   }, [items, trimmed])
+
+  const detailQuery = useQuery({
+    queryKey: ['dietitian', 'return-kits', 'detail', detailId],
+    queryFn: () => getDamagedKitDetails(String(detailId)),
+    enabled: detailOpen && detailId != null,
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
+
+  const detail = useMemo(() => {
+    const d = detailQuery.data
+    if (!d || typeof d !== 'object') return null
+    return d as Record<string, unknown>
+  }, [detailQuery.data])
+
+  const detailImageUrl = useMemo(() => pickDamageImageUrl(detail), [detail])
+
+  useEffect(() => {
+    setImageLoadError(false)
+  }, [detailImageUrl, detailId])
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -107,24 +172,25 @@ export function ReturnKitsPage() {
                   <TableHead>Açıklama</TableHead>
                   <TableHead>Durum</TableHead>
                   <TableHead>Tarih</TableHead>
+                  <TableHead className="w-[72px] text-right">Detay</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {query.isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="py-12 text-center text-surface-500 text-sm">
+                    <TableCell colSpan={5} className="py-12 text-center text-surface-500 text-sm">
                       Yükleniyor...
                     </TableCell>
                   </TableRow>
                 ) : query.isError ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="py-12 text-center text-surface-500 text-sm">
+                    <TableCell colSpan={5} className="py-12 text-center text-surface-500 text-sm">
                       {getApiErrorMessage(query.error, { fallback: 'İade kitler yüklenemedi.' })}
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="py-12 text-center text-surface-500 text-sm">
+                    <TableCell colSpan={5} className="py-12 text-center text-surface-500 text-sm">
                       Kayıt bulunamadı.
                     </TableCell>
                   </TableRow>
@@ -144,6 +210,23 @@ export function ReturnKitsPage() {
                         <TableCell>{statusBadge(item)}</TableCell>
                         <TableCell className="text-[12px] text-surface-500 whitespace-nowrap">
                           {typeof createdAt === 'string' && createdAt ? formatDate(createdAt) : '—'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-surface-600 hover:text-primary-600"
+                            aria-label="Detayı görüntüle"
+                            disabled={id == null}
+                            onClick={() => {
+                              if (id == null) return
+                              setDetailId(id as number | string)
+                              setDetailOpen(true)
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     )
@@ -165,6 +248,86 @@ export function ReturnKitsPage() {
           />
         </div>
       </motion.div>
+
+      <Modal
+        open={detailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open)
+          if (!open) setDetailId(null)
+        }}
+      >
+        <ModalContent className="max-w-2xl max-h-[90vh] flex flex-col">
+          <ModalHeader>
+            <ModalTitle>İade Detayı</ModalTitle>
+          </ModalHeader>
+          <ModalBody className="flex-1 min-h-0 overflow-y-auto space-y-4">
+            {detailQuery.isLoading && (
+              <div className="py-12 text-center text-surface-500 text-sm">Yükleniyor...</div>
+            )}
+            {detailQuery.isError && (
+              <div className="py-12 text-center text-surface-500 text-sm">
+                {getApiErrorMessage(detailQuery.error, { fallback: 'Detay yüklenemedi.' })}
+              </div>
+            )}
+            {!detailQuery.isLoading && !detailQuery.isError && detail && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Barkod</div>
+                    <div className="mt-1 font-mono text-[13px] font-semibold text-surface-900">
+                      {kitBarcode(detail as unknown as DamagedKit)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Durum</div>
+                    <div className="mt-2">{statusBadge(detail as unknown as DamagedKit)}</div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-surface-200 bg-panel p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Açıklama</div>
+                  <div className="mt-1 text-[13px] text-surface-800 whitespace-pre-wrap">
+                    {typeof detail.reason === 'string' && detail.reason.trim() ? detail.reason : '—'}
+                  </div>
+                </div>
+
+                {detailImageUrl ? (
+                  <div className="rounded-xl border border-surface-200 bg-panel p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Fotoğraf</div>
+                    <div className="mt-2 overflow-hidden rounded-xl border border-surface-200 bg-surface-50">
+                      {!imageLoadError ? (
+                        // eslint-disable-next-line jsx-a11y/img-redundant-alt
+                        <img
+                          src={detailImageUrl}
+                          alt="Hasar fotoğrafı"
+                          className="w-full max-h-[420px] object-contain bg-surface-50"
+                          loading="lazy"
+                          onError={() => setImageLoadError(true)}
+                        />
+                      ) : (
+                        <div className="py-10 px-4 text-center text-[13px] text-surface-500">
+                          Görsel yüklenemedi. API adresi (VITE_API_URL) ile sunucunun aynı tabanı kullandığından emin olun; gerekirse bağlantıyı yeni sekmede deneyin.
+                          <a
+                            href={detailImageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-2 block text-primary-600 hover:underline break-all"
+                          >
+                            {detailImageUrl}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setDetailOpen(false)}>Kapat</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   )
 }
