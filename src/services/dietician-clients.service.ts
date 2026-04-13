@@ -18,8 +18,6 @@ export interface DieticianClient {
 }
 
 function mapDieticianClientResponse(item: ApiDieticianClientResponse): DieticianClient {
-  const raw = item as unknown as Record<string, unknown>
-  const createdAtFromRoot = typeof raw.createdAt === 'string' ? raw.createdAt : undefined
   return {
     id: item.id ?? 0,
     dieticianId: item.dietician?.id,
@@ -28,20 +26,18 @@ function mapDieticianClientResponse(item: ApiDieticianClientResponse): Dietician
     clientName: item.client ? `${item.client.firstName ?? ''} ${item.client.lastName ?? ''}`.trim() : undefined,
     clientPhone: item.client?.phone,
     clientEmail: item.client?.email,
-    createdAt: createdAtFromRoot,
+    createdAt: item.createdAt,
   }
 }
 
 function mapFromClient(item: ApiGetDieticianFromClient): DieticianClient {
-  const raw = item as unknown as Record<string, unknown>
-  const createdAtFromRoot = typeof raw.createdAt === 'string' ? raw.createdAt : undefined
   return {
     id: item.id ?? 0,
     clientId: item.client?.id,
     clientName: item.client ? `${item.client.firstName ?? ''} ${item.client.lastName ?? ''}`.trim() : undefined,
     clientPhone: item.client?.phone,
     clientEmail: item.client?.email,
-    createdAt: createdAtFromRoot,
+    createdAt: item.client?.createdAt,
   }
 }
 

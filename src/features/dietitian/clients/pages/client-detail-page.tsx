@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/page-header'
+import { Timeline } from '@/components/shared/timeline'
+import { StatusBadge } from '@/components/shared/status-badge'
 import { KitRequestModal } from '../components/kit-request-modal'
 import { ReportShareModal } from '../components/report-share-modal'
 import {
   Card, CardContent, CardHeader, CardTitle, Button, Badge, Avatar,
-  Tabs, TabsList, TabsTrigger, TabsContent, Progress,
+  Tabs, TabsList, TabsTrigger, TabsContent, Progress, Input,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
 } from '@/components/ui'
 import { formatDate, formatDateTime } from '@/lib/utils'
@@ -14,8 +16,9 @@ import { ROUTES } from '@/utils/routes'
 import {
   ArrowLeft, Phone, Mail, MapPin, Calendar, FlaskConical, FileText,
   Edit3, Droplets, Ruler, Weight, Heart, Pill, AlertTriangle, StickyNote,
-  Package, Activity, User,
-  Cake, CheckCircle, Boxes, Send, X,
+  CheckCircle2, Package, Activity, User, Eye, Download,
+  Cake, BadgeCheck, Search, Share2, Printer,
+  Truck, Building2, CheckCircle, Boxes, Send, X,
 } from 'lucide-react'
 import { useClientsStore } from '@/stores/clients.store'
 import { toast } from 'sonner'
@@ -49,11 +52,12 @@ export function ClientDetailPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [kitRequestOpen, setKitRequestOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
-  const [shareReportId] = useState('')
+  const [shareReportId, setShareReportId] = useState('')
+  const [reportFilter, setReportFilter] = useState('')
   const [assignKitOpen, setAssignKitOpen] = useState(false)
   const [selectedStockKit, setSelectedStockKit] = useState<string | null>(null)
   const [viewReportOpen, setViewReportOpen] = useState(false)
-  const [viewingReport] = useState<{ id: string; kitBarcode: string; date: string; specialist: string; status: string; summary: string; sharedAt?: string } | null>(null)
+  const [viewingReport, setViewingReport] = useState<{ id: string; kitBarcode: string; date: string; specialist: string; status: string; summary: string; sharedAt?: string } | null>(null)
   const [apiKits, setApiKits] = useState<DieticianClientKit[]>([])
   const [anamnezData, setAnamnezData] = useState<AnamnezForm | null>(null)
 
@@ -357,7 +361,7 @@ export function ClientDetailPage() {
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <h3 className="text-[14px] font-semibold text-surface-900 dark:text-surface-100">{kit.kitName || 'Kit'}</h3>
-                              <Badge variant={kit.status === 'completed' ? 'success' : kit.status === 'cancelled' ? 'danger' : 'primary'} size="sm">
+                              <Badge variant={kit.status === 'completed' ? 'success' : kit.status === 'cancelled' ? 'destructive' : 'primary'} size="sm">
                                 {kit.status ?? '—'}
                               </Badge>
                             </div>
@@ -677,4 +681,20 @@ function NoteItem({ color, title, text }: { color: 'amber' | 'blue' | 'rose' | '
   )
 }
 
-// Metric helper removed (unused)
+function Metric({ label, value, status }: { label: string; value: string; status: 'low' | 'warning' | 'normal' | 'good' }) {
+  const c = {
+    low: { bg: 'bg-red-50', text: 'text-red-700', badge: 'Dusuk' },
+    warning: { bg: 'bg-amber-50', text: 'text-amber-700', badge: 'Dikkat' },
+    normal: { bg: 'bg-green-50', text: 'text-green-700', badge: 'Normal' },
+    good: { bg: 'bg-primary-50', text: 'text-primary-700', badge: 'Iyi' },
+  }[status]
+  return (
+    <div className={`p-3 rounded-lg ${c.bg}`}>
+      <p className="text-[10px] font-medium text-surface-500 uppercase tracking-wider mb-1">{label}</p>
+      <div className="flex items-end justify-between">
+        <span className={`text-base font-bold ${c.text}`}>{value}</span>
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${c.bg} ${c.text}`}>{c.badge}</span>
+      </div>
+    </div>
+  )
+}

@@ -16,57 +16,60 @@ export function AuthLayout() {
   return (
     <div className="min-h-screen flex" style={{ background: '#F9F7F3' }}>
       {/* Left panel - Branding */}
-      <div className="hidden lg:flex lg:w-[480px] xl:w-[540px] flex-col justify-between p-10 relative overflow-hidden" style={{ background: '#2D2A26' }}>
-        {/* Subtle organic pattern */}
-        <div className="absolute inset-0 opacity-[0.04]" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }} />
+      <div className="hidden lg:flex lg:w-[640px] xl:w-[740px] relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/asset/img/home-one-bg.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/70" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(157,176,104,0.35),transparent_50%)]" />
 
-        {/* Warm decorative glow */}
-        <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #8B9A4B 0%, transparent 70%)' }} />
-
-        {/* Logo */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="flex items-center justify-center h-10 w-10 rounded-xl" style={{ background: '#8B9A4B' }}>
-            <TreePine className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-white">OmegaTree</h1>
-            <p className="text-[11px] tracking-wide" style={{ color: '#9C968D' }}>Kit Takip Sistemi</p>
-          </div>
-        </div>
-
-        {/* Main content */}
-        <div className="relative z-10 space-y-8">
-          <div>
-            <h2 className="text-3xl font-semibold text-white leading-tight">
-              Analiz sureclerinizi
-              <br />
-              <span style={{ color: '#9DB068' }}>uctan uca yonetin.</span>
-            </h2>
-            <p className="mt-4 text-[15px] leading-relaxed max-w-sm" style={{ color: '#9C968D' }}>
-              Barkod tabanli kit takibi, kor analiz protokolu ve gercek zamanli bildirimlerle profesyonel laboratuvar yonetimi.
-            </p>
+        <div className="relative z-10 flex w-full flex-col justify-between py-10 pl-14 pr-6 xl:pl-20 xl:pr-8">
+          <div className="flex items-center gap-3 self-start">
+            <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary-500/95 backdrop-blur-sm">
+              <TreePine className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-white">OmegaTree</h1>
+              <p className="text-[11px] tracking-wide text-white/75">Kit Takip Sistemi</p>
+            </div>
           </div>
 
-          {/* Clean stats */}
-          <div className="flex gap-10">
-            {[
-              { value: '10K+', label: 'Analiz' },
-              { value: '500+', label: 'Diyetisyen' },
-              { value: '%99.9', label: 'Uptime' },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
-                <p className="text-xs mt-0.5" style={{ color: '#6B665E' }}>{stat.label}</p>
+          <div className="ml-auto w-full max-w-md space-y-6">
+            <div className="max-w-md rounded-2xl border border-white/20 bg-white/10 p-6 backdrop-blur-md">
+              <h2 className="text-3xl font-semibold text-white leading-tight">
+                Analiz süreçlerinizi
+                <br />
+                <span className="text-primary-200">uçtan uca yönetin.</span>
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-white/80">
+                Barkod tabanlı kit takibi, kör analiz protokolü ve gerçek zamanlı bildirimlerle profesyonel laboratuvar yönetimi.
+              </p>
+            </div>
+
+            <div className="max-w-md rounded-2xl border border-white/20 bg-black/20 p-4 backdrop-blur-sm space-y-3">
+              <p className="text-[11px] font-semibold tracking-[0.08em] uppercase text-white/70">
+                Neler Sunuyor?
+              </p>
+              <div className="space-y-2.5">
+                {[
+                  'Barkod doğrulama ile hızlı kit teslim alma',
+                  'Laboratuvara gönderim ve durum takibini tek ekrandan yönetme',
+                  'Hasarlı kitler için kanıt dosyalı iade talebi oluşturma',
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-2.5">
+                    <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-primary-200" />
+                    <p className="text-[13px] leading-relaxed text-white/90">{item}</p>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
-        </div>
 
-        <p className="relative z-10 text-xs" style={{ color: '#6B665E' }}>
-          &copy; {new Date().getFullYear()} OmegaTree Saglik Teknolojileri
-        </p>
+          <p className="text-xs text-white/65 w-full text-center">
+            &copy; {new Date().getFullYear()} OmegaTree Sağlık Teknolojileri
+          </p>
+        </div>
       </div>
 
       {/* Right panel - Form */}
