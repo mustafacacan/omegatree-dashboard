@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Button, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
@@ -13,30 +13,17 @@ import { TablePagination } from '@/components/shared/table-pagination'
 import { PdfViewer } from '@/components/shared/pdf-viewer'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { KitStatus } from '@/utils/constants'
-import { getOrderById, getOrders, updateOrderStatus, type OrderItem } from '@/services/orders.service'
+import { getOrderById, getOrdersWithPagination, updateOrderStatus, type OrderItem } from '@/services/orders.service'
 import { getStocks, type Stock } from '@/services/stocks.service'
 
 const ORDERS_QUERY_KEY = ['orders'] as const
 const STOCKS_AVAILABLE_QUERY_KEY = ['stocks', 'available'] as const
-const EMPTY_ORDERS: OrderItem[] = []
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 export function OrdersPage() {
   const { orders, kits, assignKitsToDietitian, setOrdersFromApi, approveOrderByAdmin } = useWorkflowStore()
   const queryClient = useQueryClient()
-
-  const { data: apiOrdersData, isLoading: ordersLoading } = useQuery<OrderItem[]>({
-    queryKey: ORDERS_QUERY_KEY,
-    queryFn: () => getOrders(),
-  })
-  const apiOrders = apiOrdersData ?? EMPTY_ORDERS
-
-  useEffect(() => {
-    if (apiOrdersData != null && apiOrdersData.length >= 0) {
-      setOrdersFromApi(apiOrdersData)
-    }
-  }, [apiOrdersData, setOrdersFromApi])
 
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -46,21 +33,26 @@ export function OrdersPage() {
   /** Modal içi adım: 1 = Onayla, 2 = Kit atama, 3 = Tamamla */
   const [modalStep, setModalStep] = useState<1 | 2 | 3>(1)
 
-  const filteredOrders = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return apiOrders
-    return apiOrders.filter((order: OrderItem) => {
-      const orderNum = (order.orderNumber ?? '').toLowerCase()
-      const userName = [order.user?.firstName, order.user?.lastName].filter(Boolean).join(' ').toLowerCase()
-      const kitName = (order.salesKit?.name ?? '').toLowerCase()
-      return orderNum.includes(q) || userName.includes(q) || kitName.includes(q) || String(order.id).includes(q)
-    })
-  }, [search, apiOrders])
+  const trimmedSearch = useMemo(() => search.trim(), [search])
+  const ordersQuery = useQuery({
+    queryKey: [...ORDERS_QUERY_KEY, { page, pageSize, search: trimmedSearch }],
+    queryFn: () =>
+      getOrdersWithPagination({
+        page: {
+          page,
+          limit: pageSize,
+          search: trimmedSearch || undefined,
+        },
+      }),
+    placeholderData: keepPreviousData,
+  })
 
-  const paginatedOrders = useMemo(
-    () => filteredOrders.slice((page - 1) * pageSize, page * pageSize),
-    [filteredOrders, page, pageSize]
-  )
+  const apiOrders = ordersQuery.data?.items ?? []
+  const totalItems = ordersQuery.data?.totalItems ?? apiOrders.length
+
+  useEffect(() => {
+    setOrdersFromApi(apiOrders)
+  }, [apiOrders, setOrdersFromApi])
 
   const availableKitsFromStore = useMemo(() => {
     return kits.filter(
@@ -206,18 +198,9 @@ export function OrdersPage() {
     },
   })
 
-  const paymentMethodLabel = (method: string | undefined) => {
-    if (!method) return '—'
-    const m = (method || '').toLowerCase()
-    if (m === 'havale') return 'Havale'
-    if (m === 'eft') return 'EFT'
-    if (m === 'kredi_karti' || m === 'kredi kartı') return 'Kredi kartı'
-    return method
-  }
-
   useEffect(() => {
     setPage(1)
-  }, [search])
+  }, [trimmedSearch])
 
   /** Modal açıldığında başlangıç adımını belirle */
   useEffect(() => {
@@ -227,13 +210,6 @@ export function OrdersPage() {
     else if (remainingQty > 0) setModalStep(2)
     else setModalStep(3)
   }, [selectedOrder])
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize))
-    if (page > totalPages) {
-      setPage(totalPages)
-    }
-  }, [filteredOrders.length, page, pageSize])
 
   const handleOpenOrder = (orderId: string) => {
     setSelectedOrder(orderId)
@@ -308,7 +284,7 @@ export function OrdersPage() {
             <div>
               <h3 className="text-[15px] font-semibold text-surface-900">Siparişler</h3>
               <p className="text-[12px] mt-0.5 text-surface-500">
-                Ödemesi diyetisyen panelinde yapılan siparişler ({filteredOrders.length} sipariş)
+                Ödemesi diyetisyen panelinde yapılan siparişler ({totalItems} sipariş)
               </p>
             </div>
             <div className="relative">
@@ -339,14 +315,14 @@ export function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {ordersLoading ? (
+                {ordersQuery.isLoading ? (
                   <tr>
                     <td colSpan={9} className="px-5 py-12 text-center">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
                       <p className="text-[12px] text-surface-500">Sipariş listesi yükleniyor...</p>
                     </td>
                   </tr>
-                ) : paginatedOrders.length === 0 ? (
+                ) : apiOrders.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-5 py-12 text-center">
                       <Package className="h-10 w-10 mx-auto mb-2 text-surface-400" />
@@ -357,7 +333,7 @@ export function OrdersPage() {
                     </td>
                   </tr>
                 ) : (
-                  paginatedOrders.map((order: OrderItem) => {
+                  apiOrders.map((order: OrderItem) => {
                     const userName = [order.user?.firstName, order.user?.lastName].filter(Boolean).join(' ') || '—'
                     const totalPrice = typeof order.totalPrice === 'string' ? Number.parseFloat(order.totalPrice) : Number(order.totalPrice)
                     const storeOrder = orders.find((o) => o.id === String(order.id))
@@ -449,7 +425,7 @@ export function OrdersPage() {
             </table>
           </div>
           <TablePagination
-            totalItems={filteredOrders.length}
+            totalItems={totalItems}
             page={page}
             pageSize={pageSize}
             onPageChange={setPage}

@@ -76,6 +76,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
         { title: 'Kit & Stok', items: [
           { label: 'Kitlerim', href: ROUTES.DIYETISYEN_KITLER, icon: FlaskConical },
           { label: 'Stogum', href: ROUTES.DIYETISYEN_STOK, icon: Boxes },
+          { label: 'Iade Kitler', href: ROUTES.DIYETISYEN_IADE_KITLER, icon: RotateCcw },
           { label: 'Siparis Ver', href: ROUTES.DIYETISYEN_SIPARISLER, icon: Truck },
           { label: 'Siparis Gecmisim', href: ROUTES.DIYETISYEN_SIPARIS_GECMISI, icon: History },
         ]},

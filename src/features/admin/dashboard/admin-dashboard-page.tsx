@@ -10,7 +10,7 @@ import { useCurrentUser } from '@/stores/auth.store'
 import { motion } from 'framer-motion'
 import {
   Package, Users, ShoppingCart, TrendingUp, TrendingDown,
-  Clock, CheckCircle, AlertTriangle, Truck, BarChart3,
+  CheckCircle, AlertTriangle, Truck, BarChart3,
   ArrowUpRight, ArrowRight, Loader2,
 } from 'lucide-react'
 import {

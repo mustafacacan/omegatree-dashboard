@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Button, Input, Badge, Avatar,
@@ -21,18 +21,12 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { useCurrentUser } from '@/stores/auth.store'
 import { TablePagination } from '@/components/shared/table-pagination'
 import {
-  getUsers,
   createUser,
   updateUser,
   deleteUser,
   verifyUser,
+  getUsersWithPagination,
 } from '@/services/users.service'
-
-const statusBadgeVariant: Record<UserStatus, 'success' | 'warning' | 'danger'> = {
-  [UserStatus.ACTIVE]: 'success',
-  [UserStatus.PENDING]: 'warning',
-  [UserStatus.SUSPENDED]: 'danger',
-}
 
 const statusLabels: Record<UserStatus, string> = {
   [UserStatus.ACTIVE]: 'Aktif',
@@ -49,6 +43,8 @@ export function UsersListPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [approvalOpen, setApprovalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -67,11 +63,27 @@ export function UsersListPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
 
-  const { data, isLoading } = useQuery({
-    queryKey: USERS_QUERY_KEY,
-    queryFn: () => getUsers({ page: 1, limit: 500 }),
+  const trimmedSearch = useMemo(() => search.trim(), [search])
+  const usersQuery = useQuery({
+    queryKey: [...USERS_QUERY_KEY, { page, pageSize, role: roleFilter, search: trimmedSearch }],
+    queryFn: () =>
+      getUsersWithPagination({
+        page,
+        limit: pageSize,
+        role: roleFilter !== 'all' ? (roleFilter as UserRole) : undefined,
+        search: trimmedSearch || undefined,
+      }),
+    placeholderData: keepPreviousData,
   })
-  const users: User[] = Array.isArray(data?.users) ? data.users : []
+  const users: User[] = usersQuery.data?.items ?? []
+  const totalItems = usersQuery.data?.totalItems ?? users.length
+
+  useEffect(() => {
+    const safeSize = Math.max(1, pageSize)
+    const totalPages = Math.max(1, Math.ceil(totalItems / safeSize))
+    const next = Math.min(Math.max(1, page), totalPages)
+    if (next !== page) setPage(next)
+  }, [totalItems, page, pageSize])
 
   const verifyMutation = useMutation({
     mutationFn: verifyUser,
@@ -130,19 +142,6 @@ export function UsersListPage() {
   const pendingUsers = useMemo(
     () => users.filter((u) => u.status === UserStatus.PENDING),
     [users]
-  )
-  const filteredUsers = useMemo(
-    () =>
-      users.filter((u) => {
-        const q = search.toLowerCase()
-        const matchesSearch =
-          u.firstName.toLowerCase().includes(q) ||
-          u.lastName.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q)
-        const matchesRole = roleFilter === 'all' || u.role === roleFilter
-        return matchesSearch && matchesRole
-      }),
-    [users, search, roleFilter]
   )
 
   const handleApprove = (user: User) => {
@@ -247,11 +246,11 @@ export function UsersListPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <div>
                   <h3 className="text-[15px] font-semibold text-surface-900">Kullanıcılar</h3>
-                  <p className="text-[12px] mt-0.5 text-surface-500">Kayıtlı kullanıcılar ({filteredUsers.length} kişi)</p>
+                <p className="text-[12px] mt-0.5 text-surface-500">Kayıtlı kullanıcılar ({totalItems} kişi)</p>
                 </div>
                 <TabsList className="ml-0">
-                  <TabsTrigger value="all">Tümü ({users.length})</TabsTrigger>
-                  <TabsTrigger value="active">Aktif ({users.filter(u => u.status === UserStatus.ACTIVE).length})</TabsTrigger>
+                <TabsTrigger value="all">Tümü</TabsTrigger>
+                <TabsTrigger value="active">Aktif</TabsTrigger>
                   <TabsTrigger value="pending">Bekleyen ({pendingUsers.length})</TabsTrigger>
                 </TabsList>
               </div>
@@ -262,11 +261,20 @@ export function UsersListPage() {
                     type="text"
                     placeholder="Ad, e-posta ara..."
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value)
+                    setPage(1)
+                  }}
                     className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                   />
                 </div>
-                <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <Select
+                value={roleFilter}
+                onValueChange={(v) => {
+                  setRoleFilter(v)
+                  setPage(1)
+                }}
+              >
                   <SelectTrigger className="min-w-[10rem]">
                     <Filter className="h-3.5 w-3.5 mr-2 text-surface-400" />
                     <SelectValue placeholder="Rol" />
@@ -288,38 +296,62 @@ export function UsersListPage() {
             </div>
             <TabsContent value="all">
               <UserTable
-                users={filteredUsers}
+                users={users}
+                totalItems={totalItems}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(next) => {
+                  setPageSize(next)
+                  setPage(1)
+                }}
                 currentUserId={currentUser?.id}
                 onApprove={handleApprove}
                 onDelete={handleDeleteOpen}
                 onActivate={handleActivate}
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
-                isLoading={isLoading}
+                isLoading={usersQuery.isLoading}
               />
             </TabsContent>
             <TabsContent value="active">
               <UserTable
-                users={filteredUsers.filter(u => u.status === UserStatus.ACTIVE)}
+                users={users.filter(u => u.status === UserStatus.ACTIVE)}
+                totalItems={totalItems}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(next) => {
+                  setPageSize(next)
+                  setPage(1)
+                }}
                 currentUserId={currentUser?.id}
                 onApprove={handleApprove}
                 onDelete={handleDeleteOpen}
                 onActivate={handleActivate}
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
-                isLoading={isLoading}
+                isLoading={usersQuery.isLoading}
               />
             </TabsContent>
             <TabsContent value="pending">
               <UserTable
-                users={filteredUsers.filter(u => u.status === UserStatus.PENDING)}
+                users={users.filter(u => u.status === UserStatus.PENDING)}
+                totalItems={totalItems}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(next) => {
+                  setPageSize(next)
+                  setPage(1)
+                }}
                 currentUserId={currentUser?.id}
                 onApprove={handleApprove}
                 onDelete={handleDeleteOpen}
                 onActivate={handleActivate}
                 onEditRole={openRoleEditor}
                 onViewProfile={openProfile}
-                isLoading={isLoading}
+                isLoading={usersQuery.isLoading}
               />
             </TabsContent>
           </div>
@@ -612,6 +644,11 @@ export function UsersListPage() {
 
 function UserTable({
   users,
+  totalItems,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
   currentUserId,
   onApprove,
   onDelete,
@@ -621,6 +658,11 @@ function UserTable({
   isLoading,
 }: {
   users: User[]
+  totalItems: number
+  page: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
   currentUserId?: string
   onApprove: (u: User) => void
   onDelete: (u: User) => void
@@ -629,24 +671,6 @@ function UserTable({
   onViewProfile: (u: User) => void
   isLoading?: boolean
 }) {
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const paginatedUsers = useMemo(
-    () => users.slice((page - 1) * pageSize, page * pageSize),
-    [users, page, pageSize]
-  )
-
-  useEffect(() => {
-    setPage(1)
-  }, [users.length])
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(users.length / pageSize))
-    if (page > totalPages) {
-      setPage(totalPages)
-    }
-  }, [users.length, page, pageSize])
-
   return (
     <>
       <div className="overflow-x-auto">
@@ -677,7 +701,7 @@ function UserTable({
                 </td>
               </tr>
             ) : (
-              paginatedUsers.map((user) => (
+              users.map((user) => (
                 <tr
                   key={user.id}
                   className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
@@ -774,14 +798,11 @@ function UserTable({
         </table>
       </div>
       <TablePagination
-        totalItems={users.length}
+        totalItems={totalItems}
         page={page}
         pageSize={pageSize}
-        onPageChange={setPage}
-        onPageSizeChange={(next) => {
-          setPageSize(next)
-          setPage(1)
-        }}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
       />
     </>
   )

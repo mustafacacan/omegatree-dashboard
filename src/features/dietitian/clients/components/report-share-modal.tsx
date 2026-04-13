@@ -14,6 +14,22 @@ interface ReportShareModalProps {
   clientName: string
 }
 
+function createShareToken() {
+  if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
+    const bytes = new Uint8Array(16)
+    window.crypto.getRandomValues(bytes)
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+    return `sec_${hex}`
+  }
+  return `sec_${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`
+}
+
+function getExpiryMs(expiry: '24h' | '7d' | '30d') {
+  if (expiry === '24h') return 24 * 60 * 60 * 1000
+  if (expiry === '30d') return 30 * 24 * 60 * 60 * 1000
+  return 7 * 24 * 60 * 60 * 1000
+}
+
 export function ReportShareModal({ open, onOpenChange, reportId, clientName }: ReportShareModalProps) {
   const [copied, setCopied] = useState(false)
   const [expiry, setExpiry] = useState<'24h' | '7d' | '30d'>('7d')
@@ -23,15 +39,21 @@ export function ReportShareModal({ open, onOpenChange, reportId, clientName }: R
   const handleGenerate = async () => {
     setGenerating(true)
     await new Promise((r) => setTimeout(r, 800))
-    setShareLink(`${typeof window !== 'undefined' ? window.location.origin : ''}/paylas/${reportId}?token=sec_${Date.now().toString(36)}`)
+    const exp = Date.now() + getExpiryMs(expiry)
+    const token = createShareToken()
+    setShareLink(`${typeof window !== 'undefined' ? window.location.origin : ''}/paylas/${reportId}?token=${token}&exp=${exp}`)
     setGenerating(false)
   }
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(shareLink)
-    setCopied(true)
-    toast.success('Link panoya kopyalandi')
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareLink)
+      setCopied(true)
+      toast.success('Link panoya kopyalandi')
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('Link kopyalanamadi')
+    }
   }
 
   return (
@@ -51,7 +73,7 @@ export function ReportShareModal({ open, onOpenChange, reportId, clientName }: R
               <div>
                 <p className="text-xs font-medium text-green-700 dark:text-green-400">Guvenli Paylasim</p>
                 <p className="text-[11px] text-green-600 dark:text-green-400 mt-0.5">
-                  Rapor PDF sistem disindan indirilemez. Danisan sadece goruntuleme yapabilir.
+                  Danisan bu link ile sadece goruntuleme yapar; link sure doldugunda acilmaz.
                 </p>
               </div>
             </div>

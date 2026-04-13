@@ -1,5 +1,6 @@
 import { api, type ApiRequestConfig } from '@/lib/axios'
 import type { components } from '@/types/openapi'
+import { readUserVerifiedTrue } from '@/lib/user-verified'
 
 const skipAuth: ApiRequestConfig = { skipAuthRedirect: true }
 
@@ -19,6 +20,8 @@ export interface AppClient {
   updatedAt: string
   dieticianId?: number
   dieticianName?: string
+  /** Danışan kullanıcı hesabı onaylı mı */
+  isVerified: boolean
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -90,6 +93,7 @@ function mapApiClientToApp(item: ApiClientResponse): AppClient {
     dieticianName: dieticianUser
       ? `${(dieticianUser.firstName as string | undefined) ?? ''} ${(dieticianUser.lastName as string | undefined) ?? ''}`.trim() || undefined
       : undefined,
+    isVerified: readUserVerifiedTrue(user),
   }
 }
 

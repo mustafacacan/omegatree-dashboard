@@ -11,7 +11,7 @@ import { TablePagination } from '@/components/shared/table-pagination'
 import { formatDate } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { motion } from 'framer-motion'
-import { Factory, Barcode, Package, Plus, Copy, Check, Pencil, Printer, Search, MoreHorizontal, Loader2 } from 'lucide-react'
+import { Plus, Copy, Check, Pencil, Printer, Search, MoreHorizontal, Loader2 } from 'lucide-react'
 import JsBarcode from 'jsbarcode'
 import { toast } from 'sonner'
 import {

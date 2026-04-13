@@ -24,6 +24,8 @@ export interface Laboratory {
   firstName?: string
   lastName?: string
   gender?: string
+  /** Laboratuvar hesabı (user) onaylı mı — admin listelerinde filtre için */
+  isUserVerified?: boolean
 }
 
 export interface CreateLaboratoryRequest {

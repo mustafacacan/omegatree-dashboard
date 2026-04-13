@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import { keepPreviousData, useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Button, Input, Avatar,
@@ -10,8 +10,8 @@ import {
 } from '@/components/ui'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import {
-  Search, Plus, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone, Mail,
-  Loader2, Eye, TestTubes, FlaskConical, Package, Clock, CheckCircle, FileText,
+  Search, Plus, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone,
+  Loader2, Eye, FlaskConical, Package, Clock, CheckCircle, FileText,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
@@ -24,6 +24,7 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
 import {
   getLaboratories,
+  getLaboratoriesWithPagination,
   getLaboratoryById,
   createLaboratory,
   updateLaboratory,
@@ -36,6 +37,7 @@ import {
 } from '@/services/laboratories.service'
 import { getDieticians } from '@/services/kits.service'
 import { getProvinces, getDistricts } from '@/services/turkey-addresses.service'
+import { readVerifiedFromDieticianNode } from '@/lib/user-verified'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 const W = { olive: '#8B9A4B', orange: '#E8913A', amber: '#F5C842', green: '#6ABF69', warmGray: '#8A8578' }
@@ -60,6 +62,8 @@ type LabWithDietitians = Laboratory & { assignedDietitianDetails: { dieticianId:
 export function LaboratoriesPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [newLabOpen, setNewLabOpen] = useState(false)
   const [editLabOpen, setEditLabOpen] = useState(false)
   const [assignDietitianOpen, setAssignDietitianOpen] = useState(false)
@@ -103,9 +107,27 @@ export function LaboratoriesPage() {
     enabled: newLabOpen && selectedProvinceId != null,
   })
 
-  const { data: laboratories = [], isLoading, isError: labsError } = useQuery({
-    queryKey: LABS_QUERY_KEY,
-    queryFn: () => getLaboratories(),
+  const trimmedSearch = useMemo(() => search.trim(), [search])
+  const labsPageQuery = useQuery({
+    queryKey: [...LABS_QUERY_KEY, { page, pageSize, search: trimmedSearch }],
+    queryFn: () =>
+      getLaboratoriesWithPagination({
+        page,
+        limit: pageSize,
+        search: trimmedSearch || undefined,
+      }),
+    retry: 1,
+    placeholderData: keepPreviousData,
+  })
+  const laboratories = labsPageQuery.data?.items ?? []
+  const labsTotalItems = labsPageQuery.data?.totalItems ?? laboratories.length
+  const isLoading = labsPageQuery.isLoading
+  const labsError = labsPageQuery.isError
+
+  // Stats & lab dropdown need the full verified set (independent from paginated list).
+  const { data: allLaboratories = [] } = useQuery({
+    queryKey: [...LABS_QUERY_KEY, 'all'],
+    queryFn: () => getLaboratories({ page: 1, limit: 2000 }),
     retry: 1,
   })
 
@@ -117,7 +139,7 @@ export function LaboratoriesPage() {
 
   const { data: dieticians = [] } = useQuery({
     queryKey: DIETICIANS_KEY,
-    queryFn: getDieticians,
+    queryFn: () => getDieticians(),
   })
 
   const labDetailQuery = useQuery({
@@ -154,8 +176,18 @@ export function LaboratoriesPage() {
     enabled: selectedLabIdForStats !== 'all',
     retry: 1,
   })
+  const verifiedLaboratoryIds = useMemo(
+    () => new Set(allLaboratories.filter((l) => l.isUserVerified === true).map((l) => l.id)),
+    [allLaboratories]
+  )
+
+  const labsStatsVerified = useMemo(
+    () => (labsStats ?? []).filter((item) => verifiedLaboratoryIds.has(String(item.laboratoryId))),
+    [labsStats, verifiedLaboratoryIds]
+  )
+
   const labStatsSummary = useMemo(() => {
-    const list = labsStats ?? []
+    const list = labsStatsVerified
     return list.reduce(
       (acc, item) => {
         const t = item.totals
@@ -167,9 +199,9 @@ export function LaboratoriesPage() {
       },
       { totalKits: 0, inProgressKits: 0, completedKits: 0, reportCount: 0 }
     )
-  }, [labsStats])
+  }, [labsStatsVerified])
   const labChartData = useMemo(() => {
-    const list = labsStats ?? []
+    const list = labsStatsVerified
     return list.map((item) => {
       const name = [item.laboratoryUser?.firstName, item.laboratoryUser?.lastName].filter(Boolean).join(' ') || `Lab #${item.laboratoryId}`
       const totals = item.totals
@@ -178,11 +210,11 @@ export function LaboratoriesPage() {
         toplam: Number(totals?.totalKits ?? 0),
       }
     }).filter((d) => d.toplam > 0).slice(0, 10)
-  }, [labsStats])
+  }, [labsStatsVerified])
   const selectedFromStatsList: LaboratoryStatisticsItem | undefined = useMemo(() => {
     if (selectedLabIdForStats === 'all') return undefined
-    return (labsStats ?? []).find((x) => Number(x.laboratoryId) === Number(selectedLabIdForStats))
-  }, [labsStats, selectedLabIdForStats])
+    return (labsStatsVerified ?? []).find((x) => Number(x.laboratoryId) === Number(selectedLabIdForStats))
+  }, [labsStatsVerified, selectedLabIdForStats])
 
   const labsWithDietitians = useMemo(() => {
     const assignmentsByLabId = new Map<string, { dieticianId: number; name: string }[]>()
@@ -190,13 +222,16 @@ export function LaboratoriesPage() {
       const labId = String(assignment.laboratory?.id ?? '')
       if (!labId) continue
       const dietician = assignment.dietician
+      if (!readVerifiedFromDieticianNode(dietician)) continue
       const dieticianUser = dietician?.user
       const name = [dieticianUser?.firstName, dieticianUser?.lastName].filter(Boolean).join(' ') || `Diyetisyen #${dietician?.id ?? ''}`
       const list = assignmentsByLabId.get(labId) ?? []
       list.push({ dieticianId: dietician?.id ?? 0, name })
       assignmentsByLabId.set(labId, list)
     }
-    return laboratories.map((lab) => ({
+    return laboratories
+      .filter((lab) => lab.isUserVerified === true)
+      .map((lab) => ({
       ...lab,
       assignedDietitianDetails: assignmentsByLabId.get(lab.id) ?? [],
     }))
@@ -210,6 +245,7 @@ export function LaboratoriesPage() {
       const labId = String(assignment.laboratory?.id ?? '')
       if (!labId || labId !== id) continue
       const dietician = assignment.dietician
+      if (!readVerifiedFromDieticianNode(dietician)) continue
       const dieticianUser = dietician?.user
       const name = [dieticianUser?.firstName, dieticianUser?.lastName].filter(Boolean).join(' ') || `Diyetisyen #${dietician?.id ?? ''}`
       list.push({ dieticianId: dietician?.id ?? 0, name })
@@ -217,18 +253,11 @@ export function LaboratoriesPage() {
     return list
   }, [labDietitianAssignments, viewLabId])
 
-  const filteredLaboratories = useMemo(
-    () =>
-      labsWithDietitians.filter((lab) => {
-        const q = search.toLowerCase()
-        return (
-          lab.name.toLowerCase().includes(q) ||
-          lab.address.toLowerCase().includes(q) ||
-          lab.city.toLowerCase().includes(q) ||
-          lab.district?.toLowerCase().includes(q)
-        )
-      }),
-    [labsWithDietitians, search]
+  const filteredLaboratories = labsWithDietitians
+
+  const allVerifiedLaboratoriesForSelect = useMemo(
+    () => allLaboratories.filter((l) => l.isUserVerified === true),
+    [allLaboratories]
   )
 
   const createMutation = useMutation({
@@ -455,7 +484,7 @@ export function LaboratoriesPage() {
                 <div>
                   <h3 className="text-[15px] font-semibold text-surface-900">Laboratuvarlar</h3>
                   <p className="text-[12px] mt-0.5 text-surface-500">
-                    {isLoading ? 'Yükleniyor...' : `Kayıtlı laboratuvarlar (${filteredLaboratories.length} adet)`}
+                    {isLoading ? 'Yükleniyor...' : `Kayıtlı laboratuvarlar (${labsTotalItems} adet)`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -465,7 +494,10 @@ export function LaboratoriesPage() {
                       type="text"
                       placeholder="Laboratuvar ara..."
                       value={search}
-                      onChange={(e) => setSearch(e.target.value)}
+                      onChange={(e) => {
+                        setSearch(e.target.value)
+                        setPage(1)
+                      }}
                       className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                     />
                   </div>
@@ -491,6 +523,14 @@ export function LaboratoriesPage() {
               ) : (
                 <LaboratoryTable
                   laboratories={filteredLaboratories}
+                  totalItems={labsTotalItems}
+                  page={page}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(next) => {
+                    setPageSize(next)
+                    setPage(1)
+                  }}
                   onView={openViewLab}
                   onEdit={openEditLab}
                   onDelete={openDeleteLab}
@@ -525,7 +565,7 @@ export function LaboratoriesPage() {
                 <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 text-center">
                   <p className="text-[12px] font-semibold text-surface-800">İstatistikler yüklenemedi</p>
                 </div>
-              ) : (labsStats?.length ?? 0) === 0 ? (
+              ) : (labsStatsVerified?.length ?? 0) === 0 ? (
                 <div className="rounded-xl border border-surface-200 bg-surface-50 p-6 flex flex-col items-center justify-center">
                   <FlaskConical className="h-10 w-10 text-surface-400" />
                   <p className="text-[12px] font-semibold text-surface-700 mt-2">Veri yok</p>
@@ -563,7 +603,7 @@ export function LaboratoriesPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(labsStats ?? []).map((item) => {
+                        {(labsStatsVerified ?? []).map((item) => {
                           const name = [item.laboratoryUser?.firstName, item.laboratoryUser?.lastName].filter(Boolean).join(' ') || `#${item.laboratoryId}`
                           const t = item.totals
                           return (
@@ -593,7 +633,7 @@ export function LaboratoriesPage() {
                   <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Laboratuvar seç" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tümü (özet)</SelectItem>
-                    {filteredLaboratories.map((l: LabWithDietitians) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                    {allVerifiedLaboratoriesForSelect.map((l: Laboratory) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -1237,26 +1277,29 @@ export function LaboratoriesPage() {
 
 function LaboratoryTable({
   laboratories,
+  totalItems,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
   onView,
   onEdit,
   onDelete,
   onAssignDietitian,
 }: {
   laboratories: LabWithDietitians[]
+  totalItems: number
+  page: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
   onView: (lab: Laboratory) => void
   onEdit: (lab: Laboratory) => void
   onDelete: (lab: Laboratory) => void
   onAssignDietitian: (lab: Laboratory) => void
 }) {
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const paginatedLabs = useMemo(
-    () => laboratories.slice((page - 1) * pageSize, page * pageSize),
-    [laboratories, page, pageSize]
-  )
-
   const detailQueries = useQueries({
-    queries: paginatedLabs.map((lab) => ({
+    queries: laboratories.map((lab) => ({
       queryKey: ['laboratories', lab.id, 'detail'] as const,
       queryFn: () => getLaboratoryById(lab.id),
       staleTime: 5 * 60 * 1000,
@@ -1265,23 +1308,12 @@ function LaboratoryTable({
 
   const detailByLabId = useMemo(() => {
     const map: Record<string, { phone?: string; email?: string }> = {}
-    paginatedLabs.forEach((lab, i) => {
+    laboratories.forEach((lab, i) => {
       const data = detailQueries[i]?.data
       if (data) map[lab.id] = { phone: data.phone, email: data.email }
     })
     return map
-  }, [paginatedLabs, detailQueries])
-
-  useEffect(() => {
-    setPage(1)
-  }, [laboratories.length])
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(laboratories.length / pageSize))
-    if (page > totalPages) {
-      setPage(totalPages)
-    }
-  }, [laboratories.length, page, pageSize])
+  }, [laboratories, detailQueries])
 
   return (
     <>
@@ -1306,7 +1338,7 @@ function LaboratoryTable({
                 </td>
               </tr>
             ) : (
-              paginatedLabs.map((lab, rowIndex) => {
+              laboratories.map((lab, rowIndex) => {
                 const detail = detailByLabId[lab.id]
                 const isLoadingDetail = detailQueries[rowIndex]?.isLoading
                 const phone = lab.phone ?? detail?.phone
@@ -1405,14 +1437,11 @@ function LaboratoryTable({
         </table>
       </div>
       <TablePagination
-        totalItems={laboratories.length}
+        totalItems={totalItems}
         page={page}
         pageSize={pageSize}
-        onPageChange={setPage}
-        onPageSizeChange={(next) => {
-          setPageSize(next)
-          setPage(1)
-        }}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
       />
     </>
   )

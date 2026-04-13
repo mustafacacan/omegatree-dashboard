@@ -127,26 +127,6 @@ export function PricingPage() {
     if (page > totalPages) setPage(totalPages)
   }, [filteredList.length, page, pageSize])
 
-  const handleExportCsv = () => {
-    const headers = ['Kit Adı', 'Açıklama', 'Miktar', 'Fiyat (₺)', 'Durum']
-    const rows = filteredList.map((k) => [
-      k.name,
-      k.description ?? '-',
-      k.quantity,
-      k.price,
-      k.isActive ?? true ? 'Aktif' : 'Pasif',
-    ])
-    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `fiyatlandirma-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-    toast.success('Fiyat listesi indirildi')
-  }
-
   function resetForm() {
     setFormName('')
     setFormDescription('')

@@ -1,5 +1,6 @@
 import { api } from '@/lib/axios'
 import type { Laboratory } from '@/types/laboratory.types'
+import { readUserVerifiedTrue } from '@/lib/user-verified'
 
 interface ApiLabUser {
   id?: number
@@ -113,6 +114,7 @@ function mapApiLabToLab(item: ApiLaboratoryItem): Laboratory {
     firstName: user?.firstName,
     lastName: user?.lastName,
     gender: user?.gender,
+    isUserVerified: readUserVerifiedTrue(user as Record<string, unknown> | undefined),
   }
 }
 
@@ -121,6 +123,49 @@ export interface GetLaboratoriesParams {
   limit?: number
   search?: string
   sort?: 'asc' | 'desc'
+}
+
+export interface GetLaboratoriesWithPaginationResult {
+  items: Laboratory[]
+  totalItems: number
+  totalPages: number
+  currentPage: number
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object' && !Array.isArray(v)
+}
+
+function readNumber(meta: Record<string, unknown> | null | undefined, keys: string[], fallback: number): number {
+  if (!meta) return fallback
+  for (const k of keys) {
+    if (k in meta) {
+      const n = Number(meta[k])
+      if (Number.isFinite(n) && n >= 0) return n
+    }
+  }
+  return fallback
+}
+
+function pickItemsAndMeta(body: unknown): { items: ApiLaboratoryItem[]; meta: Record<string, unknown> } {
+  // Common shapes observed across endpoints:
+  // 1) { success, message, data: { items, totalItems, totalPages, currentPage } }
+  // 2) { data: { items, totalItems, ... } }
+  // 3) { data: LaboratoryResponse[] }
+  // 4) LaboratoryResponse[]
+  if (Array.isArray(body)) return { items: body as ApiLaboratoryItem[], meta: {} }
+  if (!isRecord(body)) return { items: [], meta: {} }
+
+  const top = body
+  const payload = 'data' in top ? (top.data as unknown) : body
+
+  if (Array.isArray(payload)) return { items: payload as ApiLaboratoryItem[], meta: top }
+  if (isRecord(payload)) {
+    if (Array.isArray(payload.items)) return { items: payload.items as ApiLaboratoryItem[], meta: payload }
+    if (Array.isArray(payload.data)) return { items: payload.data as ApiLaboratoryItem[], meta: payload }
+  }
+
+  return { items: [], meta: isRecord(payload) ? payload : top }
 }
 
 /**
@@ -146,6 +191,33 @@ export async function getLaboratories(params?: GetLaboratoriesParams): Promise<L
       ? ((payload as Record<string, unknown>).items as ApiLaboratoryItem[]) ?? []
       : []
   return list.map(mapApiLabToLab)
+}
+
+/** GET /laboratories — items + pagination meta */
+export async function getLaboratoriesWithPagination(params?: GetLaboratoriesParams): Promise<GetLaboratoriesWithPaginationResult> {
+  const page = params?.page ?? 1
+  const limit = params?.limit ?? 10
+  const search = params?.search != null && String(params.search).trim() ? String(params.search).trim() : undefined
+
+  const { data } = await api.get<unknown>('/laboratories', {
+    params: params
+      ? {
+        page,
+        limit,
+        ...(search ? { search } : {}),
+        ...(params.sort && { sort: params.sort }),
+      }
+      : { page, limit },
+  })
+
+  const { items, meta } = pickItemsAndMeta(data)
+  const mapped = items.map(mapApiLabToLab)
+
+  const totalItems = readNumber(meta, ['totalItems', 'total', 'count', 'itemsCount'], mapped.length)
+  const totalPages = readNumber(meta, ['totalPages', 'pages', 'pageCount'], Math.max(1, Math.ceil(totalItems / Math.max(1, limit))))
+  const currentPage = readNumber(meta, ['currentPage', 'page'], page)
+
+  return { items: mapped, totalItems, totalPages, currentPage }
 }
 
 /**
@@ -338,10 +410,6 @@ export interface LaboratoryStatisticsItem {
 
 export type LaboratoriesStatisticsResponse = LaboratoryStatisticsItem[]
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-}
-
 /**
  * GET /laboratories/statistics
  * Swagger'da 200 response schema tanimsiz oldugu icin unknown olarak alinir.
@@ -372,8 +440,8 @@ export async function getLaboratoryStatisticsById(
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
   const payload = top && 'data' in top ? top.data : data
 
-  if (Array.isArray(payload)) return (payload[0] as LaboratoryStatisticsItem | undefined) ?? null
-  if (isRecord(payload)) return payload as LaboratoryStatisticsItem
+  if (Array.isArray(payload)) return (payload[0] as unknown as LaboratoryStatisticsItem | undefined) ?? null
+  if (isRecord(payload)) return payload as unknown as LaboratoryStatisticsItem
   return null
 }
 

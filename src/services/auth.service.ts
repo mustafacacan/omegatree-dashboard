@@ -48,6 +48,20 @@ function mapAppRoleToApiRole(role: UserRole): 'admin' | 'dietician' | 'client' |
   }
 }
 
+function mapApiStatusToAppStatus(apiUser: ApiUser): UserStatus {
+  const rawStatus = (apiUser as { status?: unknown }).status
+  if (typeof rawStatus === 'string') {
+    const normalized = rawStatus.trim().toUpperCase()
+    if (normalized === UserStatus.PENDING || normalized === UserStatus.SUSPENDED || normalized === UserStatus.ACTIVE) {
+      return normalized
+    }
+  }
+  if ((apiUser as { isVerified?: unknown }).isVerified === false) {
+    return UserStatus.PENDING
+  }
+  return UserStatus.ACTIVE
+}
+
 /** API UserResponse → uygulama User tipine dönüştürür */
 function mapApiUserToAppUser(apiUser: ApiUser): User {
   return {
@@ -59,7 +73,7 @@ function mapApiUserToAppUser(apiUser: ApiUser): User {
     phone: apiUser.phone,
     identityNumber: apiUser.identityNumber,
     role: mapApiRoleToAppRole(apiUser.role),
-    status: UserStatus.ACTIVE,
+    status: mapApiStatusToAppStatus(apiUser),
     createdAt: apiUser.createdAt ?? new Date().toISOString(),
     updatedAt: apiUser.updatedAt ?? new Date().toISOString(),
   }

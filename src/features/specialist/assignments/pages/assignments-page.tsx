@@ -17,6 +17,7 @@ import { TablePagination } from '@/components/shared/table-pagination'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { getExpertById, getExperts, updateExpert } from '@/services/experts.service'
+import { getApiOrigin } from '@/lib/env'
 
 type AssignmentRow = {
   expertId: number
@@ -59,8 +60,7 @@ function resolveMediaUrl(raw?: string | null): string | null {
   if (!url) return null
   if (/^(data:|blob:|https?:\/\/)/i.test(url)) return url
 
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3005/api'
-  const origin = new URL(apiBase).origin
+  const origin = getApiOrigin()
 
   if (url.startsWith('/')) return `${origin}${url}`
   return `${origin}/${url}`

@@ -1,5 +1,6 @@
 import { api } from '@/lib/axios'
 import type { components, paths } from '@/types/openapi'
+import { readUserVerifiedTrue, readVerifiedFromDieticianNode } from '@/lib/user-verified'
 
 type KitResponse = components['schemas']['KitResponse']
 
@@ -45,7 +46,8 @@ export async function getKitsPaginated(params?: { page?: number; limit?: number 
   if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'items' in raw) {
     const payload = raw as { totalItems?: number; items?: KitResponse[] }
     const list = payload.items ?? []
-    const totalItems = Number(payload.totalItems) ?? list.length
+    const totalItemsNum = Number(payload.totalItems)
+    const totalItems = Number.isFinite(totalItemsNum) && totalItemsNum >= 0 ? totalItemsNum : list.length
     return {
       items: (list as KitResponse[]).map(mapApiKit),
       totalItems,
@@ -113,10 +115,26 @@ export interface DieticianOption {
   firstName?: string
   lastName?: string
   email?: string
+  isVerified: boolean
+}
+
+export interface GetDieticiansParams {
+  /**
+   * true: yalnızca açıkça doğrulanmış (isVerified === true) diyetisyenler.
+   * false veya verilmez: id geçerli olan tüm satırlar (API isVerified göndermiyorsa boş liste oluşmaz; zimmet/atama modalları için).
+   */
+  onlyVerified?: boolean
+}
+
+function filterDieticianOptions(options: DieticianOption[], onlyVerified: boolean): DieticianOption[] {
+  const withId = options.filter((d) => d.id > 0)
+  if (!onlyVerified) return withId
+  return withId.filter((d) => d.isVerified === true)
 }
 
 /** GET /dieticians — diyetisyen listesi (assign dropdown için) */
-export async function getDieticians(): Promise<DieticianOption[]> {
+export async function getDieticians(params?: GetDieticiansParams): Promise<DieticianOption[]> {
+  const onlyVerified = params?.onlyVerified === true
   type DieticiansResponse = paths['/dieticians']['get']['responses'][200]['content']['application/json']
   type DieticianItem = components['schemas']['DieticianWithClientsResponse']
 
@@ -149,43 +167,55 @@ export async function getDieticians(): Promise<DieticianOption[]> {
   // 1) OpenAPI: data = DieticianWithClientsResponse[] — dietician.id = user id
   if (Array.isArray(raw)) {
     const list = raw as DieticianItem[]
-    return list.map((d) => {
-      const firstName = d.dietician?.firstName
-      const lastName = d.dietician?.lastName
-      const fullName = [firstName, lastName].filter(Boolean).join(' ')
-      const email = d.dietician?.email
-      const id = Number(d.id) || 0
-      const userId = Number((d.dietician as { id?: number } | undefined)?.id) || undefined
-      return {
-        id,
-        userId,
-        label: fullName || email || `Diyetisyen #${id}`,
-        firstName,
-        lastName,
-        email,
-      }
-    })
+    return filterDieticianOptions(
+      list.map((d) => {
+        const firstName = d.dietician?.firstName
+        const lastName = d.dietician?.lastName
+        const fullName = [firstName, lastName].filter(Boolean).join(' ')
+        const email = d.dietician?.email
+        const id = Number(d.id) || 0
+        const userId = Number((d.dietician as { id?: number } | undefined)?.id) || undefined
+        const row = d as unknown as Record<string, unknown>
+        const verified =
+          readUserVerifiedTrue(row.user as Record<string, unknown> | undefined) ||
+          readVerifiedFromDieticianNode(d.dietician)
+        return {
+          id,
+          userId,
+          label: fullName || email || `Diyetisyen #${id}`,
+          firstName,
+          lastName,
+          email,
+          isVerified: verified,
+        }
+      }),
+      onlyVerified
+    )
   }
 
   // 2) Backend: data = { items: [{ id, user: { id, firstName, lastName, email } }] }
   if (raw && typeof raw === 'object' && 'items' in raw) {
     const items = (raw as { items?: NonNullable<DieticiansPaginatedResponse['data']>['items'] }).items ?? []
-    return (items ?? []).map((d) => {
-      const firstName = d?.user?.firstName
-      const lastName = d?.user?.lastName
-      const fullName = [firstName, lastName].filter(Boolean).join(' ')
-      const email = d?.user?.email
-      const id = Number(d?.id) || 0
-      const userId = Number((d?.user as { id?: number } | undefined)?.id) || undefined
-      return {
-        id,
-        userId,
-        label: fullName || email || `Diyetisyen #${id}`,
-        firstName,
-        lastName,
-        email,
-      }
-    })
+    return filterDieticianOptions(
+      (items ?? []).map((d) => {
+        const firstName = d?.user?.firstName
+        const lastName = d?.user?.lastName
+        const fullName = [firstName, lastName].filter(Boolean).join(' ')
+        const email = d?.user?.email
+        const id = Number(d?.id) || 0
+        const userId = Number((d?.user as { id?: number } | undefined)?.id) || undefined
+        return {
+          id,
+          userId,
+          label: fullName || email || `Diyetisyen #${id}`,
+          firstName,
+          lastName,
+          email,
+          isVerified: readUserVerifiedTrue(d?.user as Record<string, unknown> | undefined),
+        }
+      }),
+      onlyVerified
+    )
   }
 
   // 3) Tolerans: data.items olabilir (eski mapping)
@@ -193,20 +223,28 @@ export async function getDieticians(): Promise<DieticianOption[]> {
     ? (raw as { items?: DieticianItem[] }).items
     : []) ?? [])
 
-  return (list ?? []).map((d) => {
-    const firstName = d.dietician?.firstName
-    const lastName = d.dietician?.lastName
-    const fullName = [firstName, lastName].filter(Boolean).join(' ')
-    const email = d.dietician?.email
-    const id = Number(d.id) || 0
-    const userId = Number((d.dietician as { id?: number } | undefined)?.id) || undefined
-    return {
-      id,
-      userId,
-      label: fullName || email || `Diyetisyen #${id}`,
-      firstName,
-      lastName,
-      email,
-    }
-  })
+  return filterDieticianOptions(
+    (list ?? []).map((d) => {
+      const firstName = d.dietician?.firstName
+      const lastName = d.dietician?.lastName
+      const fullName = [firstName, lastName].filter(Boolean).join(' ')
+      const email = d.dietician?.email
+      const id = Number(d.id) || 0
+      const userId = Number((d.dietician as { id?: number } | undefined)?.id) || undefined
+      const row = d as unknown as Record<string, unknown>
+      const verified =
+        readUserVerifiedTrue(row.user as Record<string, unknown> | undefined) ||
+        readVerifiedFromDieticianNode(d.dietician)
+      return {
+        id,
+        userId,
+        label: fullName || email || `Diyetisyen #${id}`,
+        firstName,
+        lastName,
+        email,
+        isVerified: verified,
+      }
+    }),
+    onlyVerified
+  )
 }

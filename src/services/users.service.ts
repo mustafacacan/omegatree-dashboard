@@ -57,11 +57,21 @@ export interface GetUsersParams {
   limit?: number
   /** API rol filtresi (örn: 'expert') veya app rolü (örn: UserRole.SPECIALIST) */
   role?: UserRole | CreateUserBody['role']
+  search?: string
+  /** Backend: GET /users?isVerified=true|false */
+  isVerified?: boolean
 }
 
 export interface GetUsersResponse {
   users: User[]
   total?: number
+}
+
+export interface GetUsersWithPaginationResult {
+  items: User[]
+  totalItems: number
+  totalPages: number
+  currentPage: number
 }
 
 function isAppUserRole(role: string): role is UserRole {
@@ -75,6 +85,12 @@ export async function getUsers(params?: GetUsersParams): Promise<GetUsersRespons
       ? {
         page: params.page ?? 1,
         limit: params.limit ?? 50,
+        ...(params.search != null && String(params.search).trim()
+          ? { search: String(params.search).trim() }
+          : {}),
+        ...(params.isVerified === true || params.isVerified === false
+          ? { isVerified: params.isVerified ? 'true' : 'false' }
+          : {}),
         ...(params.role != null
           ? {
             role: isAppUserRole(params.role)
@@ -102,6 +118,57 @@ export async function getUsers(params?: GetUsersParams): Promise<GetUsersRespons
     users: list.map(mapApiUserToAppUser),
     total: data?.data?.totalItems ?? list.length,
   }
+}
+
+/** GET /users — sayfalı sonuç + meta */
+export async function getUsersWithPagination(params?: GetUsersParams): Promise<GetUsersWithPaginationResult> {
+  const page = params?.page ?? 1
+  const limit = params?.limit ?? 50
+  const search = params?.search != null && String(params.search).trim() ? String(params.search).trim() : undefined
+
+  const queryParams =
+    params != null
+      ? {
+        page,
+        limit,
+        ...(search ? { search } : {}),
+        ...(params.isVerified === true || params.isVerified === false
+          ? { isVerified: params.isVerified ? 'true' : 'false' }
+          : {}),
+        ...(params.role != null
+          ? {
+            role: isAppUserRole(params.role)
+              ? mapAppRoleToApiRole(params.role)
+              : params.role,
+          }
+          : {}),
+      }
+      : { page, limit }
+
+  const { data } = await api.get<{
+    success?: boolean
+    message?: string
+    data?: {
+      items?: (ApiUser & { isVerified?: boolean; gender?: string; deletedAt?: string | null })[]
+      totalItems?: number
+      totalPages?: number
+      currentPage?: string | number
+    }
+  }>('/users', {
+    params: queryParams,
+  })
+
+  const list = data?.data?.items ?? []
+  const items = list.map(mapApiUserToAppUser)
+  const totalItems = Number(data?.data?.totalItems ?? items.length) || 0
+  const totalPages = Number(data?.data?.totalPages ?? Math.max(1, Math.ceil(totalItems / Math.max(1, limit)))) || 1
+  const currentPageRaw = data?.data?.currentPage
+  const currentPage =
+    typeof currentPageRaw === 'string'
+      ? parseInt(currentPageRaw, 10) || page
+      : Number(currentPageRaw) || page
+
+  return { items, totalItems, totalPages, currentPage }
 }
 
 /** GET /users/{id} — tek kullanıcı */

@@ -32,6 +32,7 @@ export const ROUTES = {
   DIYETISYEN_DANISANLAR_YENI: '/diyetisyen/danisanlar/yeni',
   DIYETISYEN_KITLER: '/diyetisyen/kitler',
   DIYETISYEN_STOK: '/diyetisyen/stok',
+  DIYETISYEN_IADE_KITLER: '/diyetisyen/iade-kitler',
   DIYETISYEN_SIPARISLER: '/diyetisyen/siparisler',
   DIYETISYEN_SIPARIS_GECMISI: '/diyetisyen/siparisler/gecmis',
   DIYETISYEN_RAPORLAR: '/diyetisyen/raporlar',

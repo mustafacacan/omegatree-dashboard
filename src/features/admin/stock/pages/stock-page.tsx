@@ -358,7 +358,7 @@ export function StockPage() {
 
       {/* Kit Zimmetle modalı */}
       <Modal open={showAssignModal} onOpenChange={(open) => !open && closeAssignModal()}>
-        <ModalContent className="max-w-lg max-h-[90vh] flex flex-col">
+        <ModalContent className="w-[95vw] max-w-5xl max-h-[90vh] flex flex-col">
           <ModalHeader>
             <ModalTitle>Kit Zimmetle</ModalTitle>
             <ModalDescription>Kitleri seçin ve bir diyetisyene atayın.</ModalDescription>
@@ -377,8 +377,9 @@ export function StockPage() {
             </ModalBody>
           ) : (
             <>
-              <ModalBody className="space-y-5 pt-0">
-                <div>
+              <ModalBody className="pt-0">
+                <div className="flex flex-col md:flex-row gap-5">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-primary-500">1</div>
                     <span className="text-[13px] font-semibold text-surface-900">Kit seçin</span>
@@ -400,7 +401,7 @@ export function StockPage() {
                       />
                     </div>
 
-                    <div className="max-h-[180px] overflow-y-auto space-y-1.5 pr-1 rounded-xl border border-surface-200 bg-surface-50/50">
+                    <div className="max-h-[300px] overflow-y-auto space-y-1.5 pr-1 rounded-xl border border-surface-200 bg-surface-50/50">
                       {assignModalLoading ? (
                         <p className="text-[12px] text-center py-4 text-surface-500">Yükleniyor...</p>
                       ) : filteredAvailableStocksForModal.length === 0 ? (
@@ -437,7 +438,7 @@ export function StockPage() {
                     </div>
                 </div>
 
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-3">
                     <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${selectedKitIds.length > 0 ? 'bg-primary-500' : 'bg-surface-400'}`}>2</div>
                     <span className="text-[13px] font-semibold text-surface-900">Diyetisyen seçin</span>
@@ -452,7 +453,7 @@ export function StockPage() {
                       className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-full outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                     />
                   </div>
-                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1 rounded-xl border border-surface-200 bg-surface-50/50">
+                  <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1 rounded-xl border border-surface-200 bg-surface-50/50">
                       {assignModalLoading ? (
                         <p className="text-[12px] text-center py-4 text-surface-500">Yükleniyor...</p>
                       ) : filteredDietitiansForModal.length === 0 ? (
@@ -485,6 +486,7 @@ export function StockPage() {
                         })
                       )}
                   </div>
+                </div>
                 </div>
               </ModalBody>
 

@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button, Input } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth.store'
-import { UserStatus } from '@/utils/constants'
 import { ROLE_HOME, ROUTES } from '@/utils/routes'
 import { TreePine, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
@@ -13,7 +12,18 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { login as apiLogin } from '@/services/auth.service'
 
 const loginSchema = z.object({
-  email: z.string().email('Gecerli bir e-posta adresi girin'),
+  loginKey: z
+    .string()
+    .min(1, 'E-posta veya telefon girin')
+    .transform((v) => v.trim())
+    .refine((v) => {
+      if (!v) return false
+      // Email
+      if (v.includes('@')) return z.string().email().safeParse(v).success
+      // Phone (digits, spaces, +, parentheses, dashes allowed)
+      const digits = v.replace(/[^\d]/g, '')
+      return digits.length >= 10
+    }, 'Gecerli bir e-posta veya telefon girin'),
   password: z.string().min(6, 'Sifre en az 6 karakter olmali'),
   rememberMe: z.boolean().optional(),
 })
@@ -51,8 +61,8 @@ export function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setLoading(true)
     try {
-      const { user, token } = await apiLogin(data.email, data.password, Boolean(data.rememberMe))
-      setAuth({ ...user, status: UserStatus.ACTIVE }, token)
+      const { user, token } = await apiLogin(data.loginKey, data.password, Boolean(data.rememberMe))
+      setAuth(user, token)
       const displayName = `${user.firstName} ${user.lastName}`.trim()
       toast.success(`Hoş geldiniz, ${displayName}!`)
       navigate(ROLE_HOME[user.role])
@@ -63,7 +73,7 @@ export function LoginPage() {
           : undefined
 
       if (status === 401) {
-        toast.error('Geçersiz e-posta veya şifre. Hesap onay bekliyor olabilir.')
+        toast.error('Geçersiz e-posta/telefon veya şifre. Hesap onay bekliyor olabilir.')
       } else {
         toast.error(
           getApiErrorMessage(err, {
@@ -92,19 +102,19 @@ export function LoginPage() {
       <div className="mb-8">
         <h2 className="text-2xl font-semibold text-surface-900">Kullanici Girisi</h2>
         <p className="text-surface-500 mt-1.5 text-[15px]">
-          Hesabiniza erisim icin e-posta ve sifrenizi girin
+          Hesabiniza erisim icin e-posta/telefon ve sifrenizi girin
         </p>
       </div>
 
       {/* Login form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Input
-          label="E-posta"
-          type="email"
-          placeholder="ornek@omegatree.com"
+          label="E-posta veya Telefon"
+          type="text"
+          placeholder="ornek@omegatree.com veya 05xx xxx xx xx"
           leftIcon={<Mail className="h-4 w-4" />}
-          error={errors.email?.message}
-          {...register('email')}
+          error={errors.loginKey?.message}
+          {...register('loginKey')}
         />
 
         <Input

@@ -1,7 +1,8 @@
 import axios, { AxiosHeaders, type AxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/stores/auth.store'
+import { getApiBaseUrl } from '@/lib/env'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3005/api'
+const API_BASE_URL = getApiBaseUrl()
 
 /** 401 alındığında otomatik çıkış yapma (örn. adres API'si henüz yoksa) */
 export interface ApiRequestConfig extends AxiosRequestConfig {

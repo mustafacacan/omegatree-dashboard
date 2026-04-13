@@ -4,11 +4,10 @@ import { PageHeader } from '@/components/shared/page-header'
 import { PanelHeader } from '@/components/shared/panel-header'
 import { PdfViewer } from '@/components/shared/pdf-viewer'
 import {
-  Card, CardHeader, CardTitle, CardContent, CardDescription,
   Button, Badge, Avatar,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody,
 } from '@/components/ui'
-import { FileText, Check, Calendar, Loader2, Eye, Mail, Phone } from 'lucide-react'
+import { FileText, Check, Loader2, Eye, Mail, Phone } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { formatDate, formatDateTime } from '@/lib/utils'

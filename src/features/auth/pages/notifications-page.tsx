@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useNotificationStore } from '@/stores/notification.store'
 import { PageHeader } from '@/components/shared/page-header'
 import {
@@ -11,7 +11,6 @@ import {
   BellRing, Inbox, Filter, Trash2, MailOpen, Clock, ShieldCheck,
   Truck, FlaskConical, FileText, UserCheck,
 } from 'lucide-react'
-import { getBasePath } from '@/utils/routes'
 import { formatDateTime } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -199,8 +198,6 @@ const statCards = [
 
 export function NotificationsPage() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const basePath = getBasePath(location.pathname)
   const { markAllAsRead } = useNotificationStore()
   const [notifications, setNotifications] = useState(demoNotifications)
   const [activeTab, setActiveTab] = useState('all')

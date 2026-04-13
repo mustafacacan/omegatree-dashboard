@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Button, Input,
+  Button,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
@@ -10,7 +10,7 @@ import {
 } from '@/components/ui'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { useWorkflowStore } from '@/stores/workflow.store'
-import { Search, RotateCcw, CheckCircle, XCircle, History, Package, Eye, MoreHorizontal, Loader2 } from 'lucide-react'
+import { Search, RotateCcw, XCircle, Package, Eye, MoreHorizontal, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { formatDateTime } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'

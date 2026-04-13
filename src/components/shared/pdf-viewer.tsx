@@ -2,14 +2,12 @@ import { useState, useEffect, useMemo } from 'react'
 import { Document, Page } from 'react-pdf'
 import { setPdfWorker } from '@/lib/pdf-worker'
 import { FileText, Loader2 } from 'lucide-react'
+import { getApiOrigin } from '@/lib/env'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
-/** Demo PDF when no report URL is provided (backend will supply real pdfUrl) */
-export const DEMO_PDF_URL = 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf'
-
 export interface PdfViewerProps {
-  /** PDF URL; if not set, uses demo PDF for preview */
+  /** PDF URL */
   file?: string | null
   /** Optional title above viewer */
   title?: string
@@ -28,18 +26,46 @@ export function PdfViewer({ file, title, maxHeight = '70vh', className = '', mod
   const [iframeError, setIframeError] = useState(false)
 
   const resolvedUrl = useMemo(() => {
-    const raw = (file || DEMO_PDF_URL || '').trim()
+    const raw = (file || '').trim()
     if (!raw) return raw
     if (/^(data:|blob:|https?:\/\/)/i.test(raw)) return raw
 
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3005/api'
-    const origin = new URL(apiBase).origin
+    const origin = getApiOrigin()
 
     if (raw.startsWith('/')) return `${origin}${raw}`
     return `${origin}/${raw}`
   }, [file])
 
+  useEffect(() => {
+    setPdfWorker()
+    setWorkerSet(true)
+  }, [])
+
+  useEffect(() => {
+    setNumPages(null)
+    setUseIframeFallback(false)
+    setIframeLoaded(false)
+    setIframeError(false)
+  }, [resolvedUrl])
+
   const url = resolvedUrl
+
+  if (!url) {
+    return (
+      <div className={className}>
+        {title && (
+          <h3 className="text-sm font-semibold text-surface-800 mb-3">{title}</h3>
+        )}
+        <div className="rounded-lg border border-surface-200 bg-surface-50">
+          <div className="flex flex-col items-center justify-center p-6">
+            <FileText className="h-10 w-10 text-surface-400 mb-2" />
+            <p className="text-sm text-surface-600">PDF bulunamadi.</p>
+            <p className="text-xs text-surface-500 mt-1">Rapor dosyasi henuz olusmamis olabilir.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (mode === 'iframe') {
     return (
@@ -58,18 +84,6 @@ export function PdfViewer({ file, title, maxHeight = '70vh', className = '', mod
       </div>
     )
   }
-
-  useEffect(() => {
-    setPdfWorker()
-    setWorkerSet(true)
-  }, [])
-
-  useEffect(() => {
-    setNumPages(null)
-    setUseIframeFallback(false)
-    setIframeLoaded(false)
-    setIframeError(false)
-  }, [resolvedUrl])
 
   const onLoadSuccess = ({ numPages: n }: { numPages: number }) => setNumPages(n)
   const onLoadError = () => {

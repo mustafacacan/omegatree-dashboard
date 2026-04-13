@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { PdfViewer } from '@/components/shared/pdf-viewer'
 import { Shield } from 'lucide-react'
@@ -12,9 +12,13 @@ export function ShareReportPage() {
   const { reportId } = useParams<{ reportId: string }>()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
+  const exp = Number(searchParams.get('exp') ?? 0)
+  const openedAtRef = useRef(Date.now())
   const kits = useWorkflowStore((s) => s.kits)
 
-  const isValid = Boolean(reportId && token && token.startsWith('sec_'))
+  const isTokenFormatValid = Boolean(token && /^sec_[a-f0-9]{32,}$/.test(token))
+  const isExpiryValid = Number.isFinite(exp) && exp > openedAtRef.current
+  const isValid = Boolean(reportId && isTokenFormatValid && isExpiryValid)
 
   const kit = useMemo(() => {
     if (!reportId || !isValid) return null
@@ -33,7 +37,7 @@ export function ShareReportPage() {
         <div className="max-w-4xl mx-auto flex items-center gap-2">
           <Shield className="h-5 w-5 text-primary-500" />
           <span className="text-sm font-medium text-surface-700">
-            Bu rapor guvenli link ile paylasildi — sadece goruntuleme
+            Bu rapor paylasim linki ile acildi — sadece goruntuleme
           </span>
         </div>
       </header>
@@ -67,10 +71,18 @@ export function ShareReportPage() {
               maxHeight="85vh"
               className="mt-4"
             />
+            {!kit && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm text-amber-800">Rapor kaydi bulunamadi.</p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Link dogru olsa bile rapor verisi bu cihazda mevcut degil veya kaldirilmis olabilir.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="mt-12 text-center">
-            <p className="text-surface-600">Gecersiz veya eksik paylasim linki.</p>
+            <p className="text-surface-600">Gecersiz, suresi dolmus veya eksik paylasim linki.</p>
             <p className="text-sm text-surface-500 mt-1">
               Dogru linki veya QR kodu kullandiginizdan emin olun.
             </p>

@@ -4,7 +4,6 @@ import { KitStatus } from '@/utils/constants'
 import {
   getClients as apiGetClients,
   createClient as apiCreateClient,
-  getClientById as apiGetClientById,
   type AppClient,
 } from '@/services/clients.service'
 import { getDieticianClients } from '@/services/dietician-clients.service'

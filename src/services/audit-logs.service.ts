@@ -60,13 +60,13 @@ function pickSingleLog(body: unknown): AuditLogItem | null {
     // 3) { success, message, data: AuditLogItem }
     if (!isRecord(body)) return null
 
-    if ('id' in body) return body as AuditLogItem
+    if ('id' in body) return body as unknown as AuditLogItem
 
     if ('data' in body) {
         const d = body.data
-        if (isRecord(d) && 'id' in d) return d as AuditLogItem
+        if (isRecord(d) && 'id' in d) return d as unknown as AuditLogItem
         // nested: { data: { data: AuditLogItem } }
-        if (isRecord(d) && 'data' in d && isRecord(d.data) && 'id' in d.data) return d.data as AuditLogItem
+        if (isRecord(d) && 'data' in d && isRecord(d.data) && 'id' in d.data) return d.data as unknown as AuditLogItem
     }
 
     return null
@@ -151,6 +151,6 @@ export async function getAuditLogsWithPagination(params?: GetAuditLogsParams): P
 /** GET /audit-logs/{id} — tek log kaydı */
 export async function getAuditLogById(id: number | string): Promise<AuditLogItem> {
     const { data } = await api.get<unknown>(`/audit-logs/${id}`)
-    const item = pickSingleLog(data) ?? (data as AuditLogItem)
+    const item = pickSingleLog(data) ?? (data as unknown as AuditLogItem)
     return item
 }

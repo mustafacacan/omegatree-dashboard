@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Button, Input, Avatar,
@@ -19,7 +19,7 @@ import { UserRole, UserStatus } from '@/utils/constants'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
-import { getUsers, createUser, updateUser, deleteUser } from '@/services/users.service'
+import { getUsersWithPagination, createUser, updateUser, deleteUser } from '@/services/users.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -34,6 +34,8 @@ const statusLabels: Record<UserStatus, string> = {
 function DietitiansPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [newOpen, setNewOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
@@ -49,30 +51,32 @@ function DietitiansPage() {
     gender: 'male' as 'male' | 'female',
   })
 
-  const { data: usersRes, isLoading, isError } = useQuery({
-    queryKey: USERS_QUERY_KEY,
-    queryFn: () => getUsers({ page: 1, limit: 500 }),
+  const trimmedSearch = useMemo(() => search.trim(), [search])
+  const dietitiansQuery = useQuery({
+    queryKey: [...USERS_QUERY_KEY, 'dietitians', { page, pageSize, search: trimmedSearch }],
+    queryFn: () =>
+      getUsersWithPagination({
+        page,
+        limit: pageSize,
+        role: UserRole.DIETITIAN,
+        search: trimmedSearch || undefined,
+        isVerified: true,
+      }),
     retry: 1,
+    placeholderData: keepPreviousData,
   })
 
-  const dietitians = useMemo(() => {
-    const list = Array.isArray(usersRes) ? usersRes : (usersRes?.users ?? [])
-    return list.filter((u) => u.role === UserRole.DIETITIAN)
-  }, [usersRes])
+  const dietitians = dietitiansQuery.data?.items ?? []
+  const totalItems = dietitiansQuery.data?.totalItems ?? dietitians.length
+  const isLoading = dietitiansQuery.isLoading
+  const isError = dietitiansQuery.isError
 
-  const filtered = useMemo(
-    () =>
-      dietitians.filter((u) => {
-        const q = search.toLowerCase()
-        return (
-          (u.firstName ?? '').toLowerCase().includes(q) ||
-          (u.lastName ?? '').toLowerCase().includes(q) ||
-          (u.email ?? '').toLowerCase().includes(q) ||
-          (u.phone ?? '').toLowerCase().includes(q)
-        )
-      }),
-    [dietitians, search]
-  )
+  useEffect(() => {
+    const safeSize = Math.max(1, pageSize)
+    const totalPages = Math.max(1, Math.ceil(totalItems / safeSize))
+    const next = Math.min(Math.max(1, page), totalPages)
+    if (next !== page) setPage(next)
+  }, [totalItems, page, pageSize])
 
   const createMutation = useMutation({
     mutationFn: createUser,
@@ -191,7 +195,7 @@ function DietitiansPage() {
             <div>
               <h3 className="text-[15px] font-semibold text-surface-900">Diyetisyenler</h3>
               <p className="text-[12px] mt-0.5 text-surface-500">
-                {isLoading ? 'Yükleniyor...' : `Kayıtlı diyetisyenler (${filtered.length} adet)`}
+                {isLoading ? 'Yükleniyor...' : `Kayıtlı diyetisyenler (${totalItems} adet)`}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -201,7 +205,10 @@ function DietitiansPage() {
                   type="text"
                   placeholder="Diyetisyen ara..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value)
+                    setPage(1)
+                  }}
                   className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
@@ -225,7 +232,15 @@ function DietitiansPage() {
             </div>
           ) : (
             <DietitiansTable
-              dietitians={filtered}
+              dietitians={dietitians}
+              totalItems={totalItems}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(next) => {
+                setPageSize(next)
+                setPage(1)
+              }}
               onView={openView}
               onEdit={openEdit}
               onDelete={openDelete}
@@ -432,22 +447,25 @@ function DietitiansPage() {
 
 function DietitiansTable({
   dietitians,
+  totalItems,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
   onView,
   onEdit,
   onDelete,
 }: {
   dietitians: User[]
+  totalItems: number
+  page: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
   onView: (u: User) => void
   onEdit: (u: User) => void
   onDelete: (u: User) => void
 }) {
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const paginated = useMemo(
-    () => dietitians.slice((page - 1) * pageSize, page * pageSize),
-    [dietitians, page, pageSize]
-  )
-
   return (
     <>
       <div className="overflow-x-auto">
@@ -471,7 +489,7 @@ function DietitiansTable({
                 </td>
               </tr>
             ) : (
-              paginated.map((u) => (
+              dietitians.map((u) => (
                 <tr
                   key={u.id}
                   className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
@@ -543,14 +561,11 @@ function DietitiansTable({
         </table>
       </div>
       <TablePagination
-        totalItems={dietitians.length}
+        totalItems={totalItems}
         page={page}
         pageSize={pageSize}
-        onPageChange={setPage}
-        onPageSizeChange={(next) => {
-          setPageSize(next)
-          setPage(1)
-        }}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
       />
     </>
   )

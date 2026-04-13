@@ -55,7 +55,10 @@ function SpecialistsPage() {
     retry: 1,
   })
 
-  const specialists = useMemo(() => usersRes?.users ?? [], [usersRes])
+  const specialists = useMemo(
+    () => (usersRes?.users ?? []).filter((u) => u.isVerified === true),
+    [usersRes]
+  )
 
   const filtered = useMemo(
     () =>

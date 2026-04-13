@@ -10,6 +10,60 @@ export interface GetDamagedKitsParams {
   page?: Pagination
 }
 
+export interface GetDamagedKitsResult {
+  items: DamagedKit[]
+  totalItems: number
+  totalPages: number
+  currentPage: number
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === 'object' && !Array.isArray(v)
+}
+
+function readNumber(meta: Record<string, unknown> | null | undefined, keys: string[], fallback: number): number {
+  if (!meta) return fallback
+  for (const k of keys) {
+    if (k in meta) {
+      const n = Number(meta[k])
+      if (Number.isFinite(n) && n >= 0) return n
+    }
+  }
+  return fallback
+}
+
+function pickItemsAndMeta(body: unknown): { items: DamagedKit[]; meta: Record<string, unknown> } {
+  // Possible shapes:
+  // 1) { data: { items, totalItems, totalPages, currentPage } }
+  // 2) { success, message, data: { items, totalItems, ... } }
+  // 3) { data: DamagedKit[], pagination/meta: {...} }
+  // 4) { items: DamagedKit[], totalItems, ... }
+  // 5) DamagedKit[]
+  if (Array.isArray(body)) return { items: body as DamagedKit[], meta: {} }
+  if (!isRecord(body)) return { items: [], meta: {} }
+
+  const top = body
+  const payload = isRecord(top) && 'data' in top ? (top.data as unknown) : body
+
+  if (Array.isArray(payload)) {
+    const meta = (isRecord(top) && isRecord((top as Record<string, unknown>).pagination))
+      ? ((top as Record<string, unknown>).pagination as Record<string, unknown>)
+      : (isRecord(top) ? top : {})
+    return { items: payload as DamagedKit[], meta }
+  }
+
+  if (isRecord(payload)) {
+    if (Array.isArray(payload.items)) return { items: payload.items as DamagedKit[], meta: payload }
+    if (Array.isArray(payload.data)) return { items: payload.data as DamagedKit[], meta: payload }
+  }
+
+  if ('items' in top && Array.isArray((top as Record<string, unknown>).items)) {
+    return { items: (top as Record<string, unknown>).items as DamagedKit[], meta: top }
+  }
+
+  return { items: [], meta: isRecord(payload) ? payload : top }
+}
+
 /** Get damaged kit details by id (admin) */
 export async function getDamagedKitDetails(
   damagedKitId: string
@@ -76,6 +130,24 @@ export async function getDamagedKits(params?: GetDamagedKitsParams): Promise<Dam
   }
 
   return []
+}
+
+/** Get damaged kits with pagination meta (admin page table pagination) */
+export async function getDamagedKitsWithPagination(params?: GetDamagedKitsParams): Promise<GetDamagedKitsResult> {
+  const requestedPage = params?.page?.page ?? 1
+  const requestedLimit = params?.page?.limit ?? 10
+  const { data } = await api.get<unknown>('/damaged-kits', {
+    params: params?.page ? { page: params.page } : undefined,
+  })
+
+  const { items, meta } = pickItemsAndMeta(data)
+  const safeItems = Array.isArray(items) ? items : []
+
+  const totalItems = readNumber(meta, ['totalItems', 'total', 'count', 'itemsCount'], safeItems.length)
+  const totalPages = readNumber(meta, ['totalPages', 'pages', 'pageCount'], Math.max(1, Math.ceil(totalItems / Math.max(1, requestedLimit))))
+  const currentPage = readNumber(meta, ['currentPage', 'page'], requestedPage)
+
+  return { items: safeItems, totalItems, totalPages, currentPage }
 }
 
 /** Approve a damaged kit (admin). Backend may support PATCH /damaged-kits/{id} with { approved: true }. */

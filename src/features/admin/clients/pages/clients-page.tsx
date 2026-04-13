@@ -32,6 +32,8 @@ export function ClientsPage() {
   const queryClient = useQueryClient()
   const currentUser = useCurrentUser()
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [newOpen, setNewOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
   const [viewClientId, setViewClientId] = useState<number | null>(null)
@@ -58,15 +60,16 @@ export function ClientsPage() {
     education: '',
   })
 
+  const trimmedSearch = useMemo(() => search.trim(), [search])
   const { data: clientsRes, isLoading: clientsLoading, isError: clientsError } = useQuery({
-    queryKey: [...CLIENTS_QUERY_KEY, { search }],
-    queryFn: () => getClients({ page: 1, limit: 500, search: search.trim() || undefined }),
+    queryKey: [...CLIENTS_QUERY_KEY, { page, pageSize, search: trimmedSearch }],
+    queryFn: () => getClients({ page, limit: pageSize, search: trimmedSearch || undefined }),
     retry: 1,
   })
 
   const { data: dieticiansRes, isLoading: dieticiansLoading } = useQuery({
     queryKey: ['dieticians', 'options'],
-    queryFn: getDieticians,
+    queryFn: () => getDieticians(),
     enabled: assignOpen,
     staleTime: 60_000,
     retry: 1,
@@ -74,22 +77,12 @@ export function ClientsPage() {
 
   const dieticianOptions: DieticianOption[] = Array.isArray(dieticiansRes) ? dieticiansRes : []
 
-  const clientsList = Array.isArray(clientsRes?.clients) ? clientsRes.clients : []
+  const clientsList = useMemo(() => {
+    const list = Array.isArray(clientsRes?.clients) ? clientsRes.clients : []
+    return list.filter((c) => c.isVerified === true)
+  }, [clientsRes?.clients])
 
-  const filtered = useMemo(
-    () =>
-      clientsList.filter((c) => {
-        const q = search.toLowerCase()
-        return (
-          (c.firstName ?? '').toLowerCase().includes(q) ||
-          (c.lastName ?? '').toLowerCase().includes(q) ||
-          (c.email ?? '').toLowerCase().includes(q) ||
-          (c.phone ?? '').toLowerCase().includes(q) ||
-          (c.dieticianName ?? '').toLowerCase().includes(q)
-        )
-      }),
-    [clientsList, search]
-  )
+  const totalItems = Number(clientsRes?.totalItems ?? clientsRes?.total ?? clientsList.length) || clientsList.length
 
   const { data: detailData, isLoading: detailLoading } = useQuery({
     queryKey: ['admin', 'clients', 'detail', viewClientId],
@@ -227,7 +220,7 @@ export function ClientsPage() {
             <div>
               <h3 className="text-[15px] font-semibold text-surface-900">Danışanlar</h3>
               <p className="text-[12px] mt-0.5 text-surface-500">
-                {clientsLoading ? 'Yükleniyor...' : `Kayıtlı danışanlar (${filtered.length} adet)`}
+                {clientsLoading ? 'Yükleniyor...' : `Kayıtlı danışanlar (${totalItems} adet)`}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -237,7 +230,10 @@ export function ClientsPage() {
                   type="text"
                   placeholder="Danışan ara..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value)
+                    setPage(1)
+                  }}
                   className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
@@ -260,7 +256,19 @@ export function ClientsPage() {
               </Button>
             </div>
           ) : (
-            <ClientsTable clients={filtered} onView={openView} onAssignDietician={openAssignDietician} />
+            <ClientsTable
+              clients={clientsList}
+              totalItems={totalItems}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(next) => {
+                setPageSize(next)
+                setPage(1)
+              }}
+              onView={openView}
+              onAssignDietician={openAssignDietician}
+            />
           )}
         </div>
       </motion.div>
@@ -657,20 +665,23 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
 
 function ClientsTable({
   clients,
+  totalItems,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
   onView,
   onAssignDietician,
 }: {
   clients: AppClient[]
+  totalItems: number
+  page: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
   onView: (c: AppClient) => void
   onAssignDietician: (c: AppClient) => void
 }) {
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const paginated = useMemo(
-    () => clients.slice((page - 1) * pageSize, page * pageSize),
-    [clients, page, pageSize]
-  )
-
   return (
     <>
       <div className="overflow-x-auto">
@@ -693,7 +704,7 @@ function ClientsTable({
                 </td>
               </tr>
             ) : (
-              paginated.map((c) => (
+              clients.map((c) => (
                 <tr
                   key={c.id}
                   className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
@@ -748,14 +759,11 @@ function ClientsTable({
         </table>
       </div>
       <TablePagination
-        totalItems={clients.length}
+        totalItems={totalItems}
         page={page}
         pageSize={pageSize}
-        onPageChange={setPage}
-        onPageSizeChange={(next) => {
-          setPageSize(next)
-          setPage(1)
-        }}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
       />
     </>
   )
