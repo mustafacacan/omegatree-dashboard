@@ -124,6 +124,8 @@ function normalizeLaboratoryPayload(raw: unknown): ApiLaboratoryItem {
 
 /**
  * PUT /laboratories/:id için gerçek laboratuvar PK'si (normalize sonrası).
+ * Öncelik: iç içe laboratory.id → kök id (userId'den farklıysa kesin lab PK) → açık laboratoryId → kök id.
+ * Bazı cevaplarda kök `id` kullanıcı kaydına ait kalabiliyor; nested veya userId ile ayrıştırılır.
  */
 function resolveLaboratoryPk(item: ApiLaboratoryItem): string {
   const r = item as unknown as Record<string, unknown>
@@ -133,12 +135,24 @@ function resolveLaboratoryPk(item: ApiLaboratoryItem): string {
     return s === '' ? undefined : s
   }
 
+  const nestedLab =
+    r.laboratory && typeof r.laboratory === 'object' && !Array.isArray(r.laboratory)
+      ? (r.laboratory as Record<string, unknown>)
+      : undefined
+  const nestedId = nestedLab ? num(nestedLab.id) : undefined
+  if (nestedId) return nestedId
+
+  const rootId = num(item.id)
+  const userFk = num(item.userId)
+
+  if (rootId && userFk != null && rootId !== userFk) {
+    return rootId
+  }
+
   const fromExplicit =
     num(r.laboratoryId) ??
     num(r.laboratory_id) ??
     num(r.laboratoryID)
-
-  const rootId = num(item.id)
 
   if (fromExplicit) return fromExplicit
   if (rootId) return rootId
@@ -319,6 +333,37 @@ export async function getLaboratoryById(id: string | number): Promise<Laboratory
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
   const item = (top && 'data' in top ? top.data : data) as ApiLaboratoryItem
   return mapApiLabToLab(item)
+}
+
+/**
+ * Liste / form satırındaki `Laboratory.id` bazen gerçek laboratuvar PK'si değil (mapping veya user id ile çakışma).
+ * PUT/DELETE öncesi sunucudan kaydı çözümler; backend GET aynı userId fallback'ini kullanır.
+ */
+export async function ensureLaboratoryPrimaryKey(lab: Laboratory): Promise<string> {
+  const keys: string[] = []
+  if (lab.userId != null && String(lab.userId).trim() !== '') {
+    keys.push(String(lab.userId).trim())
+  }
+  const listId = lab.id?.trim()
+  if (listId && !keys.includes(listId)) keys.push(listId)
+
+  if (keys.length === 0) {
+    throw new Error('Laboratuvar kimliği eksik (userId ve id boş).')
+  }
+
+  let lastErr: unknown
+  for (const lookupKey of keys) {
+    try {
+      const resolved = await getLaboratoryById(lookupKey)
+      const pk = resolved.id?.trim()
+      if (pk) return pk
+    } catch (e) {
+      lastErr = e
+    }
+  }
+
+  if (lastErr != null) throw lastErr
+  throw new Error('Laboratuvar bulunamadı.')
 }
 
 /**

@@ -26,6 +26,7 @@ import {
   getLaboratories,
   getLaboratoriesWithPagination,
   getLaboratoryById,
+  ensureLaboratoryPrimaryKey,
   createLaboratory,
   updateLaboratory,
   deleteLaboratory,
@@ -340,8 +341,9 @@ export function LaboratoriesPage() {
         })
       }
 
-      /** Kargo en son: bazı backend'lerde kullanıcı/adres güncellemesi lab satırını sıfırlayabiliyor */
-      await updateLaboratory(selectedLab.id, {
+      /** Kargo: liste `id` yanlış olabildiği için gerçek PK sunucudan çözülür (userId öncelikli). */
+      const laboratoryPk = await ensureLaboratoryPrimaryKey(selectedLab)
+      await updateLaboratory(laboratoryPk, {
         cargofirm: cargoFirm,
         cargoNumber: cargoNum,
       })
@@ -360,7 +362,10 @@ export function LaboratoriesPage() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: deleteLaboratory,
+    mutationFn: async (lab: Laboratory) => {
+      const pk = await ensureLaboratoryPrimaryKey(lab)
+      await deleteLaboratory(pk)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LABS_QUERY_KEY })
       toast.success('Laboratuvar silindi')
@@ -545,10 +550,17 @@ export function LaboratoriesPage() {
       toast.error('Lütfen bir diyetisyen seçin')
       return
     }
-    assignDietitianMutation.mutate({
-      laboratoryId: Number(selectedLab.id),
-      dieticianId: Number(selectedDietitianId),
-    })
+    void (async () => {
+      try {
+        const pk = await ensureLaboratoryPrimaryKey(selectedLab)
+        assignDietitianMutation.mutate({
+          laboratoryId: Number(pk),
+          dieticianId: Number(selectedDietitianId),
+        })
+      } catch (err) {
+        toast.error(getApiErrorMessage(err, { fallback: 'Laboratuvar çözümlenemedi' }))
+      }
+    })()
   }
 
   const openDeleteLab = (lab: Laboratory) => {
@@ -563,7 +575,7 @@ export function LaboratoriesPage() {
 
   const submitDeleteLab = () => {
     if (!selectedLab) return
-    deleteMutation.mutate(selectedLab.id)
+    deleteMutation.mutate(selectedLab)
   }
 
   const selectedLabDietitians = useMemo(() => {
