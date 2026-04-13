@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { keepPreviousData, useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
@@ -38,6 +38,9 @@ import {
 import { getDieticians } from '@/services/kits.service'
 import { getProvinces, getDistricts } from '@/services/turkey-addresses.service'
 import { readVerifiedFromDieticianNode } from '@/lib/user-verified'
+import { updateUser } from '@/services/users.service'
+import { updateAddress } from '@/services/addresses.service'
+import { UserRole } from '@/utils/constants'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 const W = { olive: '#8B9A4B', orange: '#E8913A', amber: '#F5C842', green: '#6ABF69', warmGray: '#8A8578' }
@@ -99,13 +102,22 @@ export function LaboratoriesPage() {
   const { data: provinces = [] } = useQuery({
     queryKey: ['turkey', 'provinces'],
     queryFn: getProvinces,
-    enabled: newLabOpen,
+    enabled: newLabOpen || editLabOpen,
   })
   const { data: districts = [], isLoading: districtsLoading } = useQuery({
     queryKey: ['turkey', 'districts', selectedProvinceId],
     queryFn: () => getDistricts(selectedProvinceId!),
-    enabled: newLabOpen && selectedProvinceId != null,
+    enabled: (newLabOpen || editLabOpen) && selectedProvinceId != null,
   })
+
+  useEffect(() => {
+    if (!editLabOpen || !selectedLab?.city?.trim() || provinces.length === 0) return
+    const city = selectedLab.city.trim()
+    const match = provinces.find(
+      (p) => p.name.localeCompare(city, 'tr', { sensitivity: 'accent' }) === 0
+    )
+    setSelectedProvinceId(match?.id ?? null)
+  }, [editLabOpen, selectedLab?.id, selectedLab?.city, provinces])
 
   const trimmedSearch = useMemo(() => search.trim(), [search])
   const labsPageQuery = useQuery({
@@ -229,9 +241,8 @@ export function LaboratoriesPage() {
       list.push({ dieticianId: dietician?.id ?? 0, name })
       assignmentsByLabId.set(labId, list)
     }
-    return laboratories
-      .filter((lab) => lab.isUserVerified === true)
-      .map((lab) => ({
+    // Admin listesinde tüm laboratuvarlar gösterilmeli; doğrulanmamış yeniler de API'de vardır.
+    return laboratories.map((lab) => ({
       ...lab,
       assignedDietitianDetails: assignmentsByLabId.get(lab.id) ?? [],
     }))
@@ -278,18 +289,73 @@ export function LaboratoriesPage() {
     },
   })
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: { cargofirm?: string; cargoNumber?: string } }) =>
-      updateLaboratory(id, payload),
+  const saveLabEditMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedLab) return
+
+      const phoneDigits = newLabForm.phone.replace(/\D/g, '')
+      const streetVal = newLabForm.street.trim() || '-'
+      const neighborhoodVal = newLabForm.neighborhood.trim() || '-'
+      const noVal = newLabForm.no.trim()
+      const cityVal = newLabForm.city.trim()
+      const districtVal = newLabForm.district.trim()
+      const countryVal = newLabForm.country.trim() || 'Turkiye'
+      const autoFull =
+        newLabForm.fullAddress.trim() ||
+        [streetVal !== '-' ? streetVal : null, noVal ? `No:${noVal}` : null, neighborhoodVal !== '-' ? neighborhoodVal : null, districtVal, cityVal, countryVal]
+          .filter(Boolean)
+          .join(', ')
+
+      /** Form boş kaldıysa listedeki satırdan yedekle (race / focus kaybı) */
+      const cargoFirm =
+        newLabForm.cargofirm.trim() || selectedLab.cargofirm?.trim() || ''
+      const cargoNum =
+        newLabForm.cargoNumber.trim() || selectedLab.cargoNumber?.trim() || ''
+
+      if (selectedLab.userId != null) {
+        await updateUser(String(selectedLab.userId), {
+          companyName: newLabForm.companyName.trim(),
+          firstName: newLabForm.firstName.trim() || undefined,
+          lastName: newLabForm.lastName.trim() || undefined,
+          phone: phoneDigits,
+          email: newLabForm.email.trim() || undefined,
+          role: UserRole.LAB,
+        })
+      }
+
+      if (selectedLab.addressId != null) {
+        const titleRaw = newLabForm.addressTitle || 'work'
+        const title =
+          titleRaw === 'home' || titleRaw === 'work' || titleRaw === 'other' ? titleRaw : 'work'
+        await updateAddress(selectedLab.addressId, {
+          title,
+          country: countryVal,
+          city: cityVal,
+          district: districtVal,
+          street: streetVal,
+          neighborhood: neighborhoodVal,
+          no: noVal || undefined,
+          fullAddress: autoFull || undefined,
+          postalCode: newLabForm.postalCode.trim() || '00000',
+        })
+      }
+
+      /** Kargo en son: bazı backend'lerde kullanıcı/adres güncellemesi lab satırını sıfırlayabiliyor */
+      await updateLaboratory(selectedLab.id, {
+        cargofirm: cargoFirm,
+        cargoNumber: cargoNum,
+      })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LABS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['laboratories'] })
       toast.success('Laboratuvar güncellendi')
       setEditLabOpen(false)
       setSelectedLab(null)
       resetNewLabForm()
     },
     onError: (err: unknown) => {
-      toast.error(getApiErrorMessage(err, { fallback: 'Laboratuvar güncellenemedi' }))
+      toast.error(getApiErrorMessage(err, { fallback: 'Güncelleme başarısız' }))
     },
   })
 
@@ -401,25 +467,71 @@ export function LaboratoriesPage() {
     })
   }
 
+  /** Formu liste satırındaki veriden doldurur; GET detayı formu boşaltabildiği için kullanılmaz. */
   const openEditLab = (lab: Laboratory) => {
+    setSelectedProvinceId(null)
+    setEditLabOpen(true)
     setSelectedLab(lab)
-    setNewLabForm((prev) => ({
-      ...prev,
+    setNewLabForm({
+      companyName: lab.companyName ?? '',
+      firstName: lab.firstName ?? '',
+      lastName: lab.lastName ?? '',
+      phone: lab.phone ?? '',
+      email: lab.email ?? '',
+      gender: lab.gender === 'female' ? 'female' : 'male',
       cargofirm: lab.cargofirm ?? '',
       cargoNumber: lab.cargoNumber ?? '',
-    }))
-    setEditLabOpen(true)
+      city: lab.city ?? '',
+      district: lab.district ?? '',
+      street: lab.street ?? '',
+      neighborhood: lab.neighborhood ?? '',
+      no: lab.no ?? '',
+      fullAddress: lab.fullAddress ?? '',
+      postalCode: lab.postalCode ?? '',
+      country: lab.country ?? 'Turkiye',
+      addressTitle: lab.addressTitle ?? 'work',
+    })
+
+    if (lab.userId == null || lab.addressId == null) {
+      getLaboratoryById(lab.id)
+        .then((full) => {
+          setSelectedLab((prev) => {
+            if (!prev || prev.id !== lab.id) return prev
+            return {
+              ...prev,
+              userId: full.userId ?? prev.userId,
+              addressId: full.addressId ?? prev.addressId,
+            }
+          })
+        })
+        .catch(() => {})
+    }
   }
 
   const submitEditLab = () => {
     if (!selectedLab) return
-    updateMutation.mutate({
-      id: selectedLab.id,
-      payload: {
-        cargofirm: newLabForm.cargofirm.trim() || undefined,
-        cargoNumber: newLabForm.cargoNumber.trim() || undefined,
-      },
-    })
+    if (!newLabForm.companyName.trim()) {
+      toast.error('Kurum adı zorunludur')
+      return
+    }
+    const phoneDigits = newLabForm.phone.replace(/\D/g, '')
+    if (!phoneDigits || phoneDigits.length < 10 || phoneDigits.length > 11) {
+      toast.error('Telefon numarası 10 veya 11 haneli olmalıdır')
+      return
+    }
+    if (!newLabForm.city.trim() || !newLabForm.district.trim()) {
+      toast.error('Şehir ve ilçe zorunludur')
+      return
+    }
+    const cargoFirmCheck =
+      newLabForm.cargofirm.trim() || selectedLab.cargofirm?.trim() || ''
+    const cargoNumCheck =
+      newLabForm.cargoNumber.trim() || selectedLab.cargoNumber?.trim() || ''
+    if (!cargoFirmCheck || !cargoNumCheck) {
+      toast.error('Kargo firması ve kargo numarası zorunludur')
+      return
+    }
+    saveLabEditMutation.mutate()
   }
 
   const openAssignDietitian = (lab: Laboratory) => {
@@ -752,7 +864,11 @@ export function LaboratoriesPage() {
           <ModalHeader>
             <ModalTitle>Laboratuvar Detayı</ModalTitle>
             <ModalDescription>
-              {labDetailQuery.data?.name || 'Laboratuvar bilgileri görüntüleniyor.'}
+              {labDetailQuery.data
+                ? (labDetailQuery.data.companyName?.trim() ||
+                    labDetailQuery.data.name ||
+                    'Laboratuvar bilgileri')
+                : 'Laboratuvar bilgileri görüntüleniyor.'}
             </ModalDescription>
           </ModalHeader>
           <ModalBody>
@@ -780,15 +896,39 @@ export function LaboratoriesPage() {
                 {/* Hero kart: Avatar + isim + il/ilçe */}
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-50 dark:bg-surface-200/40 border border-surface-200">
                   <Avatar
-                    name={labDetailQuery.data.name || 'Laboratuvar'}
+                    name={
+                      labDetailQuery.data.companyName?.trim() ||
+                      labDetailQuery.data.name ||
+                      'Laboratuvar'
+                    }
                     size="lg"
                     className="shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-surface-900 dark:text-surface-100">
-                      {labDetailQuery.data.name || 'Laboratuvar'}
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-surface-500">
+                      {labDetailQuery.data.companyName?.trim() ? 'Kurum adı' : 'Laboratuvar'}
                     </p>
-                    <p className="text-sm text-surface-500 mt-0.5">
+                    <p className="font-semibold text-surface-900 dark:text-surface-100 truncate">
+                      {labDetailQuery.data.name || '—'}
+                    </p>
+                    {(() => {
+                      const sorumlu = [labDetailQuery.data.firstName, labDetailQuery.data.lastName]
+                        .filter(Boolean)
+                        .join(' ')
+                        .trim()
+                      const kurum = (
+                        labDetailQuery.data.companyName?.trim() ||
+                        labDetailQuery.data.name ||
+                        ''
+                      ).trim()
+                      if (!sorumlu || sorumlu === kurum) return null
+                      return (
+                        <p className="text-sm text-surface-600 dark:text-surface-300 mt-1">
+                          Sorumlu: <span className="font-medium">{sorumlu}</span>
+                        </p>
+                      )
+                    })()}
+                    <p className="text-sm text-surface-500 mt-1">
                       {[labDetailQuery.data.city, labDetailQuery.data.district].filter(Boolean).join(', ') || '—'}
                     </p>
                   </div>
@@ -875,8 +1015,7 @@ export function LaboratoriesPage() {
                 {/* Footer bilgi */}
                 <div className="pt-1 border-t border-surface-200 dark:border-surface-300/50">
                   <p className="text-xs text-surface-500">
-                    Sorumlu: {[labDetailQuery.data.firstName, labDetailQuery.data.lastName].filter(Boolean).join(' ') || '—'}
-                    {labDetailQuery.data.createdAt && ` · Kayıt: ${formatDate(labDetailQuery.data.createdAt)}`}
+                    {labDetailQuery.data.createdAt && `Kayıt: ${formatDate(labDetailQuery.data.createdAt)}`}
                   </p>
                 </div>
               </div>
@@ -1158,34 +1297,207 @@ export function LaboratoriesPage() {
       </Modal>
 
       {/* ── Edit Laboratory Modal ── */}
-      <Modal open={editLabOpen} onOpenChange={setEditLabOpen}>
-        <ModalContent>
+      <Modal
+        open={editLabOpen}
+        onOpenChange={(open) => {
+          setEditLabOpen(open)
+          if (!open) {
+            setSelectedLab(null)
+            resetNewLabForm()
+          }
+        }}
+      >
+        <ModalContent className="max-w-2xl">
           <ModalHeader>
             <ModalTitle>Laboratuvar Düzenle</ModalTitle>
             <ModalDescription>
-              {selectedLab && `${selectedLab.name} — kargo bilgilerini güncelleyin.`}
+              {selectedLab
+                ? `${selectedLab.name} — kurum, yetkili, kargo ve adres bilgilerini güncelleyin.`
+                : 'Laboratuvar bilgilerini düzenleyin.'}
             </ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-3">
-            <Input
-              label="Kargo Firması"
-              value={newLabForm.cargofirm}
-              onChange={(e) => setNewLabForm((s) => ({ ...s, cargofirm: e.target.value }))}
-              placeholder="Kargo firması"
-            />
-            <Input
-              label="Kargo Numarası"
-              value={newLabForm.cargoNumber}
-              onChange={(e) => setNewLabForm((s) => ({ ...s, cargoNumber: e.target.value }))}
-              placeholder="Kargo anlaşma numarası"
-            />
+          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto relative">
+                <p className="form-section-title">Lab Sorumlusu</p>
+                <Input
+                  label="Kurum Adı *"
+                  value={newLabForm.companyName}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, companyName: e.target.value }))}
+                  placeholder="Laboratuvar / kurum adı"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Ad"
+                    value={newLabForm.firstName}
+                    onChange={(e) => setNewLabForm((s) => ({ ...s, firstName: e.target.value }))}
+                    placeholder="Yetkili adı"
+                  />
+                  <Input
+                    label="Soyad"
+                    value={newLabForm.lastName}
+                    onChange={(e) => setNewLabForm((s) => ({ ...s, lastName: e.target.value }))}
+                    placeholder="Yetkili soyadı"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Telefon *"
+                    value={newLabForm.phone}
+                    onChange={(e) => setNewLabForm((s) => ({ ...s, phone: e.target.value }))}
+                    placeholder="05XX XXX XX XX"
+                  />
+                  <Input
+                    label="E-posta"
+                    type="email"
+                    value={newLabForm.email}
+                    onChange={(e) => setNewLabForm((s) => ({ ...s, email: e.target.value }))}
+                    placeholder="lab@ornek.com"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
+                  <Select value={newLabForm.gender} onValueChange={(v) => setNewLabForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Erkek</SelectItem>
+                      <SelectItem value="female">Kadın</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="panel-section">
+                  <p className="form-section-title">Kargo Bilgileri</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      label="Kargo Firması *"
+                      value={newLabForm.cargofirm}
+                      onChange={(e) => setNewLabForm((s) => ({ ...s, cargofirm: e.target.value }))}
+                      placeholder="Örn: Yurtiçi Kargo"
+                    />
+                    <Input
+                      label="Kargo Numarası *"
+                      value={newLabForm.cargoNumber}
+                      onChange={(e) => setNewLabForm((s) => ({ ...s, cargoNumber: e.target.value }))}
+                      placeholder="Anlaşma numarası"
+                    />
+                  </div>
+                </div>
+
+                <div className="panel-section">
+                  <p className="form-section-title">Adres Bilgileri</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Select
+                      value={selectedProvinceId != null ? String(selectedProvinceId) : ''}
+                      onValueChange={(v) => {
+                        const id = v ? Number(v) : null
+                        const province = id ? provinces.find((p) => p.id === id) : null
+                        setSelectedProvinceId(id)
+                        setNewLabForm((s) => ({
+                          ...s,
+                          city: province?.name ?? '',
+                          district: '',
+                        }))
+                      }}
+                    >
+                      <SelectTrigger label="Şehir *" className="w-full">
+                        <SelectValue placeholder="İl seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {provinces.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={newLabForm.district}
+                      onValueChange={(v) => setNewLabForm((s) => ({ ...s, district: v }))}
+                      disabled={!selectedProvinceId || districtsLoading}
+                    >
+                      <SelectTrigger label="İlçe *" className="w-full">
+                        <SelectValue placeholder={districtsLoading ? 'Yükleniyor...' : selectedProvinceId ? 'İlçe seçin' : 'Önce il seçin'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {districts.map((d) => (
+                          <SelectItem key={d.id} value={d.name}>
+                            {d.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <Input
+                      label="Mahalle"
+                      value={newLabForm.neighborhood}
+                      onChange={(e) => setNewLabForm((s) => ({ ...s, neighborhood: e.target.value }))}
+                      placeholder="Mahalle"
+                    />
+                    <Input
+                      label="Sokak"
+                      value={newLabForm.street}
+                      onChange={(e) => setNewLabForm((s) => ({ ...s, street: e.target.value }))}
+                      placeholder="Sokak adı"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mt-3">
+                    <Input
+                      label="Kapı No"
+                      value={newLabForm.no}
+                      onChange={(e) => setNewLabForm((s) => ({ ...s, no: e.target.value }))}
+                      placeholder="Örn: 10"
+                    />
+                    <Input
+                      label="Posta Kodu"
+                      value={newLabForm.postalCode}
+                      onChange={(e) => setNewLabForm((s) => ({ ...s, postalCode: e.target.value }))}
+                      placeholder="Örn: 34710"
+                    />
+                    <Input
+                      label="Ülke"
+                      value={newLabForm.country}
+                      onChange={(e) => setNewLabForm((s) => ({ ...s, country: e.target.value }))}
+                      placeholder="Turkiye"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <Input
+                      label="Açık Adres"
+                      value={newLabForm.fullAddress}
+                      onChange={(e) => setNewLabForm((s) => ({ ...s, fullAddress: e.target.value }))}
+                      placeholder="Tam adres"
+                    />
+                  </div>
+                </div>
+                {selectedLab?.userId == null && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg px-3 py-2">
+                    Kullanıcı kaydı bulunamadı; kurum ve yetkili bilgileri kaydedilemeyebilir.
+                  </p>
+                )}
+                {selectedLab?.addressId == null && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg px-3 py-2">
+                    Adres kaydı bulunamadı; adres güncellemesi atlanacak.
+                  </p>
+                )}
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => { setEditLabOpen(false); setSelectedLab(null); resetNewLabForm() }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditLabOpen(false)
+                setSelectedLab(null)
+                resetNewLabForm()
+              }}
+              disabled={saveLabEditMutation.isPending}
+            >
               İptal
             </Button>
-            <Button variant="primary" onClick={submitEditLab} disabled={updateMutation.isPending}>
-              {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button
+              variant="primary"
+              onClick={submitEditLab}
+              disabled={saveLabEditMutation.isPending}
+              loading={saveLabEditMutation.isPending}
+            >
               Kaydet
             </Button>
           </ModalFooter>
@@ -1321,7 +1633,7 @@ function LaboratoryTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Laboratuvar</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kurum / Yetkili</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Adres (İl / İlçe)</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Telefon</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">E-posta</th>
@@ -1343,6 +1655,11 @@ function LaboratoryTable({
                 const isLoadingDetail = detailQueries[rowIndex]?.isLoading
                 const phone = lab.phone ?? detail?.phone
                 const email = lab.email ?? detail?.email
+                const personName = [lab.firstName, lab.lastName].filter(Boolean).join(' ').trim()
+                const rowTitle = lab.name
+                const rowSubtitle =
+                  personName && personName !== lab.name.trim() ? personName : null
+                const avatarLabel = lab.name
                 return (
                 <tr
                   key={lab.id}
@@ -1350,12 +1667,14 @@ function LaboratoryTable({
                 >
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2 min-w-0">
-                      <Avatar name={lab.name} size="sm" className="shrink-0" />
+                      <Avatar name={avatarLabel} size="sm" className="shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-[12px] font-medium text-surface-700 truncate">{lab.name}</p>
-                        {lab.companyName ? (
-                          <p className="text-[11px] text-surface-500 truncate" title={lab.companyName}>
-                            {lab.companyName}
+                        <p className="text-[12px] font-medium text-surface-700 truncate" title={rowTitle}>
+                          {rowTitle}
+                        </p>
+                        {rowSubtitle ? (
+                          <p className="text-[11px] text-surface-500 truncate" title={rowSubtitle}>
+                            {rowSubtitle}
                           </p>
                         ) : null}
                       </div>

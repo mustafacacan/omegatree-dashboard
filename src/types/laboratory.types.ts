@@ -15,6 +15,8 @@ export interface Laboratory {
   cargoNumber?: string
   isActive?: boolean
   userId?: number
+  /** PUT /addresses/:id ile güncelleme için */
+  addressId?: number
   street?: string
   neighborhood?: string
   no?: string

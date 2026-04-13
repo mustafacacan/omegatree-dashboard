@@ -46,6 +46,8 @@ interface ApiLaboratoryItem {
   userLaboratory?: ApiLabUser
   /** Detail endpoint may return address under this key */
   laboratoryAddress?: ApiLabAddress
+  /** Bazı cevaplarda kurum adı laboratuvar kökünde gelir (user ile aynı) */
+  companyName?: string | null
   cargofirm?: string
   cargoNumber?: string
   isActive?: boolean
@@ -68,6 +70,81 @@ interface ApiLabDietician {
   updatedAt?: string
 }
 
+/** Backend bazen cargofirm / cargoFirm / cargo_firm vb. döner */
+function readCargoFields(item: ApiLaboratoryItem): { cargofirm?: string; cargoNumber?: string } {
+  const r = item as unknown as Record<string, unknown>
+  const str = (v: unknown): string | undefined => {
+    if (v == null) return undefined
+    const s = String(v).trim()
+    return s === '' ? undefined : s
+  }
+  const fromObj = (o: Record<string, unknown> | undefined) => {
+    if (!o) return { firm: undefined as string | undefined, num: undefined as string | undefined }
+    return {
+      firm:
+        str(o.cargofirm) ??
+        str(o.cargoFirm) ??
+        str(o.cargo_firm) ??
+        str(o.cargoCompany) ??
+        str(o.cargo_company),
+      num:
+        str(o.cargoNumber) ??
+        str(o.cargo_number) ??
+        str(o.cargo_no) ??
+        str(o.cargoNo),
+    }
+  }
+  const top = fromObj(r)
+  const nestedLab =
+    r.laboratory && typeof r.laboratory === 'object' && !Array.isArray(r.laboratory)
+      ? (r.laboratory as Record<string, unknown>)
+      : undefined
+  const nested = fromObj(nestedLab)
+  return {
+    cargofirm: top.firm ?? nested.firm,
+    cargoNumber: top.num ?? nested.num,
+  }
+}
+
+/**
+ * Bazı API cevaplarında gerçek laboratuvar alanları `laboratory: { id, cargofirm, ... }` içinde;
+ * kökteki `id` başka bir kayda (kullanıcı, adres) ait olabiliyor. Nested üstte birleştirilir.
+ */
+function normalizeLaboratoryPayload(raw: unknown): ApiLaboratoryItem {
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
+    return raw as ApiLaboratoryItem
+  }
+  const r = raw as Record<string, unknown>
+  const lab = r.laboratory
+  if (lab && typeof lab === 'object' && !Array.isArray(lab)) {
+    return { ...r, ...(lab as Record<string, unknown>) } as unknown as ApiLaboratoryItem
+  }
+  return raw as ApiLaboratoryItem
+}
+
+/**
+ * PUT /laboratories/:id için gerçek laboratuvar PK'si (normalize sonrası).
+ */
+function resolveLaboratoryPk(item: ApiLaboratoryItem): string {
+  const r = item as unknown as Record<string, unknown>
+  const num = (v: unknown): string | undefined => {
+    if (v == null || v === '') return undefined
+    const s = String(v).trim()
+    return s === '' ? undefined : s
+  }
+
+  const fromExplicit =
+    num(r.laboratoryId) ??
+    num(r.laboratory_id) ??
+    num(r.laboratoryID)
+
+  const rootId = num(item.id)
+
+  if (fromExplicit) return fromExplicit
+  if (rootId) return rootId
+  return ''
+}
+
 function buildDisplayAddress(addr: ApiLabAddress | undefined): string {
   if (!addr) return ''
   if (addr.fullAddress?.trim()) return addr.fullAddress.trim()
@@ -82,16 +159,24 @@ function buildDisplayAddress(addr: ApiLabAddress | undefined): string {
   return parts.join(', ')
 }
 
-function mapApiLabToLab(item: ApiLaboratoryItem): Laboratory {
+function mapApiLabToLab(raw: unknown): Laboratory {
+  const item = normalizeLaboratoryPayload(raw)
   const user = item.userLaboratory ?? item.user
   const addr = item.laboratoryAddress ?? item.address
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ')
   const phone = user?.phone ?? item.phone
   const email = user?.email ?? item.email
+  const companyRaw = item.companyName ?? user?.companyName
+  const companyTrim =
+    companyRaw != null && String(companyRaw).trim() !== '' ? String(companyRaw).trim() : undefined
+  /** Laboratuvar adı: önce kurum (companyName), yoksa yetkili adı soyadı */
+  const labPk = resolveLaboratoryPk(item)
+  const displayName = companyTrim || fullName || `Laboratuvar #${labPk || String(item.id ?? '')}`
+  const cargo = readCargoFields(item)
   return {
-    id: String(item.id ?? ''),
-    name: fullName || `Laboratuvar #${item.id ?? ''}`,
-    companyName: user?.companyName ?? undefined,
+    id: labPk,
+    name: displayName,
+    companyName: companyTrim,
     address: buildDisplayAddress(addr),
     city: addr?.city ?? '',
     district: addr?.district,
@@ -101,10 +186,11 @@ function mapApiLabToLab(item: ApiLaboratoryItem): Laboratory {
     assignedDietitians: [],
     createdAt: item.createdAt ?? '',
     updatedAt: item.updatedAt ?? '',
-    cargofirm: item.cargofirm,
-    cargoNumber: item.cargoNumber,
+    cargofirm: cargo.cargofirm,
+    cargoNumber: cargo.cargoNumber,
     isActive: item.isActive,
     userId: item.userId ?? user?.id,
+    addressId: item.addressId ?? addr?.id,
     street: addr?.street,
     neighborhood: addr?.neighborhood,
     no: addr?.no,
@@ -163,6 +249,8 @@ function pickItemsAndMeta(body: unknown): { items: ApiLaboratoryItem[]; meta: Re
   if (isRecord(payload)) {
     if (Array.isArray(payload.items)) return { items: payload.items as ApiLaboratoryItem[], meta: payload }
     if (Array.isArray(payload.data)) return { items: payload.data as ApiLaboratoryItem[], meta: payload }
+    if (Array.isArray(payload.laboratories))
+      return { items: payload.laboratories as ApiLaboratoryItem[], meta: payload }
   }
 
   return { items: [], meta: isRecord(payload) ? payload : top }
@@ -185,11 +273,14 @@ export async function getLaboratories(params?: GetLaboratoriesParams): Promise<L
   })
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
   const payload = top && 'data' in top ? top.data : data
+  const pl = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : null
   const list: ApiLaboratoryItem[] = Array.isArray(payload)
     ? payload
-    : payload && typeof payload === 'object' && 'items' in (payload as Record<string, unknown>)
-      ? ((payload as Record<string, unknown>).items as ApiLaboratoryItem[]) ?? []
-      : []
+    : pl && Array.isArray(pl.items)
+      ? (pl.items as ApiLaboratoryItem[])
+      : pl && Array.isArray(pl.laboratories)
+        ? (pl.laboratories as ApiLaboratoryItem[])
+        : []
   return list.map(mapApiLabToLab)
 }
 

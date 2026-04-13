@@ -13,7 +13,7 @@ import { formatDate } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import {
   Search, Plus, MoreHorizontal, UserCheck, UserX, Shield, Eye,
-  Filter, ChevronLeft, ChevronRight, Loader2, Trash2,
+  Filter, ChevronLeft, ChevronRight, Loader2, Trash2, Pencil,
 } from 'lucide-react'
 import type { User } from '@/types/user.types'
 import { toast } from 'sonner'
@@ -62,6 +62,15 @@ export function UsersListPage() {
   const [roleToEdit, setRoleToEdit] = useState<UserRole>(UserRole.DIETITIAN)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  const [editUserOpen, setEditUserOpen] = useState(false)
+  const [userBeingEdited, setUserBeingEdited] = useState<User | null>(null)
+  const [editUserForm, setEditUserForm] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+    identityNumber: '',
+  })
 
   const trimmedSearch = useMemo(() => search.trim(), [search])
   const usersQuery = useQuery({
@@ -139,6 +148,33 @@ export function UsersListPage() {
     },
   })
 
+  const updateUserDetailsMutation = useMutation({
+    mutationFn: (args: {
+      id: string
+      firstName: string
+      lastName: string
+      phone: string
+      email?: string
+      identityNumber?: string
+    }) =>
+      updateUser(args.id, {
+        firstName: args.firstName,
+        lastName: args.lastName,
+        phone: args.phone,
+        email: args.email,
+        identityNumber: args.identityNumber,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      setEditUserOpen(false)
+      setUserBeingEdited(null)
+      toast.success('Kullanıcı bilgileri güncellendi')
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Bilgiler güncellenemedi' }))
+    },
+  })
+
   const pendingUsers = useMemo(
     () => users.filter((u) => u.status === UserStatus.PENDING),
     [users]
@@ -184,6 +220,35 @@ export function UsersListPage() {
   const openProfile = (user: User) => {
     setProfileUser(user)
     setProfileOpen(true)
+  }
+
+  const openEditUser = (user: User) => {
+    setUserBeingEdited(user)
+    setEditUserForm({
+      firstName: user.firstName ?? '',
+      lastName: user.lastName ?? '',
+      phone: user.phone ?? '',
+      email: user.email ?? '',
+      identityNumber: user.identityNumber ?? '',
+    })
+    setEditUserOpen(true)
+  }
+
+  const submitEditUser = () => {
+    if (!userBeingEdited) return
+    if (!editUserForm.firstName.trim() || !editUserForm.lastName.trim() || !editUserForm.phone.trim()) {
+      toast.error('Ad, soyad ve telefon zorunludur')
+      return
+    }
+    const idTrim = editUserForm.identityNumber.trim()
+    updateUserDetailsMutation.mutate({
+      id: userBeingEdited.id,
+      firstName: editUserForm.firstName.trim(),
+      lastName: editUserForm.lastName.trim(),
+      phone: editUserForm.phone.trim(),
+      email: editUserForm.email.trim() || undefined,
+      ...(idTrim ? { identityNumber: idTrim } : {}),
+    })
   }
 
   const submitRoleUpdate = () => {
@@ -310,6 +375,7 @@ export function UsersListPage() {
                 onDelete={handleDeleteOpen}
                 onActivate={handleActivate}
                 onEditRole={openRoleEditor}
+                onEditUser={openEditUser}
                 onViewProfile={openProfile}
                 isLoading={usersQuery.isLoading}
               />
@@ -330,6 +396,7 @@ export function UsersListPage() {
                 onDelete={handleDeleteOpen}
                 onActivate={handleActivate}
                 onEditRole={openRoleEditor}
+                onEditUser={openEditUser}
                 onViewProfile={openProfile}
                 isLoading={usersQuery.isLoading}
               />
@@ -350,6 +417,7 @@ export function UsersListPage() {
                 onDelete={handleDeleteOpen}
                 onActivate={handleActivate}
                 onEditRole={openRoleEditor}
+                onEditUser={openEditUser}
                 onViewProfile={openProfile}
                 isLoading={usersQuery.isLoading}
               />
@@ -535,6 +603,84 @@ export function UsersListPage() {
         </ModalContent>
       </Modal>
 
+      {/* Kullanıcı bilgilerini düzenle — PUT /users/{id} */}
+      <Modal
+        open={editUserOpen}
+        onOpenChange={(open) => {
+          setEditUserOpen(open)
+          if (!open) setUserBeingEdited(null)
+        }}
+      >
+        <ModalContent className="max-w-2xl">
+          <ModalHeader>
+            <ModalTitle>Kullanıcı Bilgilerini Düzenle</ModalTitle>
+            <ModalDescription>
+              {userBeingEdited
+                ? `${userBeingEdited.firstName} ${userBeingEdited.lastName} — ad, soyad, telefon ve iletişim bilgilerini güncelleyin`
+                : ''}
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
+            <p className="form-section-title">Kişisel Bilgiler</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Ad *"
+                value={editUserForm.firstName}
+                onChange={(e) => setEditUserForm((s) => ({ ...s, firstName: e.target.value }))}
+                placeholder="Ad"
+              />
+              <Input
+                label="Soyad *"
+                value={editUserForm.lastName}
+                onChange={(e) => setEditUserForm((s) => ({ ...s, lastName: e.target.value }))}
+                placeholder="Soyad"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Telefon *"
+                value={editUserForm.phone}
+                onChange={(e) => setEditUserForm((s) => ({ ...s, phone: e.target.value }))}
+                placeholder="05XX XXX XX XX"
+              />
+              <Input
+                label="E-posta"
+                type="email"
+                value={editUserForm.email}
+                onChange={(e) => setEditUserForm((s) => ({ ...s, email: e.target.value }))}
+                placeholder="ornek@email.com"
+              />
+            </div>
+            <Input
+              label="T.C. Kimlik No"
+              value={editUserForm.identityNumber}
+              onChange={(e) => setEditUserForm((s) => ({ ...s, identityNumber: e.target.value }))}
+              placeholder="Opsiyonel"
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditUserOpen(false)
+                setUserBeingEdited(null)
+              }}
+              disabled={updateUserDetailsMutation.isPending}
+            >
+              İptal
+            </Button>
+            <Button
+              variant="primary"
+              onClick={submitEditUser}
+              disabled={updateUserDetailsMutation.isPending || !userBeingEdited}
+              loading={updateUserDetailsMutation.isPending}
+            >
+              Kaydet
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       {/* Edit Role Modal */}
       <Modal open={editRoleOpen} onOpenChange={setEditRoleOpen}>
         <ModalContent className="max-w-md">
@@ -654,6 +800,7 @@ function UserTable({
   onDelete,
   onActivate,
   onEditRole,
+  onEditUser,
   onViewProfile,
   isLoading,
 }: {
@@ -668,6 +815,7 @@ function UserTable({
   onDelete: (u: User) => void
   onActivate: (id: string) => void
   onEditRole: (u: User) => void
+  onEditUser: (u: User) => void
   onViewProfile: (u: User) => void
   isLoading?: boolean
 }) {
@@ -757,6 +905,9 @@ function UserTable({
                         )}
                         <DropdownMenuItem onClick={() => onViewProfile(user)}>
                           <Eye className="h-4 w-4 mr-2" /> Profili Gör
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEditUser(user)}>
+                          <Pencil className="h-4 w-4 mr-2" /> Bilgileri Düzenle
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onEditRole(user)}>

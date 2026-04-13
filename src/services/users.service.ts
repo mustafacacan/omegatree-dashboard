@@ -209,6 +209,7 @@ export async function updateUser(
   payload: {
     firstName?: string
     lastName?: string
+    companyName?: string
     phone?: string
     email?: string
     role?: UserRole
@@ -218,6 +219,7 @@ export async function updateUser(
   const body: UpdateUserBody = {}
   if (payload.firstName != null) body.firstName = payload.firstName
   if (payload.lastName != null) body.lastName = payload.lastName
+  if (payload.companyName != null) body.companyName = payload.companyName
   if (payload.phone != null) body.phone = payload.phone
   if (payload.email != null) body.email = payload.email
   if (payload.role != null) body.role = mapAppRoleToApiRole(payload.role)
