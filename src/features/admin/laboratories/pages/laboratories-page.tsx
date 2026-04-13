@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { keepPreviousData, useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  Button, Input, Avatar,
+  Button, Input, Avatar, Checkbox,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
@@ -10,7 +10,7 @@ import {
 } from '@/components/ui'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import {
-  Search, Plus, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone,
+  Search, Plus, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone, Mail,
   Loader2, Eye, FlaskConical, Package, Clock, CheckCircle, FileText,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -38,7 +38,6 @@ import {
 } from '@/services/laboratories.service'
 import { getDieticians } from '@/services/kits.service'
 import { getProvinces, getDistricts } from '@/services/turkey-addresses.service'
-import { readVerifiedFromDieticianNode } from '@/lib/user-verified'
 import { updateUser } from '@/services/users.service'
 import { updateAddress } from '@/services/addresses.service'
 import { UserRole } from '@/utils/constants'
@@ -56,12 +55,52 @@ function formatRate(rate: number | undefined) {
   return `${Math.round(rate * 100)}%`
 }
 
+/** GET /laboratory-dietician `items[]` içindeki `dietician` + `dietician.user` şeması */
+type AssignedDietitianDetail = {
+  dieticianId: number
+  name: string
+  phone?: string
+  email?: string
+}
+
+/**
+ * API’deki laboratuvar–diyetisyen satırından görünen bilgiler.
+ * `dietician.user` (firstName, lastName, phone, email) kullanılır.
+ */
+function parseLabDieticianAssignmentRow(
+  dietician:
+    | {
+        id?: number
+        user?: { firstName?: string; lastName?: string; email?: string; phone?: string }
+      }
+    | undefined
+): AssignedDietitianDetail | null {
+  if (!dietician) return null
+  const dieticianId = Number(dietician.id) || 0
+  if (dieticianId <= 0) return null
+  const u = dietician.user
+  const fromUser = [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim()
+  const raw = dietician as Record<string, unknown>
+  const fromTop = [raw.firstName, raw.lastName].filter(Boolean).join(' ').trim()
+  const emailFallback =
+    (typeof u?.email === 'string' && u.email.trim()) ||
+    (typeof raw.email === 'string' && String(raw.email).trim())
+  const name =
+    fromUser ||
+    (fromTop ? String(fromTop) : '') ||
+    emailFallback ||
+    `Diyetisyen #${dieticianId}`
+  const phone = typeof u?.phone === 'string' && u.phone.trim() ? u.phone.trim() : undefined
+  const email = emailFallback || undefined
+  return { dieticianId, name, phone, email }
+}
+
 const LABS_QUERY_KEY = ['laboratories'] as const
 const LAB_DIETITIANS_KEY = ['laboratory-dietitians'] as const
 const DIETICIANS_KEY = ['dieticians'] as const
 const labDetailQueryKey = (id: string) => ['laboratories', id, 'detail'] as const
 
-type LabWithDietitians = Laboratory & { assignedDietitianDetails: { dieticianId: number; name: string }[] }
+type LabWithDietitians = Laboratory & { assignedDietitianDetails: AssignedDietitianDetail[] }
 
 export function LaboratoriesPage() {
   const queryClient = useQueryClient()
@@ -75,7 +114,8 @@ export function LaboratoriesPage() {
   const [viewLabOpen, setViewLabOpen] = useState(false)
   const [viewLabId, setViewLabId] = useState<string>('')
   const [selectedLab, setSelectedLab] = useState<Laboratory | null>(null)
-  const [selectedDietitianId, setSelectedDietitianId] = useState<string>('')
+  const [assignDietitianSearch, setAssignDietitianSearch] = useState('')
+  const [selectedDietitianIds, setSelectedDietitianIds] = useState<number[]>([])
   const [statsDays, setStatsDays] = useState('30')
   const [selectedLabIdForStats, setSelectedLabIdForStats] = useState('all')
 
@@ -230,40 +270,31 @@ export function LaboratoriesPage() {
   }, [labsStatsVerified, selectedLabIdForStats])
 
   const labsWithDietitians = useMemo(() => {
-    const assignmentsByLabId = new Map<string, { dieticianId: number; name: string }[]>()
+    const assignmentsByLabId = new Map<string, AssignedDietitianDetail[]>()
     for (const assignment of labDietitianAssignments) {
-      const labId = String(assignment.laboratory?.id ?? '')
+      const a = assignment as { laboratory?: { id?: number }; laboratoryId?: number }
+      const labIdRaw = a.laboratory?.id ?? a.laboratoryId
+      const labId = labIdRaw != null && String(labIdRaw) !== '' ? String(labIdRaw) : ''
       if (!labId) continue
-      const dietician = assignment.dietician
-      if (!readVerifiedFromDieticianNode(dietician)) continue
-      const dieticianUser = dietician?.user
-      const name = [dieticianUser?.firstName, dieticianUser?.lastName].filter(Boolean).join(' ') || `Diyetisyen #${dietician?.id ?? ''}`
+      const row = parseLabDieticianAssignmentRow(assignment.dietician)
+      if (!row) continue
       const list = assignmentsByLabId.get(labId) ?? []
-      list.push({ dieticianId: dietician?.id ?? 0, name })
+      if (list.some((x) => x.dieticianId === row.dieticianId)) continue
+      list.push(row)
       assignmentsByLabId.set(labId, list)
     }
-    // Admin listesinde tüm laboratuvarlar gösterilmeli; doğrulanmamış yeniler de API'de vardır.
     return laboratories.map((lab) => ({
       ...lab,
       assignedDietitianDetails: assignmentsByLabId.get(lab.id) ?? [],
     }))
   }, [laboratories, labDietitianAssignments])
 
-  const viewedLabDietitians = useMemo(() => {
+  /** Detay modalı: açık laboratuvarın atamaları (liste ile aynı kaynak) */
+  const viewedLabDietitians = useMemo((): AssignedDietitianDetail[] => {
     const id = String(viewLabId || '')
-    if (!id) return [] as { dieticianId: number; name: string }[]
-    const list: { dieticianId: number; name: string }[] = []
-    for (const assignment of labDietitianAssignments) {
-      const labId = String(assignment.laboratory?.id ?? '')
-      if (!labId || labId !== id) continue
-      const dietician = assignment.dietician
-      if (!readVerifiedFromDieticianNode(dietician)) continue
-      const dieticianUser = dietician?.user
-      const name = [dieticianUser?.firstName, dieticianUser?.lastName].filter(Boolean).join(' ') || `Diyetisyen #${dietician?.id ?? ''}`
-      list.push({ dieticianId: dietician?.id ?? 0, name })
-    }
-    return list
-  }, [labDietitianAssignments, viewLabId])
+    if (!id) return []
+    return labsWithDietitians.find((l) => l.id === id)?.assignedDietitianDetails ?? []
+  }, [labsWithDietitians, viewLabId])
 
   const filteredLaboratories = labsWithDietitians
 
@@ -378,14 +409,25 @@ export function LaboratoriesPage() {
   })
 
   const assignDietitianMutation = useMutation({
-    mutationFn: ({ laboratoryId, dieticianId }: { laboratoryId: number; dieticianId: number }) =>
-      assignDietitianToLab(laboratoryId, dieticianId),
-    onSuccess: () => {
+    mutationFn: async ({
+      laboratoryId,
+      dieticianIds,
+    }: {
+      laboratoryId: number
+      dieticianIds: number[]
+    }) => {
+      for (const dieticianId of dieticianIds) {
+        await assignDietitianToLab(laboratoryId, dieticianId)
+      }
+    },
+    onSuccess: (_, { dieticianIds }) => {
       queryClient.invalidateQueries({ queryKey: LAB_DIETITIANS_KEY })
-      toast.success('Diyetisyen laboratuvara atandı')
+      const n = dieticianIds.length
+      toast.success(n === 1 ? 'Diyetisyen laboratuvara atandı' : `${n} diyetisyen laboratuvara atandı`)
       setAssignDietitianOpen(false)
       setSelectedLab(null)
-      setSelectedDietitianId('')
+      setSelectedDietitianIds([])
+      setAssignDietitianSearch('')
     },
     onError: (err: unknown) => {
       toast.error(getApiErrorMessage(err, { fallback: 'Diyetisyen ataması başarısız' }))
@@ -541,13 +583,14 @@ export function LaboratoriesPage() {
 
   const openAssignDietitian = (lab: Laboratory) => {
     setSelectedLab(lab)
-    setSelectedDietitianId('')
+    setAssignDietitianSearch('')
+    setSelectedDietitianIds([])
     setAssignDietitianOpen(true)
   }
 
   const submitAssignDietitian = () => {
-    if (!selectedLab || !selectedDietitianId) {
-      toast.error('Lütfen bir diyetisyen seçin')
+    if (!selectedLab || selectedDietitianIds.length === 0) {
+      toast.error('Lütfen en az bir diyetisyen seçin')
       return
     }
     void (async () => {
@@ -555,7 +598,7 @@ export function LaboratoriesPage() {
         const pk = await ensureLaboratoryPrimaryKey(selectedLab)
         assignDietitianMutation.mutate({
           laboratoryId: Number(pk),
-          dieticianId: Number(selectedDietitianId),
+          dieticianIds: [...selectedDietitianIds],
         })
       } catch (err) {
         toast.error(getApiErrorMessage(err, { fallback: 'Laboratuvar çözümlenemedi' }))
@@ -588,6 +631,25 @@ export function LaboratoriesPage() {
     const assignedIds = new Set(selectedLabDietitians.map((d: { dieticianId: number; name: string }) => d.dieticianId))
     return dieticians.filter((d: { id: number }) => !assignedIds.has(d.id))
   }, [dieticians, selectedLabDietitians])
+
+  const filteredDietitiansForAssign = useMemo(() => {
+    const q = assignDietitianSearch.trim().toLowerCase()
+    if (!q) return availableDietitians
+    return availableDietitians.filter((d: { label: string }) => d.label.toLowerCase().includes(q))
+  }, [availableDietitians, assignDietitianSearch])
+
+  const toggleAssignDietitian = (id: number) => {
+    setSelectedDietitianIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
+
+  const selectAllFilteredDietitians = () => {
+    const ids = filteredDietitiansForAssign.map((d: { id: number }) => d.id)
+    setSelectedDietitianIds((prev) => Array.from(new Set([...prev, ...ids])))
+  }
+
+  const clearAssignDietitianSelection = () => setSelectedDietitianIds([])
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -872,7 +934,7 @@ export function LaboratoriesPage() {
           if (!open) setViewLabId('')
         }}
       >
-        <ModalContent className="max-w-lg">
+        <ModalContent className="max-w-5xl w-[calc(100vw-1.5rem)] sm:w-full">
           <ModalHeader>
             <ModalTitle>Laboratuvar Detayı</ModalTitle>
             <ModalDescription>
@@ -1001,25 +1063,41 @@ export function LaboratoriesPage() {
                   </div>
                 </div>
 
-                {/* Bağlı Diyetisyenler */}
+                {/* Atanmış diyetisyenler (GET /laboratory-dietician items) */}
                 <div>
-                  <p className="form-section-title mb-2">Bağlı Diyetisyenler</p>
+                  <p className="form-section-title mb-2">Atanmış diyetisyenler</p>
                   {viewedLabDietitians.length > 0 ? (
-                    <ul className="space-y-2">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {viewedLabDietitians.map((d) => (
                         <li
                           key={d.dieticianId}
-                          className="flex items-center gap-3 rounded-lg border border-surface-200 dark:border-surface-300/50 p-2.5 bg-surface-50/50 dark:bg-surface-200/20"
+                          className="rounded-xl border border-surface-200 dark:border-surface-300/50 p-3 bg-surface-50/50 dark:bg-surface-200/20 flex gap-3"
                         >
-                          <Avatar name={d.name} size="sm" className="shrink-0" />
-                          <span className="text-sm font-medium text-surface-800 dark:text-surface-200">{d.name}</span>
+                          <Avatar name={d.name} size="md" className="shrink-0" />
+                          <div className="min-w-0 flex-1 space-y-1.5">
+                            <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 leading-tight">
+                              {d.name}
+                            </p>
+                            {d.phone ? (
+                              <div className="flex items-center gap-1.5 text-[12px] text-surface-600 dark:text-surface-300">
+                                <Phone className="h-3.5 w-3.5 text-surface-400 shrink-0" />
+                                <span className="truncate">{d.phone}</span>
+                              </div>
+                            ) : null}
+                            {d.email ? (
+                              <div className="flex items-center gap-1.5 text-[12px] text-surface-600 dark:text-surface-300">
+                                <Mail className="h-3.5 w-3.5 text-surface-400 shrink-0" />
+                                <span className="truncate" title={d.email}>{d.email}</span>
+                              </div>
+                            ) : null}
+                          </div>
                         </li>
                       ))}
                     </ul>
                   ) : (
                     <div className="rounded-lg border border-dashed border-surface-200 dark:border-surface-300/50 p-4 text-center">
                       <Users className="h-8 w-8 text-surface-300 dark:text-surface-500 mx-auto mb-1.5" />
-                      <p className="text-sm text-surface-500">Atanmış diyetisyen yok</p>
+                      <p className="text-sm text-surface-500">Bu laboratuvara atanmış diyetisyen yok</p>
                     </div>
                   )}
                 </div>
@@ -1136,7 +1214,7 @@ export function LaboratoriesPage() {
 
       {/* ── Create Laboratory Modal ── */}
       <Modal open={newLabOpen} onOpenChange={setNewLabOpen}>
-        <ModalContent className="max-w-2xl">
+        <ModalContent className="max-w-3xl w-[calc(100vw-1.5rem)] sm:w-full">
           <ModalHeader>
             <ModalTitle>Yeni Laboratuvar Ekle</ModalTitle>
             <ModalDescription>Lab sorumlusu, kargo ve adres bilgilerini girin.</ModalDescription>
@@ -1319,7 +1397,7 @@ export function LaboratoriesPage() {
           }
         }}
       >
-        <ModalContent className="max-w-2xl">
+        <ModalContent className="max-w-3xl w-[calc(100vw-1.5rem)] sm:w-full">
           <ModalHeader>
             <ModalTitle>Laboratuvar Düzenle</ModalTitle>
             <ModalDescription>
@@ -1517,58 +1595,120 @@ export function LaboratoriesPage() {
       </Modal>
 
       {/* ── Assign Dietitian Modal ── */}
-      <Modal open={assignDietitianOpen} onOpenChange={setAssignDietitianOpen}>
-        <ModalContent>
+      <Modal
+        open={assignDietitianOpen}
+        onOpenChange={(open) => {
+          setAssignDietitianOpen(open)
+          if (!open) {
+            setSelectedLab(null)
+            setSelectedDietitianIds([])
+            setAssignDietitianSearch('')
+          }
+        }}
+      >
+        <ModalContent className="max-w-3xl w-[calc(100vw-1.5rem)] sm:w-full">
           <ModalHeader>
             <ModalTitle>Diyetisyen Ata</ModalTitle>
             <ModalDescription>
-              {selectedLab && `${selectedLab.name} laboratuvarına diyetisyen atayın`}
+              {selectedLab && `${selectedLab.name} laboratuvarına bir veya birden fazla diyetisyen seçip atayabilirsiniz.`}
             </ModalDescription>
           </ModalHeader>
-          <ModalBody className="space-y-3">
-            <div className="space-y-1.5">
-              <label className="block text-[13px] font-medium text-surface-700">Diyetisyen seçin</label>
-              <Select value={selectedDietitianId} onValueChange={setSelectedDietitianId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Diyetisyen seçin" />
-                </SelectTrigger>
-                <SelectContent>
+          <ModalBody className="space-y-4 max-h-[min(70vh,720px)] overflow-y-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="space-y-3 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <label className="block text-[13px] font-medium text-surface-700">Atanacak diyetisyenler</label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[12px] text-surface-500">
+                      {selectedDietitianIds.length > 0 ? `${selectedDietitianIds.length} seçildi` : 'Seçim yok'}
+                    </span>
+                    {filteredDietitiansForAssign.length > 0 && (
+                      <Button type="button" variant="outline" size="sm" className="h-8 text-[11px]" onClick={selectAllFilteredDietitians}>
+                        Filtredekilerin tümünü seç
+                      </Button>
+                    )}
+                    {selectedDietitianIds.length > 0 && (
+                      <Button type="button" variant="ghost" size="sm" className="h-8 text-[11px]" onClick={clearAssignDietitianSelection}>
+                        Seçimi temizle
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
+                  <input
+                    type="text"
+                    placeholder="İsim veya e-posta ile ara..."
+                    value={assignDietitianSearch}
+                    onChange={(e) => setAssignDietitianSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-[12px] rounded-xl outline-none bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
+                  />
+                </div>
+                <div className="rounded-xl border border-surface-200 bg-surface-50/50 dark:bg-surface-200/20 max-h-[280px] overflow-y-auto p-2 space-y-1">
                   {availableDietitians.length === 0 ? (
-                    <div className="p-2 text-sm text-surface-500">Atanabilecek diyetisyen yok</div>
+                    <p className="text-sm text-surface-500 text-center py-8">Atanabilecek diyetisyen kalmadı (hepsi bu laboratuvara bağlı).</p>
+                  ) : filteredDietitiansForAssign.length === 0 ? (
+                    <p className="text-sm text-surface-500 text-center py-8">Aramaya uygun diyetisyen yok.</p>
                   ) : (
-                    availableDietitians.map((dietitian) => (
-                      <SelectItem key={dietitian.id} value={String(dietitian.id)}>
-                        {dietitian.label}
-                      </SelectItem>
+                    filteredDietitiansForAssign.map((dietitian: { id: number; label: string }) => (
+                      <label
+                        key={dietitian.id}
+                        className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-panel cursor-pointer border border-transparent hover:border-surface-200"
+                      >
+                        <Checkbox
+                          checked={selectedDietitianIds.includes(dietitian.id)}
+                          onCheckedChange={() => toggleAssignDietitian(dietitian.id)}
+                        />
+                        <span className="text-sm text-surface-800 dark:text-surface-200 flex-1 min-w-0">{dietitian.label}</span>
+                      </label>
                     ))
                   )}
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedLabDietitians.length > 0 && (
-              <div>
-                <p className="form-section-title">Atanan Diyetisyenler</p>
-                <div className="space-y-2">
-                  {selectedLabDietitians.map((d: { dieticianId: number; name: string }) => (
-                    <div
-                      key={d.dieticianId}
-                      className="flex items-center gap-2 p-2.5 rounded-xl bg-surface-50 border border-surface-200"
-                    >
-                      <Users className="h-4 w-4 text-surface-400 shrink-0" />
-                      <span className="text-sm text-surface-700">{d.name}</span>
-                    </div>
-                  ))}
                 </div>
               </div>
-            )}
+              <div className="space-y-2 min-w-0">
+                <p className="form-section-title">Bu laboratuvara zaten atananlar</p>
+                {selectedLabDietitians.length > 0 ? (
+                  <ul className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                    {selectedLabDietitians.map((d: { dieticianId: number; name: string }) => (
+                      <li
+                        key={d.dieticianId}
+                        className="flex items-center gap-3 rounded-xl border border-surface-200 dark:border-surface-300/50 p-2.5 bg-surface-50/80 dark:bg-surface-200/20"
+                      >
+                        <Avatar name={d.name} size="sm" className="shrink-0" />
+                        <span className="text-sm font-medium text-surface-800 dark:text-surface-200">{d.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-surface-200 dark:border-surface-300/50 p-6 text-center">
+                    <Users className="h-8 w-8 text-surface-300 dark:text-surface-500 mx-auto mb-2" />
+                    <p className="text-sm text-surface-500">Henüz atanmış diyetisyen yok</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => { setAssignDietitianOpen(false); setSelectedLab(null); setSelectedDietitianId('') }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAssignDietitianOpen(false)
+                setSelectedLab(null)
+                setSelectedDietitianIds([])
+                setAssignDietitianSearch('')
+              }}
+            >
               İptal
             </Button>
-            <Button variant="primary" onClick={submitAssignDietitian} disabled={!selectedDietitianId || assignDietitianMutation.isPending}>
+            <Button
+              variant="primary"
+              onClick={submitAssignDietitian}
+              disabled={selectedDietitianIds.length === 0 || assignDietitianMutation.isPending}
+            >
               {assignDietitianMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Ata
+              {selectedDietitianIds.length > 1
+                ? `${selectedDietitianIds.length} diyetisyeni ata`
+                : 'Ata'}
             </Button>
           </ModalFooter>
         </ModalContent>

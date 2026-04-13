@@ -14,16 +14,21 @@ import {
   Loader2, Eye,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import type { User } from '@/types/user.types'
-import { UserRole, UserStatus } from '@/utils/constants'
+import { UserStatus } from '@/utils/constants'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
-import { getUsersWithPagination, createUser, updateUser, deleteUser } from '@/services/users.service'
+import {
+  getDieticiansPaginated,
+  createDietician,
+  getDieticianById,
+  type AdminDietitianRow,
+} from '@/services/dieticians.service'
+import { updateUser, deleteUser } from '@/services/users.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
-const USERS_QUERY_KEY = ['users'] as const
+const DIETICIANS_ADMIN_QUERY_KEY = ['dieticians', 'admin'] as const
 
 const statusLabels: Record<UserStatus, string> = {
   [UserStatus.ACTIVE]: 'Aktif',
@@ -40,7 +45,7 @@ function DietitiansPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [selected, setSelected] = useState<User | null>(null)
+  const [selected, setSelected] = useState<AdminDietitianRow | null>(null)
 
   const [form, setForm] = useState({
     firstName: '',
@@ -53,14 +58,12 @@ function DietitiansPage() {
 
   const trimmedSearch = useMemo(() => search.trim(), [search])
   const dietitiansQuery = useQuery({
-    queryKey: [...USERS_QUERY_KEY, 'dietitians', { page, pageSize, search: trimmedSearch }],
+    queryKey: [...DIETICIANS_ADMIN_QUERY_KEY, 'list', { page, pageSize, search: trimmedSearch }],
     queryFn: () =>
-      getUsersWithPagination({
+      getDieticiansPaginated({
         page,
         limit: pageSize,
-        role: UserRole.DIETITIAN,
         search: trimmedSearch || undefined,
-        isVerified: true,
       }),
     retry: 1,
     placeholderData: keepPreviousData,
@@ -79,9 +82,10 @@ function DietitiansPage() {
   }, [totalItems, page, pageSize])
 
   const createMutation = useMutation({
-    mutationFn: createUser,
+    mutationFn: createDietician,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: DIETICIANS_ADMIN_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['dieticians'] })
       toast.success('Diyetisyen başarıyla oluşturuldu')
       setNewOpen(false)
       resetForm()
@@ -95,7 +99,8 @@ function DietitiansPage() {
     mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateUser>[1] }) =>
       updateUser(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: DIETICIANS_ADMIN_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['dieticians'] })
       toast.success('Diyetisyen güncellendi')
       setEditOpen(false)
       setSelected(null)
@@ -109,7 +114,8 @@ function DietitiansPage() {
   const deleteMutation = useMutation({
     mutationFn: deleteUser,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: DIETICIANS_ADMIN_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: ['dieticians'] })
       toast.success('Diyetisyen silindi')
       setDeleteOpen(false)
       setSelected(null)
@@ -118,6 +124,26 @@ function DietitiansPage() {
       toast.error(getApiErrorMessage(err, { fallback: 'Silme işlemi başarısız' }))
     },
   })
+
+  const editDetailQuery = useQuery({
+    queryKey: ['dieticians', 'detail', selected?.dieticianId],
+    queryFn: () => getDieticianById(selected!.dieticianId),
+    enabled: editOpen && selected != null && selected.dieticianId > 0,
+    staleTime: 60_000,
+  })
+
+  useEffect(() => {
+    const row = editDetailQuery.data
+    if (!row || !editOpen) return
+    setForm({
+      firstName: row.firstName ?? '',
+      lastName: row.lastName ?? '',
+      companyName: row.companyName ?? '',
+      email: row.email ?? '',
+      phone: row.phone ?? '',
+      gender: (row.gender as 'male' | 'female') ?? 'male',
+    })
+  }, [editDetailQuery.data, editOpen])
 
   const resetForm = () => {
     setForm({
@@ -130,24 +156,24 @@ function DietitiansPage() {
     })
   }
 
-  const openView = (user: User) => {
-    setSelected(user)
+  const openView = (row: AdminDietitianRow) => {
+    setSelected(row)
     setViewOpen(true)
   }
-  const openEdit = (user: User) => {
-    setSelected(user)
+  const openEdit = (row: AdminDietitianRow) => {
+    setSelected(row)
     setForm({
-      firstName: user.firstName ?? '',
-      lastName: user.lastName ?? '',
-      companyName: user.companyName ?? '',
-      email: user.email ?? '',
-      phone: user.phone ?? '',
-      gender: (user.gender as 'male' | 'female') ?? 'male',
+      firstName: row.firstName ?? '',
+      lastName: row.lastName ?? '',
+      companyName: row.companyName ?? '',
+      email: row.email ?? '',
+      phone: row.phone ?? '',
+      gender: (row.gender as 'male' | 'female') ?? 'male',
     })
     setEditOpen(true)
   }
-  const openDelete = (user: User) => {
-    setSelected(user)
+  const openDelete = (row: AdminDietitianRow) => {
+    setSelected(row)
     setDeleteOpen(true)
   }
 
@@ -156,13 +182,16 @@ function DietitiansPage() {
       toast.error('Kurum adı ve telefon zorunludur')
       return
     }
+    if (!form.email.trim()) {
+      toast.error('E-posta zorunludur')
+      return
+    }
     createMutation.mutate({
       firstName: form.firstName.trim() || undefined,
       lastName: form.lastName.trim() || undefined,
       companyName: form.companyName.trim(),
-      email: form.email.trim() || undefined,
+      email: form.email.trim(),
       phone: form.phone.trim(),
-      role: UserRole.DIETITIAN,
       gender: form.gender,
     })
   }
@@ -174,6 +203,7 @@ function DietitiansPage() {
       payload: {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
+        companyName: form.companyName.trim() || undefined,
         email: form.email.trim() || undefined,
         phone: form.phone.trim(),
       },
@@ -226,7 +256,7 @@ function DietitiansPage() {
           ) : isError ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <p className="text-sm text-surface-700">Liste yüklenirken hata oluştu.</p>
-              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })}>
+              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: DIETICIANS_ADMIN_QUERY_KEY })}>
                 Tekrar Dene
               </Button>
             </div>
@@ -394,6 +424,12 @@ function DietitiansPage() {
                 placeholder="Soyad"
               />
             </div>
+            <Input
+              label="Kurum Adı"
+              value={form.companyName}
+              onChange={(e) => setForm((s) => ({ ...s, companyName: e.target.value }))}
+              placeholder="Kurum adı"
+            />
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Telefon *"
@@ -456,15 +492,15 @@ function DietitiansTable({
   onEdit,
   onDelete,
 }: {
-  dietitians: User[]
+  dietitians: AdminDietitianRow[]
   totalItems: number
   page: number
   pageSize: number
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
-  onView: (u: User) => void
-  onEdit: (u: User) => void
-  onDelete: (u: User) => void
+  onView: (u: AdminDietitianRow) => void
+  onEdit: (u: AdminDietitianRow) => void
+  onDelete: (u: AdminDietitianRow) => void
 }) {
   return (
     <>
@@ -476,7 +512,6 @@ function DietitiansTable({
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kurum</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">E-posta</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Telefon</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Oluşturulma</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20 text-surface-500" />
             </tr>
@@ -484,7 +519,7 @@ function DietitiansTable({
           <tbody>
             {dietitians.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-5 py-12 text-center text-[12px] text-surface-500">
+                <td colSpan={6} className="px-5 py-12 text-center text-[12px] text-surface-500">
                   Diyetisyen bulunamadı.
                 </td>
               </tr>
@@ -518,16 +553,6 @@ function DietitiansTable({
                       <Phone className="h-3.5 w-3.5 text-surface-400 shrink-0" />
                       <span>{u.phone || '-'}</span>
                     </div>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <Badge
-                      variant={
-                        u.status === UserStatus.ACTIVE ? 'success' :
-                        u.status === UserStatus.PENDING ? 'warning' : 'danger'
-                      }
-                    >
-                      {statusLabels[u.status ?? UserStatus.ACTIVE]}
-                    </Badge>
                   </td>
                   <td className="px-5 py-3.5 text-[12px] text-surface-500">
                     {formatDate(u.createdAt)}
