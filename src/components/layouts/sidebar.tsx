@@ -28,6 +28,7 @@ import {
   RotateCcw,
   Settings,
   History,
+  Landmark,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -62,8 +63,10 @@ function getNavGroups(role: UserRole): NavGroup[] {
           { label: 'Danisanlar', href: ROUTES.YONETICI_DANISANLAR, icon: UserPlus },
           { label: 'Uzmanlar', href: ROUTES.YONETICI_UZMANLAR, icon: BookOpen },
           { label: 'Rapor Onaylari', href: ROUTES.YONETICI_RAPORLAR, icon: FileCheck },
+          { label: 'Islem Kayitlari', href: ROUTES.YONETICI_ISLEM_KAYITLARI, icon: ClipboardList },
         ]},
         { title: 'Sistem', items: [
+          { label: 'Banka Bilgileri', href: ROUTES.YONETICI_BANKA_BILGILERI, icon: Landmark },
           { label: 'Ayarlar', href: ROUTES.YONETICI_AYARLAR, icon: Settings },
         ]},
       ]
@@ -76,6 +79,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
         { title: 'Kit & Stok', items: [
           { label: 'Kitlerim', href: ROUTES.DIYETISYEN_KITLER, icon: FlaskConical },
           { label: 'Stogum', href: ROUTES.DIYETISYEN_STOK, icon: Boxes },
+          { label: 'Iadelerim', href: ROUTES.DIYETISYEN_IADE_KITLER, icon: RotateCcw },
           { label: 'Siparis Ver', href: ROUTES.DIYETISYEN_SIPARISLER, icon: Truck },
           { label: 'Siparis Gecmisim', href: ROUTES.DIYETISYEN_SIPARIS_GECMISI, icon: History },
         ]},

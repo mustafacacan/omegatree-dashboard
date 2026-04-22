@@ -179,6 +179,22 @@ export function DanisanPortalPage() {
 
   const approvedReportCount = reportsQuery.data?.totalItems ?? 0
 
+  const statusTitle = useMemo(() => {
+    const status = normalizeKitStatus(activeKit?.status)
+    const awaitingAdminApproval =
+      status === 'completed' && !reportsQuery.isLoading && approvedReportCount === 0
+    return awaitingAdminApproval ? 'Rapor Admin Onayında' : getStatusTitle(activeKit?.status)
+  }, [activeKit?.status, approvedReportCount, reportsQuery.isLoading])
+
+  const statusDescription = useMemo(() => {
+    const status = normalizeKitStatus(activeKit?.status)
+    const awaitingAdminApproval =
+      status === 'completed' && !reportsQuery.isLoading && approvedReportCount === 0
+    return awaitingAdminApproval
+      ? 'Uzman raporu onaya gönderdi. Yönetici onayından sonra raporunuz Raporlarım sayfasında görünecek.'
+      : getStatusDescription(activeKit?.status)
+  }, [activeKit?.status, approvedReportCount, reportsQuery.isLoading])
+
   const completedSteps = kitTimeline.filter(s => s.status === 'completed').length
   const totalSteps = kitTimeline.length
   const progressPct = Math.round((completedSteps / totalSteps) * 100)
@@ -323,8 +339,8 @@ export function DanisanPortalPage() {
                   <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3 bg-warning/10">
                     <FlaskConical className="h-5 w-5 text-warning" />
                   </div>
-                  <h4 className="text-[14px] font-semibold mb-1 text-surface-900">{getStatusTitle(activeKit?.status)}</h4>
-                  <p className="text-[12px] leading-relaxed text-surface-500">{getStatusDescription(activeKit?.status)}</p>
+                  <h4 className="text-[14px] font-semibold mb-1 text-surface-900">{statusTitle}</h4>
+                  <p className="text-[12px] leading-relaxed text-surface-500">{statusDescription}</p>
                   <div className="flex items-center gap-1.5 mt-3 text-[11px] font-medium text-warning">
                     <Clock className="h-3 w-3" /> {`Durum: ${getDieticianClientKitStatusLabel(activeKit?.status)}`}
                   </div>

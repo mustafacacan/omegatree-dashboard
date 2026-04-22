@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Button, Input, Avatar,
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
   Badge,
@@ -14,12 +14,17 @@ import {
   Loader2, Eye,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import type { User } from '@/types/user.types'
 import { UserRole, UserStatus } from '@/utils/constants'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
-import { getUsers, createUser, updateUser, deleteUser } from '@/services/users.service'
+import {
+  createUser,
+  updateUser,
+  deleteUser,
+} from '@/services/users.service'
+import { getExpertProfilesWithPagination } from '@/services/experts.service'
+import { getExpertProfileById, type Expert, type ExpertProfileListItem } from '@/services/experts.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -31,6 +36,13 @@ const statusLabels: Record<UserStatus, string> = {
   [UserStatus.SUSPENDED]: 'Askiya Alindi',
 }
 
+const expertTaskStatusLabels: Record<NonNullable<Expert['status']>, string> = {
+  pending: 'Beklemede',
+  in_progress: 'İnceleniyor',
+  completed: 'Tamamlandı',
+  cancelled: 'İptal',
+}
+
 function SpecialistsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -38,7 +50,28 @@ function SpecialistsPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [selected, setSelected] = useState<User | null>(null)
+  const [selectedRow, setSelectedRow] = useState<ExpertProfileListItem | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+
+  const trimmedSearch = useMemo(() => search.trim(), [search])
+
+  const usersQuery = useQuery({
+    queryKey: [...EXPERTS_QUERY_KEY, { page, pageSize, search: trimmedSearch }],
+    queryFn: () =>
+      getExpertProfilesWithPagination({
+        page,
+        limit: pageSize,
+        search: trimmedSearch || undefined,
+      }),
+    placeholderData: keepPreviousData,
+    retry: 1,
+  })
+
+  const rows: ExpertProfileListItem[] = useMemo(() => usersQuery.data?.items ?? [], [usersQuery.data?.items])
+  const totalItems = usersQuery.data?.totalItems ?? rows.length
+  const totalPages = usersQuery.data?.totalPages ?? 1
+  const effectivePage = useMemo(() => Math.min(Math.max(1, page), totalPages), [page, totalPages])
 
   const [form, setForm] = useState({
     firstName: '',
@@ -49,30 +82,16 @@ function SpecialistsPage() {
     gender: 'male' as 'male' | 'female',
   })
 
-  const { data: usersRes, isLoading, isError } = useQuery({
-    queryKey: EXPERTS_QUERY_KEY,
-    queryFn: () => getUsers({ page: 1, limit: 500, role: 'expert' }),
-    retry: 1,
-  })
-
-  const specialists = useMemo(
-    () => (usersRes?.users ?? []).filter((u) => u.isVerified === true),
-    [usersRes]
-  )
-
-  const filtered = useMemo(
-    () =>
-      specialists.filter((u) => {
-        const q = search.toLowerCase()
-        return (
-          (u.firstName ?? '').toLowerCase().includes(q) ||
-          (u.lastName ?? '').toLowerCase().includes(q) ||
-          (u.email ?? '').toLowerCase().includes(q) ||
-          (u.phone ?? '').toLowerCase().includes(q)
-        )
-      }),
-    [specialists, search]
-  )
+  const resetForm = () => {
+    setForm({
+      firstName: '',
+      lastName: '',
+      companyName: '',
+      email: '',
+      phone: '',
+      gender: 'male',
+    })
+  }
 
   const createMutation = useMutation({
     mutationFn: createUser,
@@ -96,7 +115,7 @@ function SpecialistsPage() {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success('Uzman güncellendi')
       setEditOpen(false)
-      setSelected(null)
+      setSelectedRow(null)
       resetForm()
     },
     onError: (err: unknown) => {
@@ -111,44 +130,40 @@ function SpecialistsPage() {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       toast.success('Uzman silindi')
       setDeleteOpen(false)
-      setSelected(null)
+      setSelectedRow(null)
     },
     onError: (err: unknown) => {
       toast.error(getApiErrorMessage(err, { fallback: 'Silme işlemi başarısız' }))
     },
   })
 
-  const resetForm = () => {
-    setForm({
-      firstName: '',
-      lastName: '',
-      companyName: '',
-      email: '',
-      phone: '',
-      gender: 'male',
-    })
-  }
-
-  const openView = (user: User) => {
-    setSelected(user)
+  const openView = (row: ExpertProfileListItem) => {
+    setSelectedRow(row)
     setViewOpen(true)
   }
-  const openEdit = (user: User) => {
-    setSelected(user)
+  const openEdit = (row: ExpertProfileListItem) => {
+    setSelectedRow(row)
     setForm({
-      firstName: user.firstName ?? '',
-      lastName: user.lastName ?? '',
-      companyName: user.companyName ?? '',
-      email: user.email ?? '',
-      phone: user.phone ?? '',
-      gender: (user.gender as 'male' | 'female') ?? 'male',
+      firstName: row.user.firstName ?? '',
+      lastName: row.user.lastName ?? '',
+      companyName: row.user.companyName ?? '',
+      email: row.user.email ?? '',
+      phone: row.user.phone ?? '',
+      gender: (row.user.gender as 'male' | 'female') ?? 'male',
     })
     setEditOpen(true)
   }
-  const openDelete = (user: User) => {
-    setSelected(user)
+  const openDelete = (row: ExpertProfileListItem) => {
+    setSelectedRow(row)
     setDeleteOpen(true)
   }
+
+  const expertDetailQuery = useQuery({
+    queryKey: ['experts', 'profile-detail', selectedRow?.expertProfileId],
+    queryFn: () => getExpertProfileById(selectedRow?.expertProfileId ?? ''),
+    enabled: viewOpen && selectedRow?.expertProfileId != null,
+    retry: 1,
+  })
 
   const submitNew = () => {
     if (!form.phone.trim() || !form.companyName.trim()) {
@@ -167,21 +182,22 @@ function SpecialistsPage() {
   }
 
   const submitEdit = () => {
-    if (!selected) return
+    if (!selectedRow) return
     updateMutation.mutate({
-      id: selected.id,
+      id: selectedRow.user.id,
       payload: {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim() || undefined,
         phone: form.phone.trim(),
+        companyName: form.companyName.trim() || undefined,
       },
     })
   }
 
   const submitDelete = () => {
-    if (!selected) return
-    deleteMutation.mutate(selected.id)
+    if (!selectedRow) return
+    deleteMutation.mutate(selectedRow.user.id)
   }
 
   return (
@@ -194,7 +210,7 @@ function SpecialistsPage() {
             <div>
               <h3 className="text-[15px] font-semibold text-surface-900">Uzmanlar</h3>
               <p className="text-[12px] mt-0.5 text-surface-500">
-                {isLoading ? 'Yükleniyor...' : `Kayıtlı uzmanlar (${filtered.length} adet)`}
+                {usersQuery.isLoading ? 'Yükleniyor...' : `Kayıtlı uzmanlar (${totalItems} adet)`}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -204,7 +220,10 @@ function SpecialistsPage() {
                   type="text"
                   placeholder="Uzman ara..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value)
+                    setPage(1)
+                  }}
                   className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
@@ -215,11 +234,11 @@ function SpecialistsPage() {
             </div>
           </div>
 
-          {isLoading ? (
+          {usersQuery.isLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
             </div>
-          ) : isError ? (
+          ) : usersQuery.isError ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <p className="text-sm text-surface-700">Liste yüklenirken hata oluştu.</p>
               <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: EXPERTS_QUERY_KEY })}>
@@ -228,7 +247,12 @@ function SpecialistsPage() {
             </div>
           ) : (
             <SpecialistsTable
-              specialists={filtered}
+              specialists={rows}
+              totalItems={totalItems}
+              page={effectivePage}
+              pageSize={pageSize}
+              onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
+              onPageSizeChange={(next) => { setPageSize(next); setPage(1) }}
               onView={openView}
               onEdit={openEdit}
               onDelete={openDelete}
@@ -238,51 +262,102 @@ function SpecialistsPage() {
       </motion.div>
 
       {/* Görüntüle */}
-      <Modal open={viewOpen} onOpenChange={setViewOpen}>
+      <Modal
+        open={viewOpen}
+        onOpenChange={(open) => {
+          setViewOpen(open)
+          if (!open) {
+            setSelectedRow(null)
+          }
+        }}
+      >
         <ModalContent className="max-w-lg">
           <ModalHeader>
             <ModalTitle>Uzman Detayı</ModalTitle>
             <ModalDescription>
-              {selected ? `${selected.firstName} ${selected.lastName}` : ''}
+              {selectedRow ? `${selectedRow.user.firstName} ${selectedRow.user.lastName}` : ''}
             </ModalDescription>
           </ModalHeader>
           <ModalBody>
-            {selected && (
+            {selectedRow && (
               <div className="space-y-4">
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
-                  <Avatar
-                    name={`${selected.firstName} ${selected.lastName}`}
-                    size="lg"
-                  />
+                  <Avatar name={`${selectedRow.user.firstName} ${selectedRow.user.lastName}`} size="lg" />
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-surface-900">
-                      {selected.firstName} {selected.lastName}
+                      {selectedRow.user.firstName} {selectedRow.user.lastName}
                     </p>
-                    <p className="text-sm text-surface-500 mt-0.5">{selected.email || '-'}</p>
+                    <p className="text-sm text-surface-500 mt-0.5">{selectedRow.user.email || '-'}</p>
                     <Badge
-                      variant={selected.status === UserStatus.ACTIVE ? 'success' : selected.status === UserStatus.PENDING ? 'warning' : 'danger'}
+                      variant={selectedRow.user.status === UserStatus.ACTIVE ? 'success' : selectedRow.user.status === UserStatus.PENDING ? 'warning' : 'danger'}
                       className="mt-2"
                     >
-                      {statusLabels[selected.status ?? UserStatus.ACTIVE]}
+                      {statusLabels[selectedRow.user.status ?? UserStatus.ACTIVE]}
                     </Badge>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 text-sm text-surface-700">
-                    <Phone className="h-4 w-4 text-surface-400 shrink-0" />
-                    <span>{selected.phone || '-'}</span>
+
+                <div className="grid grid-cols-2 gap-3 text-[13px]">
+                  <div className="rounded-lg border border-surface-200 p-3">
+                    <p className="text-surface-500 text-[11px] mb-1">Telefon</p>
+                    <p className="font-medium text-surface-800">{selectedRow.user.phone || '-'}</p>
                   </div>
-                  <p className="text-xs text-surface-500">
-                    Kayıt tarihi: {formatDate(selected.createdAt)}
-                  </p>
+                  <div className="rounded-lg border border-surface-200 p-3">
+                    <p className="text-surface-500 text-[11px] mb-1">Kayıt tarihi</p>
+                    <p className="font-medium text-surface-800">{formatDate(selectedRow.user.createdAt)}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-surface-200 p-3">
+                  <p className="text-[12px] font-semibold text-surface-800 mb-2">Uzman İş (Expert) Detayı</p>
+                  {expertDetailQuery.isLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-surface-600">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Yükleniyor...
+                    </div>
+                  ) : expertDetailQuery.isError ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-surface-600">Detay yüklenemedi.</p>
+                      <Button variant="outline" size="sm" onClick={() => expertDetailQuery.refetch()}>
+                        Tekrar Dene
+                      </Button>
+                    </div>
+                  ) : expertDetailQuery.data ? (
+                    <div className="grid grid-cols-2 gap-3 text-[13px]">
+                      <div className="rounded-lg border border-surface-200 p-3">
+                        <p className="text-surface-500 text-[11px] mb-1">Barkod</p>
+                        <p className="font-medium text-surface-800 font-mono">
+                          {expertDetailQuery.data.expertTasks[0]?.kitBarcode ?? '-'}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-surface-200 p-3">
+                        <p className="text-surface-500 text-[11px] mb-1">Durum</p>
+                        <p className="font-medium text-surface-800">
+                          {expertDetailQuery.data.expertTasks[0]?.status
+                            ? expertTaskStatusLabels[expertDetailQuery.data.expertTasks[0]!.status!]
+                            : '-'}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-surface-200 p-3 col-span-2">
+                        <p className="text-surface-500 text-[11px] mb-1">Sonuç</p>
+                        <p className="font-medium text-surface-800">
+                          {expertDetailQuery.data.expertTasks[0]?.resultMediaUrl
+                            ? expertDetailQuery.data.expertTasks[0]!.resultMediaUrl
+                            : '-'}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-surface-600">Bu uzmana atanmış expert işi bulunmuyor.</p>
+                  )}
                 </div>
               </div>
             )}
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" onClick={() => setViewOpen(false)}>Kapat</Button>
-            {selected && (
-              <Button variant="primary" onClick={() => { setViewOpen(false); openEdit(selected) }}>
+            {selectedRow && (
+              <Button variant="primary" onClick={() => { setViewOpen(false); openEdit(selectedRow) }}>
                 Düzenle
               </Button>
             )}
@@ -364,7 +439,7 @@ function SpecialistsPage() {
         <ModalContent className="max-w-2xl">
           <ModalHeader>
             <ModalTitle>Uzman Düzenle</ModalTitle>
-            <ModalDescription>{selected && `${selected.firstName} ${selected.lastName}`}</ModalDescription>
+            <ModalDescription>{selectedRow && `${selectedRow.user.firstName} ${selectedRow.user.lastName}`}</ModalDescription>
           </ModalHeader>
           <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
             <p className="form-section-title">Kişisel Bilgiler</p>
@@ -382,6 +457,12 @@ function SpecialistsPage() {
                 placeholder="Soyad"
               />
             </div>
+            <Input
+              label="Kurum Adı"
+              value={form.companyName}
+              onChange={(e) => setForm((s) => ({ ...s, companyName: e.target.value }))}
+              placeholder="Kurum adı"
+            />
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Telefon *"
@@ -399,7 +480,7 @@ function SpecialistsPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="outline" onClick={() => { setEditOpen(false); setSelected(null) }} disabled={updateMutation.isPending}>
+            <Button variant="outline" onClick={() => { setEditOpen(false); setSelectedRow(null) }} disabled={updateMutation.isPending}>
               İptal
             </Button>
             <Button variant="primary" onClick={submitEdit} disabled={updateMutation.isPending} loading={updateMutation.isPending}>
@@ -415,11 +496,11 @@ function SpecialistsPage() {
           <ModalHeader>
             <ModalTitle>Uzman Sil</ModalTitle>
             <ModalDescription>
-              {selected && `"${selected.firstName} ${selected.lastName}" kullanıcısını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+              {selectedRow && `"${selectedRow.user.firstName} ${selectedRow.user.lastName}" kullanıcısını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
             </ModalDescription>
           </ModalHeader>
           <ModalFooter>
-            <Button variant="outline" onClick={() => { setDeleteOpen(false); setSelected(null) }} disabled={deleteMutation.isPending}>
+            <Button variant="outline" onClick={() => { setDeleteOpen(false); setSelectedRow(null) }} disabled={deleteMutation.isPending}>
               İptal
             </Button>
             <Button variant="destructive" onClick={submitDelete} disabled={deleteMutation.isPending} loading={deleteMutation.isPending}>
@@ -435,22 +516,25 @@ function SpecialistsPage() {
 
 function SpecialistsTable({
   specialists,
+  totalItems,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
   onView,
   onEdit,
   onDelete,
 }: {
-  specialists: User[]
-  onView: (u: User) => void
-  onEdit: (u: User) => void
-  onDelete: (u: User) => void
+  specialists: ExpertProfileListItem[]
+  totalItems: number
+  page: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
+  onView: (row: ExpertProfileListItem) => void
+  onEdit: (row: ExpertProfileListItem) => void
+  onDelete: (row: ExpertProfileListItem) => void
 }) {
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const paginated = useMemo(
-    () => specialists.slice((page - 1) * pageSize, page * pageSize),
-    [specialists, page, pageSize]
-  )
-
   return (
     <>
       <div className="overflow-x-auto">
@@ -474,7 +558,9 @@ function SpecialistsTable({
                 </td>
               </tr>
             ) : (
-              paginated.map((u) => (
+              specialists.map((row) => {
+                const u = row.user
+                return (
                 <tr
                   key={u.id}
                   className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
@@ -506,10 +592,7 @@ function SpecialistsTable({
                   </td>
                   <td className="px-5 py-3.5">
                     <Badge
-                      variant={
-                        u.status === UserStatus.ACTIVE ? 'success' :
-                        u.status === UserStatus.PENDING ? 'warning' : 'danger'
-                      }
+                      variant={u.status === UserStatus.ACTIVE ? 'success' : u.status === UserStatus.PENDING ? 'warning' : 'danger'}
                     >
                       {statusLabels[u.status ?? UserStatus.ACTIVE]}
                     </Badge>
@@ -525,35 +608,31 @@ function SpecialistsTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onView(u)}>
+                        <DropdownMenuItem onClick={() => onView(row)}>
                           <Eye className="h-4 w-4 mr-2" /> Görüntüle
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => onEdit(u)}>
+                        <DropdownMenuItem onClick={() => onEdit(row)}>
                           <Edit className="h-4 w-4 mr-2" /> Düzenle
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-danger" onClick={() => onDelete(u)}>
+                        <DropdownMenuItem className="text-danger" onClick={() => onDelete(row)}>
                           <Trash2 className="h-4 w-4 mr-2" /> Sil
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </td>
                 </tr>
-              ))
+                )
+              })
             )}
           </tbody>
         </table>
       </div>
       <TablePagination
-        totalItems={specialists.length}
+        totalItems={totalItems}
         page={page}
         pageSize={pageSize}
-        onPageChange={setPage}
-        onPageSizeChange={(next) => {
-          setPageSize(next)
-          setPage(1)
-        }}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
       />
     </>
   )

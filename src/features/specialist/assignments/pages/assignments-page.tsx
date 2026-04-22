@@ -16,7 +16,7 @@ import { formatDate } from '@/lib/utils'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { getExpertById, getExperts, updateExpert } from '@/services/experts.service'
+import { getExpertById, getExpertTasks, updateExpert } from '@/services/experts.service'
 import { getApiOrigin } from '@/lib/env'
 
 type AssignmentRow = {
@@ -83,7 +83,7 @@ export function AssignmentsPage() {
 
   const expertsQuery = useQuery({
     queryKey: ['experts', 'assignments', 'pending', page, pageSize],
-    queryFn: () => getExperts({ page, limit: pageSize, status: 'pending' }),
+    queryFn: () => getExpertTasks({ page, limit: pageSize, status: 'pending' }),
     placeholderData: keepPreviousData,
     retry: 1,
   })

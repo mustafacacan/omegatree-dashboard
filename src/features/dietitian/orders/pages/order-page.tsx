@@ -24,7 +24,6 @@ import {
   MapPin,
   Copy,
   CreditCard,
-  Building2,
   Landmark,
   Minus,
   Plus,
@@ -35,6 +34,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { getSalesKits, getSalesKitImageUrl, type SalesKit } from '@/services/sales-kits.service'
 import { createOrder, uploadOrderDekont, type Order } from '@/services/orders.service'
 import { getAddresses, getAddressLabel, getAddressFullLine } from '@/services/addresses.service'
+import { getActiveBankInfos, type BankInfo } from '@/services/bank-infos.service'
 import { SalesKitImage } from '@/components/shared/sales-kit-image'
 import { ROUTES } from '@/utils/routes'
 
@@ -60,14 +60,19 @@ const stagger = { animate: { transition: { staggerChildren: 0.05 } } }
 const ORDERS_QUERY_KEY = ['orders'] as const
 const ADDRESSES_QUERY_KEY = ['addresses'] as const
 
-type PaymentMethod = 'credit_card' | 'eft' | 'havale'
+type PaymentMethodUi = 'credit_card' | 'transfer'
+type PaymentMethodApi = 'credit_card' | 'eft' | 'havale'
 
 function generateTransferRef(): string {
   const hex = Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16)).join('').toUpperCase()
   return `ORD-${hex}`
 }
 
-const DEMO_IBAN = 'TR33 0006 1005 1978 6457 8413 26'
+function formatIban(iban: string): string {
+  const raw = String(iban ?? '').replace(/\s+/g, '').toUpperCase()
+  if (!raw) return '—'
+  return raw.replace(/(.{4})/g, '$1 ').trim()
+}
 
 export function DietitianOrderPage() {
   const user = useCurrentUser()
@@ -81,7 +86,7 @@ export function DietitianOrderPage() {
   const [dekontModalOpen, setDekontModalOpen] = useState(false)
   const [dekontModalOrder, setDekontModalOrder] = useState<Pick<Order, 'id' | 'orderNumber' | 'totalPrice'> | null>(null)
   const [confirmOrderModalOpen, setConfirmOrderModalOpen] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('havale')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodUi>('transfer')
   const [transferRef, setTransferRef] = useState<string>('')
 
   const { data: salesKits = [], isLoading: kitsLoading } = useQuery({
@@ -94,6 +99,12 @@ export function DietitianOrderPage() {
     queryFn: getAddresses,
   })
 
+  const bankInfosQuery = useQuery({
+    queryKey: ['bank-infos', 'active'],
+    queryFn: getActiveBankInfos,
+    retry: 1,
+  })
+
   const createOrderMutation = useMutation({
     mutationFn: ({
       salesKitId,
@@ -104,7 +115,7 @@ export function DietitianOrderPage() {
       salesKitId: number
       quantity: number
       addressId?: number
-      paymentMethod: PaymentMethod
+      paymentMethod: PaymentMethodApi
     }) =>
       createOrder(salesKitId, {
         quantity,
@@ -177,12 +188,13 @@ export function DietitianOrderPage() {
   const handleConfirmOrder = () => {
     if (!selectedKit || !user?.id) return
     const addressId = Number(selectedAddressId)
+    const apiPaymentMethod: PaymentMethodApi = paymentMethod === 'transfer' ? 'havale' : 'credit_card'
     createOrderMutation.mutate(
       {
         salesKitId: selectedKit.id,
         quantity: safeQty,
         addressId: Number.isNaN(addressId) ? undefined : addressId,
-        paymentMethod,
+        paymentMethod: apiPaymentMethod,
       },
       {
         onSuccess: (created) => {
@@ -191,7 +203,8 @@ export function DietitianOrderPage() {
           setOrderQty(1)
           setSelectedAddressId(null)
 
-          if ((paymentMethod === 'havale' || paymentMethod === 'eft') && created?.id != null) {
+          if (paymentMethod === 'transfer' && created?.id != null) {
+            toast.message('Dekontu Sipariş Geçmişim sayfasından siparişinizin üzerinden ekleyebilirsiniz.')
             const createdId = Number(created.id)
             if (Number.isFinite(createdId) && createdId > 0) {
               setDekontTargetOrderId(createdId)
@@ -284,26 +297,32 @@ export function DietitianOrderPage() {
                         }
                       `}
                     >
-                      <div className="aspect-[4/3] relative overflow-hidden bg-surface-100">
+                      <div
+                        className={`
+                          relative h-52 w-full overflow-hidden bg-surface-100 sm:h-56 md:h-60
+                          dark:bg-surface-800/60
+                          ${isSelected ? 'ring-2 ring-inset ring-primary-500/30' : 'ring-1 ring-inset ring-surface-900/[0.06] dark:ring-white/[0.08]'}
+                        `}
+                      >
                         {showImg && imageUrl ? (
                           <SalesKitImage
                             url={imageUrl}
                             alt={k.name}
-                            className="w-full h-full object-cover"
+                            className="absolute inset-0 h-full w-full object-cover object-center"
                             onError={() => setFailedImageIds((prev) => new Set(prev).add(k.id))}
                           />
                         ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <ImageIcon className="h-12 w-12 text-surface-400" />
+                          <div className="flex h-full w-full items-center justify-center">
+                            <ImageIcon className="h-14 w-14 text-surface-400" />
                           </div>
                         )}
                         {isSelected && (
-                          <div className="absolute top-3 left-3 h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center shadow-lg">
+                          <div className="absolute left-3 top-3 z-[1] flex h-9 w-9 items-center justify-center rounded-full bg-primary-500 shadow-md ring-2 ring-white dark:ring-surface-900">
                             <Check className="h-4 w-4 text-white" />
                           </div>
                         )}
                       </div>
-                      <div className="p-4 flex flex-col flex-1">
+                      <div className="flex flex-1 flex-col p-4 sm:p-5">
                         <h3 className="font-semibold text-surface-800 truncate">{k.name}</h3>
                         <p className="text-sm mt-1 line-clamp-2 min-h-[2.5rem] text-surface-500">
                           {k.description || '—'}
@@ -504,8 +523,7 @@ export function DietitianOrderPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {[
                       { id: 'credit_card' as const, label: 'Kredi kartı', Icon: CreditCard },
-                      { id: 'eft' as const, label: 'EFT', Icon: Building2 },
-                      { id: 'havale' as const, label: 'Havale', Icon: Landmark },
+                      { id: 'transfer' as const, label: 'EFT/Havale', Icon: Landmark },
                     ].map(({ id, label, Icon }) => (
                       <button
                         key={id}
@@ -528,13 +546,13 @@ export function DietitianOrderPage() {
                   </div>
                 </div>
 
-                {(paymentMethod === 'eft' || paymentMethod === 'havale') && (
+                {paymentMethod === 'transfer' && (
                   <div
                     className="rounded-xl p-4 border space-y-3 bg-surface-50"
                     style={{ borderColor: W.warmBorder }}
                   >
                     <p className="text-sm font-medium text-surface-800">
-                      {paymentMethod === 'havale' ? 'Havale' : 'EFT'} ile ödeme
+                      EFT/Havale ile ödeme
                     </p>
                     <p className="text-xs text-surface-600">
                       Lütfen açıklama kısmına aşağıdaki sipariş numarasını yazın.
@@ -557,23 +575,66 @@ export function DietitianOrderPage() {
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-surface-500 shrink-0">IBAN:</span>
-                      <code className="flex-1 px-3 py-2 rounded-lg bg-white border border-border text-sm font-mono break-all">
-                        {DEMO_IBAN}
-                      </code>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="shrink-0"
-                        onClick={() => {
-                          void navigator
-                            .clipboard.writeText(DEMO_IBAN.replace(/\s/g, ''))
-                            .then(() => toast.success('IBAN kopyalandı'))
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-surface-700">Banka hesapları</p>
+                        <p className="text-[11px] text-surface-500">
+                          {bankInfosQuery.isLoading ? 'Yükleniyor…' : `${bankInfosQuery.data?.length ?? 0} hesap`}
+                        </p>
+                      </div>
+
+                      {bankInfosQuery.isLoading ? (
+                        <div className="rounded-xl border border-surface-200 bg-white p-3 text-xs text-surface-600">
+                          Banka bilgileri yükleniyor...
+                        </div>
+                      ) : bankInfosQuery.isError ? (
+                        <div className="rounded-xl border border-surface-200 bg-white p-3 text-xs text-surface-600">
+                          Banka bilgileri yüklenemedi.
+                        </div>
+                      ) : (bankInfosQuery.data?.length ?? 0) === 0 ? (
+                        <div className="rounded-xl border border-surface-200 bg-white p-3 text-xs text-surface-600">
+                          Aktif banka bilgisi bulunamadı.
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-surface-200 bg-white overflow-hidden">
+                          <div className="divide-y divide-surface-200">
+                            {(bankInfosQuery.data ?? []).map((b: BankInfo) => (
+                              <div key={b.id} className="p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-[12px] font-semibold text-surface-900 truncate">
+                                      {b.bankName}
+                                    </p>
+                                    <p className="text-[11px] text-surface-500 truncate">{b.accountHolder}</p>
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="shrink-0"
+                                    onClick={() => {
+                                      void navigator.clipboard
+                                        .writeText(String(b.ibanNo ?? '').replace(/\s/g, ''))
+                                        .then(() => toast.success('IBAN kopyalandı'))
+                                    }}
+                                    title="IBAN kopyala"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                </div>
+
+                                <div className="mt-2 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2">
+                                  <p className="text-[10px] font-medium uppercase tracking-wider text-surface-500">
+                                    IBAN
+                                  </p>
+                                  <code className="block mt-1 font-mono text-[13px] text-surface-900 break-all">
+                                    {formatIban(b.ibanNo)}
+                                  </code>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

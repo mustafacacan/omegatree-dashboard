@@ -23,6 +23,8 @@ export const ROUTES = {
   YONETICI_DANISANLAR: '/yonetici/danisanlar',
   YONETICI_UZMANLAR: '/yonetici/uzmanlar',
   YONETICI_RAPORLAR: '/yonetici/raporlar',
+  YONETICI_ISLEM_KAYITLARI: '/yonetici/islem-kayitlari',
+  YONETICI_BANKA_BILGILERI: '/yonetici/banka-bilgileri',
 
   DIYETISYEN: '/diyetisyen',
   DIYETISYEN_PROFIL: '/diyetisyen/profil',

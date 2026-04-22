@@ -17,27 +17,56 @@ export interface DieticianClient {
   createdAt?: string
 }
 
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === 'object' ? (v as Record<string, unknown>) : null
+}
+function asString(v: unknown): string | undefined {
+  return typeof v === 'string' ? v : undefined
+}
+function asNumber(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && Number.isFinite(Number(v)) ? Number(v) : undefined
+}
+
+/**
+ * Bazı ortamlarda client bilgileri `client.user` altında geliyor (swagger ile uyumsuz).
+ * UI için id/isim/iletişim bilgilerini güvenli şekilde çözer.
+ */
+function resolveClientForUi(client: unknown): Record<string, unknown> | null {
+  const c = asRecord(client)
+  if (!c) return null
+  const user = asRecord(c.user)
+  return user ?? c
+}
+
 function mapDieticianClientResponse(item: ApiDieticianClientResponse): DieticianClient {
+  const anyItem = item as unknown as Record<string, unknown>
+  const clientForUi = resolveClientForUi(item.client)
+  const firstName = asString(clientForUi?.firstName)
+  const lastName = asString(clientForUi?.lastName)
   return {
     id: item.id ?? 0,
     dieticianId: item.dietician?.id,
     dieticianName: item.dietician ? `${item.dietician.firstName ?? ''} ${item.dietician.lastName ?? ''}`.trim() : undefined,
-    clientId: item.client?.id,
-    clientName: item.client ? `${item.client.firstName ?? ''} ${item.client.lastName ?? ''}`.trim() : undefined,
-    clientPhone: item.client?.phone,
-    clientEmail: item.client?.email,
-    createdAt: item.createdAt,
+    clientId: asNumber(clientForUi?.id) ?? item.client?.id,
+    clientName: clientForUi ? `${firstName ?? ''} ${lastName ?? ''}`.trim() : undefined,
+    clientPhone: asString(clientForUi?.phone) ?? item.client?.phone,
+    clientEmail: asString(clientForUi?.email) ?? item.client?.email,
+    // OpenAPI tipinde createdAt opsiyonel veya eksik olabilir; varsa string'e çevirerek alırız.
+    createdAt: typeof anyItem.createdAt === 'string' ? anyItem.createdAt : undefined,
   }
 }
 
 function mapFromClient(item: ApiGetDieticianFromClient): DieticianClient {
+  const clientForUi = resolveClientForUi(item.client)
+  const firstName = asString(clientForUi?.firstName)
+  const lastName = asString(clientForUi?.lastName)
   return {
     id: item.id ?? 0,
-    clientId: item.client?.id,
-    clientName: item.client ? `${item.client.firstName ?? ''} ${item.client.lastName ?? ''}`.trim() : undefined,
-    clientPhone: item.client?.phone,
-    clientEmail: item.client?.email,
-    createdAt: item.client?.createdAt,
+    clientId: asNumber(clientForUi?.id) ?? item.client?.id,
+    clientName: clientForUi ? `${firstName ?? ''} ${lastName ?? ''}`.trim() : undefined,
+    clientPhone: asString(clientForUi?.phone) ?? item.client?.phone,
+    clientEmail: asString(clientForUi?.email) ?? item.client?.email,
+    createdAt: asString(clientForUi?.createdAt) ?? item.client?.createdAt,
   }
 }
 
@@ -56,7 +85,17 @@ export async function updateDieticianClient(dieticianId: number, clientId: numbe
 /** GET /dietician-clients/{dieticianId}/clients — diyetisyenin danışanları */
 export async function getDieticianClients(dieticianId: number | string): Promise<DieticianClient[]> {
   const { data } = await api.get<unknown>(`/dietician-clients/${dieticianId}/clients`, skipAuth)
-  const list: ApiGetDieticianFromClient[] = Array.isArray(data) ? data : []
+  const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
+  const listCandidate =
+    Array.isArray(data)
+      ? data
+      : isRecord(data) && Array.isArray((data as Record<string, unknown>).data)
+        ? ((data as Record<string, unknown>).data as unknown[])
+        : isRecord(data) && Array.isArray((data as Record<string, unknown>).items)
+          ? ((data as Record<string, unknown>).items as unknown[])
+          : []
+
+  const list: ApiGetDieticianFromClient[] = listCandidate as ApiGetDieticianFromClient[]
   return list.map(mapFromClient)
 }
 

@@ -296,7 +296,6 @@ export function ReturnKitsPage() {
                     <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Fotoğraf</div>
                     <div className="mt-2 overflow-hidden rounded-xl border border-surface-200 bg-surface-50">
                       {!imageLoadError ? (
-                        // eslint-disable-next-line jsx-a11y/img-redundant-alt
                         <img
                           src={detailImageUrl}
                           alt="Hasar fotoğrafı"

@@ -1,37 +1,46 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Button, Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
-  Checkbox,
 } from '@/components/ui'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { motion } from 'framer-motion'
-import { Search, ListOrdered, Truck, Package, CheckCircle, Loader2 } from 'lucide-react'
+import { Search, ListOrdered, Package, CheckCircle, Loader2, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { PdfViewer } from '@/components/shared/pdf-viewer'
 import { useWorkflowStore } from '@/stores/workflow.store'
-import { KitStatus } from '@/utils/constants'
 import { getOrderById, getOrdersWithPagination, updateOrderStatus, type OrderItem } from '@/services/orders.service'
-import { getStocks, type Stock } from '@/services/stocks.service'
+import {
+  OrderKitAssignStep,
+  type OrderKitAssignFooterState,
+  type OrderKitAssignStepHandle,
+} from '@/features/admin/orders/components/order-kit-assign-step'
 
 const ORDERS_QUERY_KEY = ['orders'] as const
-const STOCKS_AVAILABLE_QUERY_KEY = ['stocks', 'available'] as const
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
+const EMPTY_ORDERS: OrderItem[] = []
+
+const KIT_ASSIGN_FOOTER_IDLE: OrderKitAssignFooterState = {
+  canAssign: false,
+  isAssigning: false,
+  selectedCount: 0,
+}
 
 export function OrdersPage() {
-  const { orders, kits, assignKitsToDietitian, setOrdersFromApi, approveOrderByAdmin } = useWorkflowStore()
+  const { orders, setOrdersFromApi, approveOrderByAdmin } = useWorkflowStore()
   const queryClient = useQueryClient()
 
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null)
-  const [selectedBarcodes, setSelectedBarcodes] = useState<string[]>([])
   /** Modal içi adım: 1 = Onayla, 2 = Kit atama, 3 = Tamamla */
   const [modalStep, setModalStep] = useState<1 | 2 | 3>(1)
+  const kitAssignStepRef = useRef<OrderKitAssignStepHandle | null>(null)
+  const [kitAssignFooter, setKitAssignFooter] = useState<OrderKitAssignFooterState>(KIT_ASSIGN_FOOTER_IDLE)
 
   const trimmedSearch = useMemo(() => search.trim(), [search])
   const ordersQuery = useQuery({
@@ -47,42 +56,14 @@ export function OrdersPage() {
     placeholderData: keepPreviousData,
   })
 
-  const apiOrders = ordersQuery.data?.items ?? []
+  const apiOrders = ordersQuery.data?.items ?? EMPTY_ORDERS
   const totalItems = ordersQuery.data?.totalItems ?? apiOrders.length
 
   useEffect(() => {
+    if (!ordersQuery.isSuccess) return
+    // Guard against infinite re-render loops caused by unstable empty-array references.
     setOrdersFromApi(apiOrders)
-  }, [apiOrders, setOrdersFromApi])
-
-  const availableKitsFromStore = useMemo(() => {
-    return kits.filter(
-      (k) => k.status === KitStatus.IN_STOCK && !k.assignedDietitianId && !k.assignedClientId
-    )
-  }, [kits])
-
-  const { data: stocksResult } = useQuery({
-    queryKey: [...STOCKS_AVAILABLE_QUERY_KEY, selectedOrder],
-    queryFn: () => getStocks({ limit: 200 }),
-    enabled: selectedOrder !== null,
-  })
-
-  const availableKits = useMemo(() => {
-    const fromApi = (stocksResult?.data ?? []).filter(
-      (s: Stock) => s.status === 'available' && s.kitId?.barcode
-    ) as Stock[]
-    if (fromApi.length > 0) {
-      return fromApi.map((s) => ({
-        barcode: s.kitId!.barcode,
-        name: s.kitId?.name,
-        price: 0,
-      }))
-    }
-    return availableKitsFromStore.map((k) => ({
-      barcode: k.barcode,
-      name: undefined,
-      price: k.price,
-    }))
-  }, [stocksResult?.data, availableKitsFromStore])
+  }, [ordersQuery.isSuccess, apiOrders, setOrdersFromApi])
 
   const currentOrder = useMemo(() => {
     return orders.find((o) => o.id === selectedOrder)
@@ -171,6 +152,16 @@ export function OrdersPage() {
 
   const remainingQty = currentOrder ? currentOrder.qty - currentOrder.assignedBarcodes.length : 0
 
+  /** API satırı: quantity × salesKit.quantity = zimmetlenecek toplam fiziksel kit (store ile aynı mantık) */
+  const orderFulfillmentKitCount = useMemo(() => {
+    if (!orderDetailForUi) return 0
+    const line = Math.max(0, Math.floor(Number(orderDetailForUi.quantity) || 0))
+    const sk = orderDetailForUi.salesKit?.quantity
+    const per =
+      sk != null && Number.isFinite(Number(sk)) ? Math.max(1, Math.floor(Number(sk))) : null
+    return per != null ? line * per : line
+  }, [orderDetailForUi?.quantity, orderDetailForUi?.salesKit?.quantity])
+
   /** Adım 1: Siparişi onayla (dekont/ödeme kontrolü) — sadece store, API'ye gitmez */
   const handleApproveOrder = () => {
     if (!selectedOrder) return
@@ -202,6 +193,10 @@ export function OrdersPage() {
     setPage(1)
   }, [trimmedSearch])
 
+  useEffect(() => {
+    if (modalStep !== 2) setKitAssignFooter(KIT_ASSIGN_FOOTER_IDLE)
+  }, [modalStep])
+
   /** Modal açıldığında başlangıç adımını belirle */
   useEffect(() => {
     if (!selectedOrder || !currentOrder) return
@@ -213,57 +208,6 @@ export function OrdersPage() {
 
   const handleOpenOrder = (orderId: string) => {
     setSelectedOrder(orderId)
-    const order = orders.find((o) => o.id === orderId)
-    if (order) {
-      setSelectedBarcodes([])
-    }
-  }
-
-  const toggleBarcode = (barcode: string) => {
-    setSelectedBarcodes((prev) => {
-      if (prev.includes(barcode)) {
-        return prev.filter((b) => b !== barcode)
-      }
-      if (prev.length >= remainingQty) return prev
-      return [...prev, barcode]
-    })
-  }
-
-  const handleShipOrder = () => {
-    if (!currentOrder) return
-    if (selectedBarcodes.length === 0) {
-      toast.error('En az bir kit seçin')
-      return
-    }
-    if (selectedBarcodes.length > remainingQty) {
-      toast.error(`En fazla ${remainingQty} adet seçebilirsiniz`)
-      return
-    }
-    const validBarcodes = new Set(availableKits.map((k) => k.barcode))
-    const invalidSelected = selectedBarcodes.filter((b) => !validBarcodes.has(b))
-    if (invalidSelected.length > 0) {
-      toast.error('Seçilen kitlerden biri artık stokta yok veya atanmış.')
-      return
-    }
-
-    assignKitsToDietitian(
-      currentOrder.dietitianId,
-      currentOrder.dietitianName,
-      selectedBarcodes,
-      'Admin',
-      undefined,
-      currentOrder.id
-    )
-
-    const newAssignedCount = currentOrder.assignedBarcodes.length + selectedBarcodes.length
-    if (newAssignedCount >= currentOrder.qty) {
-      toast.success(`Siparis tamamlandi. ${selectedBarcodes.length} kit kargoya verildi.`)
-      setModalStep(3)
-    } else {
-      toast.success(`${selectedBarcodes.length} kit kargoya verildi. Kalan: ${currentOrder.qty - newAssignedCount} adet`)
-    }
-
-    setSelectedBarcodes([])
   }
 
   const getOrderStatusLabel = (order: { qty: number; assignedBarcodes: string[] }) => {
@@ -534,36 +478,29 @@ export function OrdersPage() {
                   </div>
                 )}
 
-                {/* Adım 2: Kit atama */}
-                {!selectedOrderDetailLoading && orderDetailForUi && modalStep === 2 && (
-                  <div className="space-y-4">
-                    <p className="text-sm text-surface-600">Stoktan <strong>{remainingQty}</strong> adet kit seçip diyetisyene atayın. İsterseniz bu adımı atlayıp &quot;Tamamla&apos;ya geç&quot; ile siparişi kapatabilirsiniz.</p>
-                    <div className="max-h-64 overflow-y-auto rounded-lg border border-surface-200 bg-white">
-                      {availableKits.length === 0 ? (
-                        <div className="p-8 text-center text-surface-500">
-                          <Package className="h-10 w-10 mx-auto mb-2 text-surface-300" />
-                          <p className="text-sm font-medium">Stokta atanmamış kit yok</p>
-                          <p className="text-xs mt-1">Kit atamadan &quot;Tamamla&apos;ya geç&quot; ile devam edebilirsiniz.</p>
-                        </div>
-                      ) : (
-                        <ul className="divide-y divide-surface-100">
-                          {availableKits.slice(0, 50).map((kit) => (
-                            <li key={kit.barcode}>
-                              <label className="flex items-center gap-3 p-3 hover:bg-surface-50 cursor-pointer">
-                                <Checkbox
-                                  checked={selectedBarcodes.includes(kit.barcode)}
-                                  onCheckedChange={() => toggleBarcode(kit.barcode)}
-                                  disabled={!selectedBarcodes.includes(kit.barcode) && selectedBarcodes.length >= remainingQty}
-                                />
-                                <span className="font-mono text-sm font-semibold">{kit.barcode}</span>
-                                {kit.name && <span className="text-xs text-surface-500 truncate max-w-[120px]">{kit.name}</span>}
-                              </label>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
+                {/* Adım 2: Kit atama — stok API + POST /kits/assign (stok sayfasıyla aynı) */}
+                {!selectedOrderDetailLoading && orderDetailForUi && modalStep === 2 && selectedOrder && (
+                  <OrderKitAssignStep
+                    ref={kitAssignStepRef}
+                    onAssignFooterState={setKitAssignFooter}
+                    orderUserId={orderDetailForUi.user?.id}
+                    orderClientName={
+                      [orderDetailForUi.user?.firstName, orderDetailForUi.user?.lastName]
+                        .filter(Boolean)
+                        .join(' ') || '—'
+                    }
+                    remainingSlots={remainingQty}
+                    orderedQuantity={currentOrder?.qty ?? orderFulfillmentKitCount}
+                    salesKitQuantity={
+                      orderDetailForUi.salesKit?.quantity != null
+                        ? Number(orderDetailForUi.salesKit.quantity)
+                        : null
+                    }
+                    workflowOrderId={selectedOrder}
+                    onAssigned={({ nowComplete }) => {
+                      if (nowComplete) setModalStep(3)
+                    }}
+                  />
                 )}
 
                 {/* Adım 3: Tamamla */}
@@ -599,12 +536,18 @@ export function OrdersPage() {
 
                 {modalStep === 2 && (
                   <>
-                    {remainingQty > 0 && (
-                      <Button variant="primary" onClick={handleShipOrder} disabled={selectedBarcodes.length === 0}>
-                        <Truck className="h-4 w-4" />
-                        Diyetisyene ver {selectedBarcodes.length > 0 && `(${selectedBarcodes.length})`}
-                      </Button>
-                    )}
+                    <Button
+                      variant="primary"
+                      disabled={!kitAssignFooter.canAssign}
+                      onClick={() => kitAssignStepRef.current?.submitAssign()}
+                    >
+                      {kitAssignFooter.isAssigning ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                      Zimmetle ({kitAssignFooter.selectedCount})
+                    </Button>
                     <Button variant="outline" onClick={() => setModalStep(3)}>
                       Tamamla&apos;ya geç
                     </Button>

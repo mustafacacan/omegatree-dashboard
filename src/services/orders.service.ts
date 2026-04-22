@@ -108,7 +108,8 @@ export async function createOrder(
 /** Get all orders — response: { success, message, data: { totalItems, totalPages, currentPage, items } } */
 export async function getOrders(params?: GetOrdersParams): Promise<OrderItem[]> {
   const { data } = await api.get<OrdersListResponse>('/orders', {
-    params: params?.page ? { page: params.page } : undefined,
+    // Backend expects flat pagination query: page, limit, search, sort...
+    params: params?.page ? { ...params.page } : undefined,
   })
   const dataObj = data?.data
   const items = dataObj && typeof dataObj === 'object' && 'items' in dataObj ? (dataObj as { items?: OrderItem[] }).items : undefined
@@ -118,7 +119,8 @@ export async function getOrders(params?: GetOrdersParams): Promise<OrderItem[]> 
 /** Get orders with pagination info (admin tablo sayfalama için) */
 export async function getOrdersWithPagination(params?: GetOrdersParams): Promise<GetOrdersResult> {
   const { data } = await api.get<OrdersListResponse>('/orders', {
-    params: params?.page ? { page: params.page } : undefined,
+    // Backend expects flat pagination query: page, limit, search, sort...
+    params: params?.page ? { ...params.page } : undefined,
   })
   const dataObj = data?.data
   const items = dataObj && typeof dataObj === 'object' && 'items' in dataObj ? (dataObj as { items?: OrderItem[] }).items : undefined
@@ -126,7 +128,8 @@ export async function getOrdersWithPagination(params?: GetOrdersParams): Promise
   return {
     items: list,
     totalItems: dataObj && typeof dataObj === 'object' && 'totalItems' in dataObj ? (Number((dataObj as { totalItems?: number }).totalItems) || 0) : list.length,
-    totalPages: dataObj && typeof dataObj === 'object' && 'totalPages' in dataObj ? (Number((dataObj as { totalPages?: number }).totalPages) || 1) : 1,
+    // Some environments return 0; UI expects at least 1.
+    totalPages: dataObj && typeof dataObj === 'object' && 'totalPages' in dataObj ? Math.max(1, Number((dataObj as { totalPages?: number }).totalPages) || 0) : 1,
     currentPage: dataObj && typeof dataObj === 'object' && 'currentPage' in dataObj ? (Number((dataObj as { currentPage?: number }).currentPage) || 1) : 1,
   }
 }

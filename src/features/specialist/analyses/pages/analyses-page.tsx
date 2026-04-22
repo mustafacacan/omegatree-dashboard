@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { PenTool } from 'lucide-react'
+ 
 
 import { PageHeader } from '@/components/shared/page-header'
 import { PageLoader } from '@/components/shared/page-loader'
@@ -22,8 +21,7 @@ import {
 } from '@/components/ui'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { formatDate } from '@/lib/utils'
-import { getExperts, updateExpert } from '@/services/experts.service'
-import { raporDuzenleyiciPath } from '@/utils/routes'
+import { getExpertTasks, updateExpert } from '@/services/experts.service'
 
 type AnalysisRow = {
   expertId: number
@@ -50,7 +48,6 @@ function normalizeStatus(v: unknown): AnalysisRow['status'] {
 }
 
 export function SpecialistAnalysesPage() {
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   const [page, setPage] = useState(1)
@@ -58,7 +55,7 @@ export function SpecialistAnalysesPage() {
 
   const expertsQuery = useQuery({
     queryKey: ['experts', 'analyses', 'in_progress', page, pageSize],
-    queryFn: () => getExperts({ page, limit: pageSize, status: 'in_progress' }),
+    queryFn: () => getExpertTasks({ page, limit: pageSize, status: 'in_progress' }),
     placeholderData: keepPreviousData,
     retry: 1,
   })
@@ -164,9 +161,6 @@ export function SpecialistAnalysesPage() {
           if (row.status === 'in_progress') {
             return (
               <>
-                <Button variant="default" size="sm" onClick={() => navigate(raporDuzenleyiciPath(row.barcode))}>
-                  <PenTool className="h-4 w-4" /> Devam Et
-                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -238,7 +232,7 @@ function AnalysesList({
                 </TableRow>
               ) : (
                 paginated.map((row) => (
-                  <TableRow key={row.barcode}>
+                  <TableRow key={row.expertId}>
                     <TableCell>
                       <code className="font-mono font-semibold">{row.barcode}</code>
                     </TableCell>
@@ -270,7 +264,7 @@ function AnalysesList({
           ) : (
             <div className="divide-y divide-surface-100">
               {paginated.map((row) => (
-                <div key={row.barcode} className="px-4 py-4">
+                <div key={row.expertId} className="px-4 py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <code className="font-mono text-sm font-semibold text-surface-800 block">{row.barcode}</code>

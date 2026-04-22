@@ -10,7 +10,7 @@ import {
 } from '@/components/ui'
 import { formatCurrency } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
-import { Plus, Pencil, Search, ImageIcon, Trash2, MoreHorizontal, Loader2, Package } from 'lucide-react'
+import { Plus, Pencil, Search, Trash2, MoreHorizontal, Loader2, Package } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import {
@@ -301,21 +301,21 @@ export function PricingPage() {
                         <TableCell>
                           <div className="flex items-center gap-3 min-w-0">
                             {showImg && imageUrl ? (
-                              <div className="h-10 w-10 rounded-lg bg-surface-100 border border-surface-200 overflow-hidden shrink-0 relative">
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <ImageIcon className="h-5 w-5 text-surface-300" />
-                                </div>
+                              <div
+                                className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-surface-200 bg-surface-100 shadow-sm dark:border-surface-600 dark:bg-surface-800/70"
+                                title={k.name}
+                              >
                                 <SalesKitImage
                                   url={imageUrl}
                                   alt={k.name}
-                                  className="relative h-full w-full object-cover"
+                                  className="h-full w-full object-cover object-center"
                                   onError={() =>
                                     setFailedImageIds((prev) => new Set(prev).add(k.id))
                                   }
                                 />
                               </div>
                             ) : (
-                              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-primary-100 dark:bg-primary-900/30">
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-surface-300 bg-surface-50 dark:border-surface-600 dark:bg-surface-800/40">
                                 <Package className="h-4.5 w-4.5 text-primary-600" />
                               </div>
                             )}

@@ -6,6 +6,7 @@ import { PdfViewer } from '@/components/shared/pdf-viewer'
 import {
   Button, Badge, Avatar,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody,
+  Tabs, TabsList, TabsTrigger,
 } from '@/components/ui'
 import { FileText, Check, Loader2, Eye, Mail, Phone } from 'lucide-react'
 import { toast } from 'sonner'
@@ -14,7 +15,7 @@ import { formatDate, formatDateTime } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { getPendingResultsPage, getResultById, updateResult, type Result } from '@/services/results.service'
+import { getPendingResultsPage, getResultById, getResultsPage, updateResult, type Result } from '@/services/results.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -151,6 +152,7 @@ function getResultStatusLabel(status?: string): string {
 
 export function ReportApprovalsPage() {
   const queryClient = useQueryClient()
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [viewId, setViewId] = useState<number | null>(null)
@@ -165,7 +167,18 @@ export function ReportApprovalsPage() {
   })
 
   const pendingItems = pendingQuery.data?.items ?? []
-  const totalItems = pendingQuery.data?.totalItems ?? pendingItems.length
+  const pendingTotal = pendingQuery.data?.totalItems ?? pendingItems.length
+
+  const approvedQuery = useQuery({
+    queryKey: ['admin', 'results', 'approved', page, pageSize],
+    queryFn: () => getResultsPage({ page, limit: pageSize, status: 'approved' }),
+    placeholderData: keepPreviousData,
+    staleTime: 10_000,
+    enabled: activeTab === 'approved',
+  })
+
+  const approvedItems = approvedQuery.data?.items ?? []
+  const approvedTotal = approvedQuery.data?.totalItems ?? approvedItems.length
 
   const detailQuery = useQuery({
     queryKey: ['admin', 'results', 'detail', viewId],
@@ -223,6 +236,7 @@ export function ReportApprovalsPage() {
     onSuccess: async (_data, vars) => {
       toast.success(vars.status === 'approved' ? 'Rapor onaylandi' : 'Rapor iptal edildi')
       await queryClient.invalidateQueries({ queryKey: ['admin', 'results', 'pending'] })
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'results', 'approved'] })
       await queryClient.invalidateQueries({ queryKey: ['admin', 'results', 'detail', vars.id] })
       setConfirmDecision(null)
     },
@@ -263,11 +277,27 @@ export function ReportApprovalsPage() {
             description="Uzman tarafından gönderilen raporlar burada listelenir. Onayladığınızda rapor yayına alınmış olur."
           />
 
-          {pendingQuery.isLoading ? (
+          <div className="px-5 pt-2">
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => {
+                setActiveTab(v as 'pending' | 'approved')
+                setPage(1)
+                setViewId(null)
+              }}
+            >
+              <TabsList>
+                <TabsTrigger value="pending">Onay Bekleyen</TabsTrigger>
+                <TabsTrigger value="approved">Onaylanan</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {activeTab === 'pending' && pendingQuery.isLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
             </div>
-          ) : pendingQuery.isError ? (
+          ) : activeTab === 'pending' && pendingQuery.isError ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100">
                 <FileText className="h-7 w-7 text-surface-400" />
@@ -278,7 +308,7 @@ export function ReportApprovalsPage() {
                 Yenile
               </Button>
             </div>
-          ) : pendingItems.length === 0 ? (
+          ) : activeTab === 'pending' && pendingItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100">
                 <FileText className="h-7 w-7 text-surface-400" />
@@ -286,7 +316,7 @@ export function ReportApprovalsPage() {
               <p className="text-sm font-medium text-surface-700">Onay bekleyen rapor yok</p>
               <p className="text-xs text-surface-500">Uzman rapor gönderdiğinde burada görünecek</p>
             </div>
-          ) : (
+          ) : activeTab === 'pending' ? (
             <>
               <div className="p-5">
                 <div className="overflow-x-auto">
@@ -362,7 +392,98 @@ export function ReportApprovalsPage() {
 
               <div className="border-t border-surface-200 px-5 py-4">
                 <TablePagination
-                  totalItems={totalItems}
+                  totalItems={pendingTotal}
+                  page={page}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(next) => {
+                    setPageSize(next)
+                    setPage(1)
+                  }}
+                />
+              </div>
+            </>
+          ) : approvedQuery.isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
+            </div>
+          ) : approvedQuery.isError ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100">
+                <FileText className="h-7 w-7 text-surface-400" />
+              </div>
+              <p className="text-sm font-medium text-surface-700">Raporlar yüklenemedi</p>
+              <p className="text-xs text-surface-500">Lütfen tekrar deneyin</p>
+              <Button variant="outline" size="sm" onClick={() => approvedQuery.refetch()}>
+                Yenile
+              </Button>
+            </div>
+          ) : approvedItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-100">
+                <FileText className="h-7 w-7 text-surface-400" />
+              </div>
+              <p className="text-sm font-medium text-surface-700">Onaylanan rapor yok</p>
+              <p className="text-xs text-surface-500">Onaylanan raporlar burada listelenir</p>
+            </div>
+          ) : (
+            <>
+              <div className="p-5">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Rapor</th>
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Tarih</th>
+                        <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
+                        <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">İşlem</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {approvedItems.map((r, idx) => (
+                        <tr
+                          key={String(r.id ?? `row-${idx}`)}
+                          className="border-b border-surface-200 last:border-0 hover:bg-surface-50"
+                        >
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-surface-200 bg-surface-50">
+                                <FileText className="h-5 w-5 text-success" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-mono text-[13px] font-semibold text-surface-900">#{r.id ?? '-'}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 text-[12px] text-surface-600">
+                            {r.updatedAt ? formatDate(r.updatedAt) : (r.createdAt ? formatDate(r.createdAt) : '-')}
+                          </td>
+                          <td className="px-5 py-3">
+                            <Badge variant="success">{getResultStatusLabel(r.status)}</Badge>
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleView(r)}
+                                disabled={r.id == null}
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                Görüntüle
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="border-t border-surface-200 px-5 py-4">
+                <TablePagination
+                  totalItems={approvedTotal}
                   page={page}
                   pageSize={pageSize}
                   onPageChange={setPage}

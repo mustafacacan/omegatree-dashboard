@@ -9,6 +9,7 @@ export interface Laboratory {
   phone?: string
   email?: string
   assignedDietitians: string[]
+  assignedDietitianDetails?: { dieticianId: number; name: string }[]
   createdAt: string
   updatedAt: string
   cargofirm?: string

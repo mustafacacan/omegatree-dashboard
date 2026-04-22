@@ -49,3 +49,15 @@ export async function upsertMyFoodConsumptionRecord(
     const out = unwrapData(data)
     return out as FoodConsumptionRecord
 }
+
+/**
+ * POST /food-consumption-records
+ * Admin/expert/dietician can upsert a record for a specific client by passing clientId.
+ */
+export async function upsertFoodConsumptionRecord(
+    payload: CreateFoodConsumptionRecord
+): Promise<FoodConsumptionRecord> {
+    const { data } = await api.post<unknown>('/food-consumption-records', payload, skipAuth)
+    const out = unwrapData(data)
+    return out as FoodConsumptionRecord
+}

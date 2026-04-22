@@ -98,6 +98,19 @@ function getKitTimelineStepIndex(status: DieticianClientKit['status'] | undefine
 const tooltipStyle = { background: 'var(--color-panel)', border: '1px solid var(--color-border)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', fontSize: '12px', padding: '10px 14px' }
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
+function formatLabShipmentAddress(lab: {
+  address: string
+  fullAddress?: string
+  district?: string
+  city: string
+  postalCode?: string
+}): string {
+  const main = (lab.address || lab.fullAddress || '').trim()
+  const loc = [lab.district, lab.city].filter((x) => x && String(x).trim()).join(' / ')
+  const zip = lab.postalCode?.trim()
+  return [main, loc, zip].filter(Boolean).join(' — ')
+}
+
 export function DietitianDashboardPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
@@ -308,6 +321,11 @@ export function DietitianDashboardPage() {
     }))
   }, [activeKit, assignedLab])
 
+  const assignedLabShipmentText = useMemo(
+    () => (assignedLab ? formatLabShipmentAddress(assignedLab) : ''),
+    [assignedLab],
+  )
+
   const recentActivities = useMemo(() => {
     const activities: Array<{ icon: LucideIcon; color: string; bg: string; text: string; time: string }> = []
 
@@ -380,9 +398,11 @@ export function DietitianDashboardPage() {
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Kiti Göndereceğiniz Adres</p>
                     {/* <p className="text-[13px] font-semibold mt-0.5 text-text-primary">{assignedLab.name}</p> */}
                     <p className="text-[12px] mt-1 leading-snug text-text-primary">
-                      {assignedLab.address}
-                      {assignedLab.district ? `, ${assignedLab.district}` : ''} / {assignedLab.city}
-                      {assignedLab.postalCode ? ` ${assignedLab.postalCode}` : ''}
+                      {assignedLabShipmentText || (
+                        <span className="text-text-secondary">
+                          Adres veritabanında laboratuvar kaydına bağlı değil. Yöneticinizin laboratuvar adresini güncellemesi gerekir.
+                        </span>
+                      )}
                     </p>
                     {(assignedLab.cargofirm || assignedLab.cargoNumber) && (
                       <p className="text-[11px] mt-1 text-text-secondary">

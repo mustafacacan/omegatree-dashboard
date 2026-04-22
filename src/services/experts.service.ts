@@ -1,10 +1,13 @@
 import { api, type ApiRequestConfig } from '@/lib/axios'
 import type { components } from '@/types/openapi'
+import { UserRole, UserStatus } from '@/utils/constants'
+import type { User } from '@/types/user.types'
 
 const skipAuth: ApiRequestConfig = { skipAuthRedirect: true }
 
 type ApiExpertResponse = components['schemas']['ExpertResponse']
 type ApiUpdateExpert = components['schemas']['UpdateExpert']
+type ApiUser = components['schemas']['UserResponse']
 
 type ApiExpertWithDates = ApiExpertResponse & { createdAt?: string; assignedAt?: string }
 
@@ -298,6 +301,12 @@ export interface GetExpertsParams {
   page?: number
   limit?: number
   status?: 'pending' | 'in_progress' | 'completed' | 'cancelled'
+  /**
+   * Backend supports:
+   * - mode=tasks: returns Expert task records (legacy behavior)
+   * - default: returns expert USERS for admin panel
+   */
+  mode?: 'tasks'
 }
 
 export interface GetExpertsResponse {
@@ -305,6 +314,16 @@ export interface GetExpertsResponse {
   totalItems?: number
   totalPages?: number
   currentPage?: number
+}
+
+/**
+ * Uzman paneli — Expert tablosundaki analiz görevleri (mode=tasks).
+ * Varsayılan GET /experts yanıtı expert profilleridir; bu fonksiyon görev satırlarını çeker.
+ */
+export async function getExpertTasks(
+  params?: Omit<GetExpertsParams, 'mode'>,
+): Promise<GetExpertsResponse> {
+  return getExperts({ ...params, mode: 'tasks' })
 }
 
 /** GET /experts */
@@ -315,6 +334,7 @@ export async function getExperts(params?: GetExpertsParams): Promise<GetExpertsR
       ? {
         page: params.page ?? 1,
         limit: params.limit ?? 50,
+        ...(params.mode ? { mode: params.mode } : {}),
         ...(params.status ? { status: params.status } : {}),
       }
       : undefined,
@@ -356,9 +376,112 @@ export async function getExperts(params?: GetExpertsParams): Promise<GetExpertsR
   }
 }
 
+function mapApiRoleToAppRole(apiRole: string | undefined): UserRole {
+  const roleMap: Record<string, UserRole> = {
+    admin: UserRole.ADMIN,
+    dietician: UserRole.DIETITIAN,
+    laboratory: UserRole.LAB,
+    expert: UserRole.SPECIALIST,
+    client: UserRole.DANISAN,
+  }
+  return roleMap[(apiRole ?? '').toLowerCase()] ?? UserRole.DANISAN
+}
+
+function mapApiUserToAppUser(apiUser: ApiUser & { isVerified?: boolean; deletedAt?: string | null }): User {
+  const isVerified = apiUser.isVerified
+  const status = isVerified === false ? UserStatus.PENDING : UserStatus.ACTIVE
+  return {
+    id: String(apiUser.id ?? ''),
+    email: apiUser.email ?? '',
+    firstName: apiUser.firstName ?? '',
+    lastName: apiUser.lastName ?? '',
+    companyName: (apiUser as ApiUser & { companyName?: string | null }).companyName ?? null,
+    phone: apiUser.phone,
+    role: mapApiRoleToAppRole(apiUser.role),
+    status,
+    createdAt: apiUser.createdAt ?? new Date().toISOString(),
+    updatedAt: apiUser.updatedAt ?? new Date().toISOString(),
+    gender: (apiUser as ApiUser & { gender?: string }).gender as 'male' | 'female' | undefined,
+    isVerified,
+    deletedAt: (apiUser as ApiUser & { deletedAt?: string | null }).deletedAt,
+  }
+}
+
+export interface GetExpertUsersWithPaginationParams {
+  page?: number
+  limit?: number
+  search?: string
+  isVerified?: boolean
+}
+
+export interface ExpertProfileListItem {
+  expertProfileId: number
+  user: User
+}
+
+export interface GetExpertProfilesWithPaginationResult {
+  items: ExpertProfileListItem[]
+  totalItems: number
+  totalPages: number
+  currentPage: number
+}
+
+/** GET /experts — admin: expert PROFILES pagination (default mode) */
+export async function getExpertProfilesWithPagination(
+  params: GetExpertUsersWithPaginationParams
+): Promise<GetExpertProfilesWithPaginationResult> {
+  const { data } = await api.get<{
+    success?: boolean
+    message?: string
+    data?: {
+      items?: Array<{
+        id?: number
+        user?: ApiUser & { isVerified?: boolean; deletedAt?: string | null }
+      }>
+      totalItems?: number
+      totalPages?: number
+      currentPage?: number
+    }
+  }>('/experts', {
+    ...skipAuth,
+    params: {
+      page: params.page ?? 1,
+      limit: params.limit ?? 10,
+      ...(params.search && params.search.trim() ? { search: params.search.trim() } : {}),
+      ...(params.isVerified === true || params.isVerified === false ? { isVerified: params.isVerified } : {}),
+    },
+  })
+
+  const list = data?.data?.items ?? []
+  return {
+    items: list
+      .map((row) => {
+        const profileId = Number(row?.id)
+        const u = row?.user
+        if (!Number.isFinite(profileId) || profileId <= 0 || !u) return null
+        return { expertProfileId: profileId, user: mapApiUserToAppUser(u) }
+      })
+      .filter(Boolean) as ExpertProfileListItem[],
+    totalItems: data?.data?.totalItems ?? list.length,
+    totalPages: data?.data?.totalPages ?? 1,
+    currentPage: data?.data?.currentPage ?? 1,
+  }
+}
+
 /** GET /experts/{id} */
-export async function getExpertById(id: number | string): Promise<Expert> {
-  const { data } = await api.get<unknown>(`/experts/${id}`, skipAuth)
+export async function getExpertById(id: number | string): Promise<Expert | null> {
+  let data: unknown
+  try {
+    ;({ data } = await api.get<unknown>(`/experts/${id}`, {
+      ...skipAuth,
+      params: { mode: 'tasks' },
+    }))
+  } catch (err: unknown) {
+    const status = (err as { response?: { status?: number } })?.response?.status
+    // No assigned expert task yet → treat as empty state in UI (not a hard error).
+    if (status === 404) return null
+    throw err
+  }
 
   // API iki formatta dönebilir:
   // 1) swagger: ExpertResponse
@@ -366,10 +489,40 @@ export async function getExpertById(id: number | string): Promise<Expert> {
   const top = isRecord(data) ? data : null
   const inner = top && isRecord(top.data) ? top.data : data
 
-  // Note: backend bazı ortamlarda swagger dışı alanlar döndürüyor.
-  // UI'da kritik olan alanları kaybetmemek için record olan her response'u defansif map'liyoruz.
   if (isRecord(inner)) return mapApiExpertLoose(inner)
   return { id: typeof id === 'number' ? id : Number(id) || 0 }
+}
+
+export interface ExpertProfileDetail {
+  expertProfileId: number
+  user: User
+  expertTasks: Expert[]
+}
+
+/** GET /experts/{id} — expert PROFILE detail (default mode) */
+export async function getExpertProfileById(id: number | string): Promise<ExpertProfileDetail | null> {
+  let data: unknown
+  try {
+    ;({ data } = await api.get<unknown>(`/experts/${id}`, skipAuth))
+  } catch (err: unknown) {
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (status === 404) return null
+    throw err
+  }
+
+  const top = isRecord(data) ? data : null
+  const inner = top && isRecord(top.data) ? top.data : null
+  if (!inner || !isRecord(inner)) return null
+
+  const profileId = Number(inner.id)
+  const u = inner.user
+  const user = isRecord(u) ? (u as unknown as ApiUser & { isVerified?: boolean; deletedAt?: string | null }) : null
+  if (!Number.isFinite(profileId) || profileId <= 0 || !user) return null
+
+  const tasksRaw = (u as Record<string, unknown>).expertTasks
+  const expertTasks = Array.isArray(tasksRaw) ? (tasksRaw as unknown[]).map(mapApiExpertLoose) : []
+
+  return { expertProfileId: profileId, user: mapApiUserToAppUser(user), expertTasks }
 }
 
 /** POST /experts — laboratuvar kiti ile uzman oluştur */

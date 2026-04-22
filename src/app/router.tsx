@@ -37,6 +37,8 @@ const DietitiansPage = lazy(() => import('@/features/admin/dietitians/pages/diet
 const ClientsPage = lazy(() => import('@/features/admin/clients/pages/clients-page'))
 const SpecialistsPage = lazy(() => import('@/features/admin/specialists/pages/specialists-page'))
 const ReportApprovalsPage = lazy(() => import('@/features/admin/reports/pages/report-approvals-page').then(m => ({ default: m.ReportApprovalsPage })))
+const AuditLogsPage = lazy(() => import('@/features/admin/audit/pages/audit-logs-page').then(m => ({ default: m.AuditLogsPage })))
+const BankInfosPage = lazy(() => import('@/features/admin/bank-infos/pages/bank-infos-page'))
 
 // Dietitian
 const DietitianDashboardPage = lazy(() => import('@/features/dietitian/dashboard/dietitian-dashboard-page').then(m => ({ default: m.DietitianDashboardPage })))
@@ -47,6 +49,7 @@ const MyStockPage = lazy(() => import('@/features/dietitian/stock/pages/my-stock
 const DietitianOrderPage = lazy(() => import('@/features/dietitian/orders/pages/order-page').then(m => ({ default: m.DietitianOrderPage })))
 const DietitianOrderHistoryPage = lazy(() => import('@/features/dietitian/orders/pages/order-history-page').then(m => ({ default: m.DietitianOrderHistoryPage })))
 const ReportsPage = lazy(() => import('@/features/dietitian/reports/pages/reports-page').then(m => ({ default: m.ReportsPage })))
+const ReturnKitsPage = lazy(() => import('@/features/dietitian/returns/pages/return-kits-page').then(m => ({ default: m.ReturnKitsPage })))
 
 // Laboratory
 const LabDashboardPage = lazy(() => import('@/features/laboratory/dashboard/lab-dashboard-page').then(m => ({ default: m.LabDashboardPage })))
@@ -118,6 +121,8 @@ export const router = createBrowserRouter([
       { path: ROUTES.YONETICI_DANISANLAR, element: <SuspensePage><ClientsPage /></SuspensePage> },
       { path: ROUTES.YONETICI_UZMANLAR, element: <SuspensePage><SpecialistsPage /></SuspensePage> },
       { path: ROUTES.YONETICI_RAPORLAR, element: <SuspensePage><ReportApprovalsPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_ISLEM_KAYITLARI, element: <SuspensePage><AuditLogsPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_BANKA_BILGILERI, element: <SuspensePage><BankInfosPage /></SuspensePage> },
     ],
   },
 
@@ -140,6 +145,7 @@ export const router = createBrowserRouter([
       { path: `${ROUTES.DIYETISYEN_DANISANLAR}/:clientId/duzenle`, element: <Navigate to={ROUTES.DIYETISYEN_DANISANLAR} replace /> },
       { path: ROUTES.DIYETISYEN_KITLER, element: <SuspensePage><KitsPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_STOK, element: <SuspensePage><MyStockPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_IADE_KITLER, element: <SuspensePage><ReturnKitsPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_SIPARISLER, element: <SuspensePage><DietitianOrderPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_SIPARIS_GECMISI, element: <SuspensePage><DietitianOrderHistoryPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_RAPORLAR, element: <SuspensePage><ReportsPage /></SuspensePage> },

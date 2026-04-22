@@ -35,6 +35,8 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith(ROUTES.YONETICI_LABORATUVARLAR)) return 'Laboratuvarlar'
   if (pathname.startsWith(ROUTES.YONETICI_DIYETISYENLER)) return 'Diyetisyenler'
   if (pathname.startsWith(ROUTES.YONETICI_RAPORLAR)) return 'Rapor Onaylari'
+  if (pathname.startsWith(ROUTES.YONETICI_ISLEM_KAYITLARI)) return 'Islem Kayitlari'
+  if (pathname.startsWith(ROUTES.YONETICI_BANKA_BILGILERI)) return 'Banka Bilgileri'
   if (pathname.startsWith(ROUTES.YONETICI_BILDIRIMLER)) return 'Bildirimler'
 
   if (pathname === ROUTES.DIYETISYEN) return 'Diyetisyen Paneli'
@@ -44,6 +46,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith(ROUTES.DIYETISYEN_DANISANLAR)) return 'Danisanlarim'
   if (pathname.startsWith(ROUTES.DIYETISYEN_KITLER)) return 'Kit Islemleri'
   if (pathname.startsWith(ROUTES.DIYETISYEN_STOK)) return 'Stogum'
+  if (pathname.startsWith(ROUTES.DIYETISYEN_IADE_KITLER)) return 'Iadelerim'
   if (pathname.startsWith(ROUTES.DIYETISYEN_SIPARIS_GECMISI)) return 'Siparis Gecmisim'
   if (pathname.startsWith(ROUTES.DIYETISYEN_SIPARISLER)) return 'Siparis Ver'
   if (pathname.startsWith(ROUTES.DIYETISYEN_RAPORLAR)) return 'Raporlar'

@@ -241,7 +241,8 @@ export const useUsersStore = create<UsersState>()(
           const target = state.users.find((u) => u.id === userId)
           if (!target) return state
           const email = normalizeEmail(target.email)
-          const { [email]: _removed, ...restCredentials } = state.credentials
+          const restCredentials = { ...state.credentials }
+          delete restCredentials[email]
           return {
             users: state.users.filter((u) => u.id !== userId),
             credentials: restCredentials,

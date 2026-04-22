@@ -53,7 +53,7 @@ export function ReportsPage() {
 
   const resultsQuery = useQuery({
     queryKey: ['results', 'dietitian', page, pageSize],
-    queryFn: () => getResultsPage({ page, limit: pageSize }),
+    queryFn: () => getResultsPage({ page, limit: pageSize, status: 'approved' }),
     placeholderData: keepPreviousData,
     retry: 1,
   })

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
@@ -6,11 +6,12 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
+  Checkbox,
+  Tabs, TabsList, TabsTrigger, TabsContent,
 } from '@/components/ui'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import {
-  Search, Plus, MoreHorizontal, Mail, Phone, Loader2, Eye, UserPlus,
-  Users,
+  Search, Plus, MoreHorizontal, Mail, Phone, Loader2, Eye, Users,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -19,10 +20,12 @@ import { TablePagination } from '@/components/shared/table-pagination'
 import { getClients, createClient, getClientDetail } from '@/services/clients.service'
 import type { AppClient } from '@/services/clients.service'
 import type { ClientDetail } from '@/services/clients.service'
+import { upsertFoodConsumptionRecord } from '@/services/food-consumption-records.service'
 import { useCurrentUser } from '@/stores/auth.store'
 import { UserRole } from '@/utils/constants'
 import { getDieticians, type DieticianOption } from '@/services/kits.service'
 import { addDieticianToClient, updateDieticianClient } from '@/services/dietician-clients.service'
+import { updateUser } from '@/services/users.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -37,11 +40,27 @@ export function ClientsPage() {
   const [newOpen, setNewOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
   const [viewClientId, setViewClientId] = useState<number | null>(null)
-  const [step, setStep] = useState<1 | 2>(1)
+  const [tab, setTab] = useState<'personal' | 'anamnez' | 'nutrition'>('personal')
 
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignClient, setAssignClient] = useState<AppClient | null>(null)
   const [assignDieticianId, setAssignDieticianId] = useState('')
+  const [assignConfirmOpen, setAssignConfirmOpen] = useState(false)
+  const [pendingAssign, setPendingAssign] = useState<{ clientId: number; dieticianId: number } | null>(null)
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [editClientId, setEditClientId] = useState<number | null>(null)
+  const [editDieticianId, setEditDieticianId] = useState<string>('')
+  const [editUserForm, setEditUserForm] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+  })
+
+  type AlcoholFrequency = 'never' | 'rarely' | 'sometimes' | 'often' | 'daily'
+  type SmokingFrequency = AlcoholFrequency
+  type BowelIssue = 'none' | 'diarrhea' | 'constipation' | 'both'
 
   const [form, setForm] = useState({
     firstName: '',
@@ -49,6 +68,7 @@ export function ClientsPage() {
     email: '',
     phone: '',
     gender: 'male' as 'male' | 'female',
+    dieticianId: '',
     chronicIllness: '',
     medicationUsed: '',
     foodAllergy: '',
@@ -58,7 +78,24 @@ export function ClientsPage() {
     hipCircumference: '',
     profession: '',
     education: '',
+
+    // Nutrition form (foodConsumptionRecord) — optional: sent only if any field is filled.
+    mealsPerDay: '',
+    fastFoodMealsPerDay: '',
+    dailyWaterLiters: '',
+    defecationFrequency: '',
+    alcoholFrequency: '' as '' | AlcoholFrequency,
+    smokingFrequency: '' as '' | SmokingFrequency,
+    avoidedFoods: '',
+    discomfortFoods: '',
+    bowelIssue: '' as '' | BowelIssue,
+    gastrointestinalDisease: '',
+    nightEatingHabit: false,
+    eatingDisorderBehaviors: false,
+    nutritionNotes: '',
   })
+
+  const DIETICIAN_NONE_VALUE = '__none__'
 
   const trimmedSearch = useMemo(() => search.trim(), [search])
   const { data: clientsRes, isLoading: clientsLoading, isError: clientsError } = useQuery({
@@ -70,7 +107,7 @@ export function ClientsPage() {
   const { data: dieticiansRes, isLoading: dieticiansLoading } = useQuery({
     queryKey: ['dieticians', 'options'],
     queryFn: () => getDieticians(),
-    enabled: assignOpen,
+    enabled: assignOpen || newOpen,
     staleTime: 60_000,
     retry: 1,
   })
@@ -79,7 +116,9 @@ export function ClientsPage() {
 
   const clientsList = useMemo(() => {
     const list = Array.isArray(clientsRes?.clients) ? clientsRes.clients : []
-    return list.filter((c) => c.isVerified === true)
+    // Admin list should show all rows; filtering by verification can hide valid results
+    // when backend doesn't expose isVerified consistently.
+    return list
   }, [clientsRes?.clients])
 
   const totalItems = Number(clientsRes?.totalItems ?? clientsRes?.total ?? clientsList.length) || clientsList.length
@@ -88,6 +127,13 @@ export function ClientsPage() {
     queryKey: ['admin', 'clients', 'detail', viewClientId],
     queryFn: () => getClientDetail(viewClientId as number),
     enabled: viewOpen && viewClientId !== null,
+  })
+
+  const { data: editDetailData, isLoading: editDetailLoading } = useQuery({
+    queryKey: ['admin', 'clients', 'detail', editClientId, 'edit'],
+    queryFn: () => getClientDetail(editClientId as number),
+    enabled: editOpen && editClientId !== null,
+    retry: 1,
   })
 
   const createMutation = useMutation({
@@ -133,6 +179,49 @@ export function ClientsPage() {
     },
   })
 
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!editClientId) throw new Error('Danışan seçilmedi')
+      const detail = editDetailData
+      if (!detail?.user?.id) throw new Error('Danışan kullanıcı kaydı bulunamadı')
+
+      const patch: Parameters<typeof updateUser>[1] = {}
+      const firstName = editUserForm.firstName.trim()
+      const lastName = editUserForm.lastName.trim()
+      const email = editUserForm.email.trim()
+      const phoneDigits = editUserForm.phone.replace(/\D/g, '')
+
+      if (firstName && firstName !== (detail.user.firstName ?? '')) patch.firstName = firstName
+      if (lastName && lastName !== (detail.user.lastName ?? '')) patch.lastName = lastName
+      if (email && email !== (detail.user.email ?? '')) patch.email = email
+      if (phoneDigits && phoneDigits !== (detail.user.phone ?? '')) patch.phone = phoneDigits
+
+      if (Object.keys(patch).length > 0) {
+        await updateUser(String(detail.user.id), patch)
+      }
+
+      const currentDieticianId = detail.dietician?.id != null ? Number(detail.dietician.id) : undefined
+      const nextDieticianId = editDieticianId.trim()
+      if (nextDieticianId && nextDieticianId !== DIETICIAN_NONE_VALUE) {
+        const did = Number(nextDieticianId)
+        if (Number.isFinite(did) && did > 0 && did !== currentDieticianId) {
+          await updateDieticianClient(did, Number(editClientId))
+        }
+      }
+    },
+    onSuccess: async () => {
+      toast.success('Danışan güncellendi')
+      setEditOpen(false)
+      setEditClientId(null)
+      setEditDieticianId('')
+      setEditUserForm({ firstName: '', lastName: '', phone: '', email: '' })
+      await queryClient.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY })
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Danışan güncellenemedi' }))
+    },
+  })
+
   const resetForm = () => {
     setForm({
       firstName: '',
@@ -140,6 +229,7 @@ export function ClientsPage() {
       email: '',
       phone: '',
       gender: 'male',
+      dieticianId: '',
       chronicIllness: '',
       medicationUsed: '',
       foodAllergy: '',
@@ -149,8 +239,22 @@ export function ClientsPage() {
       hipCircumference: '',
       profession: '',
       education: '',
+
+      mealsPerDay: '',
+      fastFoodMealsPerDay: '',
+      dailyWaterLiters: '',
+      defecationFrequency: '',
+      alcoholFrequency: '',
+      smokingFrequency: '',
+      avoidedFoods: '',
+      discomfortFoods: '',
+      bowelIssue: '',
+      gastrointestinalDisease: '',
+      nightEatingHabit: false,
+      eatingDisorderBehaviors: false,
+      nutritionNotes: '',
     })
-    setStep(1)
+    setTab('personal')
   }
 
   const openView = (c: AppClient) => {
@@ -164,12 +268,74 @@ export function ClientsPage() {
     setAssignOpen(true)
   }
 
+  const selectedDieticianLabel = useMemo(() => {
+    const did = Number(assignDieticianId)
+    if (!Number.isFinite(did)) return undefined
+    return dieticianOptions.find((d) => d.id === did)?.label
+  }, [assignDieticianId, dieticianOptions])
+
+  const confirmAssign = (args: { clientId: number; dieticianId: number }) => {
+    setPendingAssign(args)
+    setAssignConfirmOpen(true)
+  }
+
+  const runAssign = (args: { clientId: number; dieticianId: number }) => {
+    assignMutation.mutate(args)
+  }
+
+  const openEdit = (c: AppClient) => {
+    setEditClientId(c.id)
+    setEditUserForm({
+      firstName: c.firstName ?? '',
+      lastName: c.lastName ?? '',
+      phone: c.phone ?? '',
+      email: c.email ?? '',
+    })
+    setEditDieticianId(c.dieticianId ? String(c.dieticianId) : DIETICIAN_NONE_VALUE)
+    setEditOpen(true)
+  }
+
+  // When detail loads, prefill edit form once (without clobbering user edits).
+  useEffect(() => {
+    const user = editDetailData?.user
+    if (!editOpen || !user) return
+    setEditUserForm((prev) => {
+      const untouched =
+        prev.firstName === '' &&
+        prev.lastName === '' &&
+        prev.phone === '' &&
+        prev.email === ''
+      if (!untouched) return prev
+      return {
+        firstName: user.firstName ?? '',
+        lastName: user.lastName ?? '',
+        phone: user.phone ?? '',
+        email: user.email ?? '',
+      }
+    })
+    setEditDieticianId((prev) => {
+      if (prev && prev !== DIETICIAN_NONE_VALUE) return prev
+      return editDetailData.dietician?.id ? String(editDetailData.dietician.id) : DIETICIAN_NONE_VALUE
+    })
+  }, [editOpen, editDetailData?.user?.id])
+
   const submitNew = () => {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim()) {
       toast.error('Ad, soyad ve telefon zorunludur')
       return
     }
-    const dieticianId = currentUser?.role === UserRole.DIETITIAN && currentUser?.id ? Number(currentUser.id) : undefined
+    const dieticianId = (() => {
+      if (currentUser?.role === UserRole.DIETITIAN && currentUser?.id) return Number(currentUser.id)
+      if (
+        currentUser?.role === UserRole.ADMIN &&
+        form.dieticianId.trim() &&
+        form.dieticianId !== DIETICIAN_NONE_VALUE
+      ) {
+        const n = Number(form.dieticianId)
+        return Number.isFinite(n) ? n : undefined
+      }
+      return undefined
+    })()
 
     const anamnezForm = (() => {
       const h = form.bodyHeight.trim() ? Number(form.bodyHeight) : undefined
@@ -199,6 +365,69 @@ export function ClientsPage() {
       return Object.keys(partial).length ? partial : undefined
     })()
 
+    const foodConsumptionRecord = (() => {
+      const mealsPerDay = form.mealsPerDay.trim() ? Number(form.mealsPerDay) : NaN
+      const dailyWaterLiters = form.dailyWaterLiters.trim() ? Number(form.dailyWaterLiters) : NaN
+      const fastFoodMealsPerDay = form.fastFoodMealsPerDay.trim() ? Number(form.fastFoodMealsPerDay) : NaN
+      const defecationFrequency = form.defecationFrequency.trim()
+
+      const alcoholFrequency = form.alcoholFrequency
+      const smokingFrequency = form.smokingFrequency
+
+      const avoidedFoods = form.avoidedFoods.trim() || 'none'
+      const discomfortFoods = form.discomfortFoods.trim() || 'none'
+      const bowelIssue = form.bowelIssue || 'none'
+      const gastrointestinalDisease = form.gastrointestinalDisease.trim() || 'none'
+
+      const hasAnyInput =
+        form.mealsPerDay.trim() !== '' ||
+        form.fastFoodMealsPerDay.trim() !== '' ||
+        form.dailyWaterLiters.trim() !== '' ||
+        form.defecationFrequency.trim() !== '' ||
+        form.alcoholFrequency !== '' ||
+        form.smokingFrequency !== '' ||
+        form.avoidedFoods.trim() !== '' ||
+        form.discomfortFoods.trim() !== '' ||
+        form.bowelIssue !== '' ||
+        form.gastrointestinalDisease.trim() !== '' ||
+        form.nutritionNotes.trim() !== '' ||
+        form.nightEatingHabit === true ||
+        form.eatingDisorderBehaviors === true
+
+      // If user didn't touch nutrition form at all, don't send anything.
+      if (!hasAnyInput) return undefined
+
+      if (
+        !Number.isFinite(mealsPerDay) ||
+        !Number.isFinite(dailyWaterLiters) ||
+        !Number.isFinite(fastFoodMealsPerDay) ||
+        !defecationFrequency ||
+        !alcoholFrequency ||
+        !smokingFrequency
+      ) {
+        toast.error(
+          'Beslenme formu için zorunlu alanlar: Öğün/gün, Fastfood/gün, Su (L), Dışkılama, Alkol, Sigara'
+        )
+        return undefined
+      }
+
+      return {
+        mealsPerDay,
+        alcoholFrequency,
+        smokingFrequency,
+        avoidedFoods,
+        dailyWaterLiters,
+        fastFoodMealsPerDay,
+        defecationFrequency,
+        discomfortFoods,
+        bowelIssue,
+        gastrointestinalDisease,
+        nightEatingHabit: !!form.nightEatingHabit,
+        eatingDisorderBehaviors: !!form.eatingDisorderBehaviors,
+        ...(form.nutritionNotes.trim() ? { notes: form.nutritionNotes.trim() } : {}),
+      }
+    })()
+
     createMutation.mutate({
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
@@ -207,6 +436,18 @@ export function ClientsPage() {
       gender: form.gender,
       ...(dieticianId ? { dieticianId } : {}),
       ...(anamnezForm ? { anamnezForm } : {}),
+    }, {
+      onSuccess: async (created) => {
+        if (!foodConsumptionRecord) return
+        try {
+          await upsertFoodConsumptionRecord({
+            clientId: created.id,
+            ...foodConsumptionRecord,
+          })
+        } catch (err: unknown) {
+          toast.error(getApiErrorMessage(err, { fallback: 'Beslenme formu kaydedilemedi' }))
+        }
+      },
     })
   }
 
@@ -267,6 +508,7 @@ export function ClientsPage() {
                 setPage(1)
               }}
               onView={openView}
+              onEdit={openEdit}
               onAssignDietician={openAssignDietician}
             />
           )}
@@ -283,30 +525,14 @@ export function ClientsPage() {
             </ModalDescription>
           </ModalHeader>
           <ModalBody className="space-y-4">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  step === 1 ? 'bg-primary-50 text-primary-700 border border-primary-200' : 'text-surface-500 hover:bg-surface-50'
-                }`}
-              >
-                <UserPlus className="h-4 w-4" /> Kişisel Bilgiler
-              </button>
-              <div className="h-px w-4 bg-surface-200" />
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  step === 2 ? 'bg-primary-50 text-primary-700 border border-primary-200' : 'text-surface-500 hover:bg-surface-50'
-                }`}
-              >
-                <Users className="h-4 w-4" /> Anamnez (Opsiyonel)
-              </button>
-            </div>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="personal">Kişisel</TabsTrigger>
+                <TabsTrigger value="anamnez">Anamnez</TabsTrigger>
+                <TabsTrigger value="nutrition">Beslenme</TabsTrigger>
+              </TabsList>
 
-            {step === 1 && (
-              <>
+              <TabsContent value="personal" className="mt-4">
                 <p className="form-section-title">Kişisel Bilgiler</p>
                 <div className="grid grid-cols-2 gap-3">
                   <Input
@@ -348,90 +574,118 @@ export function ClientsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {currentUser?.role === UserRole.ADMIN && (
+                    <div className="space-y-1.5">
+                      <label className="block text-[13px] font-medium text-surface-700">Diyetisyen (Opsiyonel)</label>
+                      <Select
+                        value={form.dieticianId || DIETICIAN_NONE_VALUE}
+                        onValueChange={(v) => setForm((s) => ({ ...s, dieticianId: v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={dieticiansLoading ? 'Yükleniyor...' : 'Seçin...'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={DIETICIAN_NONE_VALUE}>Seçilmedi</SelectItem>
+                          {dieticianOptions.map((d) => (
+                            <SelectItem key={d.id} value={String(d.id)}>
+                              {d.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
-              </>
-            )}
+              </TabsContent>
 
-            {step === 2 && (
-              <>
-                <p className="form-section-title">Anamnez Bilgileri (Opsiyonel)</p>
+              <TabsContent value="anamnez" className="mt-4 space-y-3">
+                <p className="form-section-title">Anamnez (Opsiyonel)</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Boy (cm)"
-                    type="number"
-                    value={form.bodyHeight}
-                    onChange={(e) => setForm((s) => ({ ...s, bodyHeight: e.target.value }))}
-                    placeholder="178"
-                  />
-                  <Input
-                    label="Kilo (kg)"
-                    type="number"
-                    value={form.bodyWeight}
-                    onChange={(e) => setForm((s) => ({ ...s, bodyWeight: e.target.value }))}
-                    placeholder="82"
-                  />
-                  <Input
-                    label="Bel (cm)"
-                    type="number"
-                    value={form.waistCircumference}
-                    onChange={(e) => setForm((s) => ({ ...s, waistCircumference: e.target.value }))}
-                    placeholder="85"
-                  />
-                  <Input
-                    label="Kalça (cm)"
-                    type="number"
-                    value={form.hipCircumference}
-                    onChange={(e) => setForm((s) => ({ ...s, hipCircumference: e.target.value }))}
-                    placeholder="95"
-                  />
-                  <Input
-                    label="Meslek"
-                    value={form.profession}
-                    onChange={(e) => setForm((s) => ({ ...s, profession: e.target.value }))}
-                    placeholder="Örn: Yazılım geliştirici"
-                  />
-                  <Input
-                    label="Eğitim"
-                    value={form.education}
-                    onChange={(e) => setForm((s) => ({ ...s, education: e.target.value }))}
-                    placeholder="Örn: Lisans"
-                  />
+                  <Input label="Boy (cm)" type="number" value={form.bodyHeight} onChange={(e) => setForm((s) => ({ ...s, bodyHeight: e.target.value }))} placeholder="178" />
+                  <Input label="Kilo (kg)" type="number" value={form.bodyWeight} onChange={(e) => setForm((s) => ({ ...s, bodyWeight: e.target.value }))} placeholder="82" />
+                  <Input label="Bel (cm)" type="number" value={form.waistCircumference} onChange={(e) => setForm((s) => ({ ...s, waistCircumference: e.target.value }))} placeholder="85" />
+                  <Input label="Kalça (cm)" type="number" value={form.hipCircumference} onChange={(e) => setForm((s) => ({ ...s, hipCircumference: e.target.value }))} placeholder="95" />
+                  <Input label="Meslek" value={form.profession} onChange={(e) => setForm((s) => ({ ...s, profession: e.target.value }))} placeholder="Örn: Yazılım geliştirici" />
+                  <Input label="Eğitim" value={form.education} onChange={(e) => setForm((s) => ({ ...s, education: e.target.value }))} placeholder="Örn: Lisans" />
                 </div>
-                <Input
-                  label="Kronik hastalıklar"
-                  value={form.chronicIllness}
-                  onChange={(e) => setForm((s) => ({ ...s, chronicIllness: e.target.value }))}
-                  placeholder="Bilinen kronik hastalıklar..."
-                />
-                <Input
-                  label="Kullanılan ilaçlar"
-                  value={form.medicationUsed}
-                  onChange={(e) => setForm((s) => ({ ...s, medicationUsed: e.target.value }))}
-                  placeholder="Düzenli kullanılan ilaçlar..."
-                />
-                <Input
-                  label="Alerjiler"
-                  value={form.foodAllergy}
-                  onChange={(e) => setForm((s) => ({ ...s, foodAllergy: e.target.value }))}
-                  placeholder="Bilinen alerjiler (örn: Gluten, Fındık...)"
-                />
-              </>
-            )}
+                <Input label="Kronik hastalıklar" value={form.chronicIllness} onChange={(e) => setForm((s) => ({ ...s, chronicIllness: e.target.value }))} placeholder="Bilinen kronik hastalıklar..." />
+                <Input label="Kullanılan ilaçlar" value={form.medicationUsed} onChange={(e) => setForm((s) => ({ ...s, medicationUsed: e.target.value }))} placeholder="Düzenli kullanılan ilaçlar..." />
+                <Input label="Alerjiler" value={form.foodAllergy} onChange={(e) => setForm((s) => ({ ...s, foodAllergy: e.target.value }))} placeholder="Bilinen alerjiler (örn: Gluten, Fındık...)" />
+              </TabsContent>
+
+              <TabsContent value="nutrition" className="mt-4 space-y-3">
+                <p className="form-section-title">Beslenme Formu (Opsiyonel)</p>
+                <p className="text-[12px] text-surface-500">
+                  Bu formu boş bırakabilirsiniz. Herhangi bir alan doldurulursa kaydedilir; eksik zorunlu alan varsa uyarı verilir.
+                </p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Öğün / gün *" type="number" value={form.mealsPerDay} onChange={(e) => setForm((s) => ({ ...s, mealsPerDay: e.target.value }))} placeholder="3" />
+                  <Input label="Fastfood / gün *" type="number" value={form.fastFoodMealsPerDay} onChange={(e) => setForm((s) => ({ ...s, fastFoodMealsPerDay: e.target.value }))} placeholder="0" />
+                  <Input label="Su (L) *" type="number" value={form.dailyWaterLiters} onChange={(e) => setForm((s) => ({ ...s, dailyWaterLiters: e.target.value }))} placeholder="2.5" />
+                  <Input label="Dışkılama *" value={form.defecationFrequency} onChange={(e) => setForm((s) => ({ ...s, defecationFrequency: e.target.value }))} placeholder="Örn: daily" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-[13px] font-medium text-surface-700">Alkol *</label>
+                    <Select value={form.alcoholFrequency} onValueChange={(v) => setForm((s) => ({ ...s, alcoholFrequency: v as AlcoholFrequency }))}>
+                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
+                      <SelectContent>
+                        {['never', 'rarely', 'sometimes', 'often', 'daily'].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[13px] font-medium text-surface-700">Sigara *</label>
+                    <Select value={form.smokingFrequency} onValueChange={(v) => setForm((s) => ({ ...s, smokingFrequency: v as SmokingFrequency }))}>
+                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
+                      <SelectContent>
+                        {['never', 'rarely', 'sometimes', 'often', 'daily'].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Kaçınılan gıdalar *" value={form.avoidedFoods} onChange={(e) => setForm((s) => ({ ...s, avoidedFoods: e.target.value }))} placeholder="Örn: none" />
+                  <Input label="Rahatsız eden gıdalar *" value={form.discomfortFoods} onChange={(e) => setForm((s) => ({ ...s, discomfortFoods: e.target.value }))} placeholder="Örn: none" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-[13px] font-medium text-surface-700">Bağırsak sorunu *</label>
+                    <Select value={form.bowelIssue} onValueChange={(v) => setForm((s) => ({ ...s, bowelIssue: v as BowelIssue }))}>
+                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
+                      <SelectContent>
+                        {['none', 'diarrhea', 'constipation', 'both'].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Input label="GIS hastalığı *" value={form.gastrointestinalDisease} onChange={(e) => setForm((s) => ({ ...s, gastrointestinalDisease: e.target.value }))} placeholder="Örn: none" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center gap-2 text-[12px] text-surface-700">
+                    <Checkbox checked={form.nightEatingHabit} onCheckedChange={(v) => setForm((s) => ({ ...s, nightEatingHabit: Boolean(v) }))} />
+                    Gece yeme alışkanlığı *
+                  </label>
+                  <label className="flex items-center gap-2 text-[12px] text-surface-700">
+                    <Checkbox checked={form.eatingDisorderBehaviors} onCheckedChange={(v) => setForm((s) => ({ ...s, eatingDisorderBehaviors: Boolean(v) }))} />
+                    Yeme bozukluğu davranışı *
+                  </label>
+                </div>
+
+                <Input label="Not" value={form.nutritionNotes} onChange={(e) => setForm((s) => ({ ...s, nutritionNotes: e.target.value }))} placeholder="Opsiyonel" />
+              </TabsContent>
+            </Tabs>
           </ModalBody>
           <ModalFooter>
-            {step === 2 ? (
-              <Button variant="outline" onClick={() => setStep(1)}>Geri</Button>
-            ) : (
-              <Button variant="outline" onClick={() => setNewOpen(false)}>İptal</Button>
-            )}
-            {step === 1 ? (
-              <Button variant="primary" onClick={() => setStep(2)}>Devam — Anamnez</Button>
-            ) : (
-              <Button variant="primary" onClick={submitNew} disabled={createMutation.isPending}>
-                {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                Kaydet
-              </Button>
-            )}
+            <Button variant="outline" onClick={() => setNewOpen(false)}>İptal</Button>
+            <Button variant="primary" onClick={submitNew} disabled={createMutation.isPending}>
+              {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Kaydet
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -468,6 +722,95 @@ export function ClientsPage() {
         </ModalContent>
       </Modal>
 
+      {/* Düzenle Modal */}
+      <Modal
+        open={editOpen}
+        onOpenChange={(o) => {
+          setEditOpen(o)
+          if (!o) {
+            setEditClientId(null)
+            setEditDieticianId('')
+            setEditUserForm({ firstName: '', lastName: '', phone: '', email: '' })
+          }
+        }}
+      >
+        <ModalContent className="max-w-lg">
+          <ModalHeader>
+            <ModalTitle>Danışan Düzenle</ModalTitle>
+            <ModalDescription>
+              Kişisel bilgileri ve diyetisyen atamasını güncelleyin.
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-3">
+            {editDetailLoading && !editDetailData ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Ad"
+                    value={editUserForm.firstName}
+                    onChange={(e) => setEditUserForm((s) => ({ ...s, firstName: e.target.value }))}
+                    placeholder={editDetailData?.user?.firstName ?? 'Ad'}
+                  />
+                  <Input
+                    label="Soyad"
+                    value={editUserForm.lastName}
+                    onChange={(e) => setEditUserForm((s) => ({ ...s, lastName: e.target.value }))}
+                    placeholder={editDetailData?.user?.lastName ?? 'Soyad'}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Telefon"
+                    value={editUserForm.phone}
+                    onChange={(e) => setEditUserForm((s) => ({ ...s, phone: e.target.value }))}
+                    placeholder={editDetailData?.user?.phone ?? '05XX XXX XX XX'}
+                  />
+                  <Input
+                    label="E-posta"
+                    type="email"
+                    value={editUserForm.email}
+                    onChange={(e) => setEditUserForm((s) => ({ ...s, email: e.target.value }))}
+                    placeholder={editDetailData?.user?.email ?? 'ornek@email.com'}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[13px] font-medium text-surface-700">Diyetisyen</label>
+                  <Select
+                    value={editDieticianId || (editDetailData?.dietician?.id ? String(editDetailData.dietician.id) : DIETICIAN_NONE_VALUE)}
+                    onValueChange={setEditDieticianId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={dieticiansLoading ? 'Yükleniyor...' : 'Seçin...'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={DIETICIAN_NONE_VALUE}>Seçilmedi</SelectItem>
+                      {dieticianOptions.map((d) => (
+                        <SelectItem key={d.id} value={String(d.id)}>
+                          {d.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={editMutation.isPending}>
+              İptal
+            </Button>
+            <Button variant="primary" onClick={() => editMutation.mutate()} loading={editMutation.isPending} disabled={editMutation.isPending}>
+              Kaydet
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       {/* Diyetisyen Ata Modal */}
       <Modal
         open={assignOpen}
@@ -476,6 +819,8 @@ export function ClientsPage() {
           if (!o) {
             setAssignClient(null)
             setAssignDieticianId('')
+            setAssignConfirmOpen(false)
+            setPendingAssign(null)
           }
         }}
       >
@@ -512,11 +857,79 @@ export function ClientsPage() {
                 if (!assignClient) return
                 const dieticianId = Number(assignDieticianId)
                 if (!Number.isFinite(dieticianId)) return
-                assignMutation.mutate({ dieticianId, clientId: assignClient.id })
+                // Always show confirmation modal before assigning/changing.
+                confirmAssign({ dieticianId, clientId: assignClient.id })
               }}
             >
               {assignMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Ata
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Diyetisyen Değiştirme Onayı */}
+      <Modal
+        open={assignConfirmOpen}
+        onOpenChange={(o) => {
+          setAssignConfirmOpen(o)
+          if (!o) setPendingAssign(null)
+        }}
+      >
+        <ModalContent className="max-w-md">
+          <ModalHeader>
+            <ModalTitle>Diyetisyen ataması değiştirilsin mi?</ModalTitle>
+            <ModalDescription>
+              Devam ederseniz seçtiğiniz diyetisyen danışana atanacaktır.
+              {assignClient?.dieticianId
+                ? ' Mevcut bir atama varsa kaldırılıp yeni diyetisyen atanır.'
+                : ''}
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-3">
+            <div className="rounded-xl border border-surface-200 bg-surface-50 p-3 text-sm space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-surface-500">Danışan</span>
+                <span className="font-medium text-surface-800">
+                  {assignClient ? `${[assignClient.firstName, assignClient.lastName].filter(Boolean).join(' ')}` : '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-surface-500">Mevcut diyetisyen</span>
+                <span className="font-medium text-surface-800">
+                  {assignClient?.dieticianName || (assignClient?.dieticianId ? `#${assignClient.dieticianId}` : '—')}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-surface-500">Yeni diyetisyen</span>
+                <span className="font-medium text-surface-800">
+                  {selectedDieticianLabel || (pendingAssign?.dieticianId ? `#${pendingAssign.dieticianId}` : '—')}
+                </span>
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAssignConfirmOpen(false)
+                setPendingAssign(null)
+              }}
+              disabled={assignMutation.isPending}
+            >
+              Vazgeç
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                if (!pendingAssign) return
+                setAssignConfirmOpen(false)
+                runAssign(pendingAssign)
+              }}
+              disabled={!pendingAssign || assignMutation.isPending}
+              loading={assignMutation.isPending}
+            >
+              Onayla ve Ata
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -671,6 +1084,7 @@ function ClientsTable({
   onPageChange,
   onPageSizeChange,
   onView,
+  onEdit,
   onAssignDietician,
 }: {
   clients: AppClient[]
@@ -680,6 +1094,7 @@ function ClientsTable({
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
   onView: (c: AppClient) => void
+  onEdit: (c: AppClient) => void
   onAssignDietician: (c: AppClient) => void
 }) {
   return (
@@ -745,6 +1160,9 @@ function ClientsTable({
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onView(c)}>
                           <Eye className="h-4 w-4 mr-2" /> Görüntüle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(c)}>
+                          <MoreHorizontal className="h-4 w-4 mr-2" /> Düzenle
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onAssignDietician(c)}>
                           <Users className="h-4 w-4 mr-2" /> Diyetisyen Ata

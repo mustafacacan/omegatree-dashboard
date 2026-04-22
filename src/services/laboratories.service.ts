@@ -17,6 +17,8 @@ interface ApiLabUser {
   createdAt?: string
   updatedAt?: string
   deletedAt?: string | null
+  /** GET dieticians-view-laboratory: laboratuvar kullanıcısına bağlı adresler (addressId boşsa yedek) */
+  addresses?: ApiLabAddress[]
 }
 
 interface ApiLabAddress {
@@ -173,10 +175,22 @@ function buildDisplayAddress(addr: ApiLabAddress | undefined): string {
   return parts.join(', ')
 }
 
+/** Laboratuvar satırında addressId boş olabilir; adres laboratuvar kullanıcısının Address kayıtlarında kalır */
+function resolveLaboratoryAddressRecord(item: ApiLaboratoryItem): ApiLabAddress | undefined {
+  if (item.laboratoryAddress) return item.laboratoryAddress
+  if (item.address) return item.address
+  const u = item.userLaboratory ?? item.user
+  const list = u?.addresses
+  if (!Array.isArray(list) || list.length === 0) return undefined
+  const first = list[0]
+  if (!first || typeof first !== 'object') return undefined
+  return first as ApiLabAddress
+}
+
 function mapApiLabToLab(raw: unknown): Laboratory {
   const item = normalizeLaboratoryPayload(raw)
   const user = item.userLaboratory ?? item.user
-  const addr = item.laboratoryAddress ?? item.address
+  const addr = resolveLaboratoryAddressRecord(item)
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ')
   const phone = user?.phone ?? item.phone
   const email = user?.email ?? item.email
@@ -187,6 +201,31 @@ function mapApiLabToLab(raw: unknown): Laboratory {
   const labPk = resolveLaboratoryPk(item)
   const displayName = companyTrim || fullName || `Laboratuvar #${labPk || String(item.id ?? '')}`
   const cargo = readCargoFields(item)
+
+  // Optional: lab detail can include assigned dieticians via join table.
+  const assignedDietitianDetails = (() => {
+    const r = item as unknown as Record<string, unknown>
+    const list = r.laboratoryDieticians
+    if (!Array.isArray(list)) return undefined
+    const out: { dieticianId: number; name: string }[] = []
+    for (const row of list) {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) continue
+      const rr = row as Record<string, unknown>
+      const dietician = rr.dietician
+      if (!dietician || typeof dietician !== 'object' || Array.isArray(dietician)) continue
+      const d = dietician as Record<string, unknown>
+      const id = Number(d.id)
+      if (!Number.isFinite(id) || id <= 0) continue
+      const du = d.user && typeof d.user === 'object' && !Array.isArray(d.user) ? (d.user as Record<string, unknown>) : null
+      const name =
+        [du?.firstName, du?.lastName].filter(Boolean).join(' ') ||
+        (typeof du?.email === 'string' ? du.email : '') ||
+        `Diyetisyen #${id}`
+      out.push({ dieticianId: id, name })
+    }
+    return out.length > 0 ? out : []
+  })()
+
   return {
     id: labPk,
     name: displayName,
@@ -198,6 +237,7 @@ function mapApiLabToLab(raw: unknown): Laboratory {
     phone: phone || undefined,
     email: email || undefined,
     assignedDietitians: [],
+    assignedDietitianDetails,
     createdAt: item.createdAt ?? '',
     updatedAt: item.updatedAt ?? '',
     cargofirm: cargo.cargofirm,
@@ -328,7 +368,7 @@ export async function getLaboratoriesWithPagination(params?: GetLaboratoriesPara
 /**
  * GET /laboratories/{id}
  */
-export async function getLaboratoryById(id: string | number): Promise<Laboratory> {
+export async function   getLaboratoryById(id: string | number): Promise<Laboratory> {
   const { data } = await api.get<unknown>(`/laboratories/${id}`)
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
   const item = (top && 'data' in top ? top.data : data) as ApiLaboratoryItem
@@ -436,7 +476,21 @@ export async function createLaboratory(payload: {
  */
 export async function updateLaboratory(
   id: string,
-  payload: { cargofirm?: string; cargoNumber?: string }
+  payload: {
+    cargofirm?: string
+    cargoNumber?: string
+    address?: {
+      title: 'home' | 'work' | 'other'
+      country: string
+      city: string
+      district: string
+      street: string
+      neighborhood: string
+      no: string
+      fullAddress?: string
+      postalCode: string
+    }
+  }
 ): Promise<Laboratory> {
   const { data } = await api.put<unknown>(`/laboratories/${id}`, payload)
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null

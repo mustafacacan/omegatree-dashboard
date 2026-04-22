@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
@@ -51,6 +51,8 @@ export function UsersListPage() {
   const [profileUser, setProfileUser] = useState<User | null>(null)
   const [newUserOpen, setNewUserOpen] = useState(false)
   const [editRoleOpen, setEditRoleOpen] = useState(false)
+  const [roleChangeConfirmOpen, setRoleChangeConfirmOpen] = useState(false)
+  const [pendingRoleChange, setPendingRoleChange] = useState<{ id: string; from: UserRole; to: UserRole } | null>(null)
   const [newUserForm, setNewUserForm] = useState({
     firstName: '',
     lastName: '',
@@ -84,15 +86,13 @@ export function UsersListPage() {
       }),
     placeholderData: keepPreviousData,
   })
-  const users: User[] = usersQuery.data?.items ?? []
+  const users: User[] = useMemo(() => usersQuery.data?.items ?? [], [usersQuery.data?.items])
   const totalItems = usersQuery.data?.totalItems ?? users.length
-
-  useEffect(() => {
+  const totalPages = useMemo(() => {
     const safeSize = Math.max(1, pageSize)
-    const totalPages = Math.max(1, Math.ceil(totalItems / safeSize))
-    const next = Math.min(Math.max(1, page), totalPages)
-    if (next !== page) setPage(next)
-  }, [totalItems, page, pageSize])
+    return Math.max(1, Math.ceil(totalItems / safeSize))
+  }, [totalItems, pageSize])
+  const effectivePage = useMemo(() => Math.min(Math.max(1, page), totalPages), [page, totalPages])
 
   const verifyMutation = useMutation({
     mutationFn: verifyUser,
@@ -253,6 +253,12 @@ export function UsersListPage() {
 
   const submitRoleUpdate = () => {
     if (!selectedUser) return
+    if (selectedUser.role !== roleToEdit) {
+      setPendingRoleChange({ id: selectedUser.id, from: selectedUser.role, to: roleToEdit })
+      setEditRoleOpen(false)
+      setRoleChangeConfirmOpen(true)
+      return
+    }
     updateRoleMutation.mutate({ id: selectedUser.id, role: roleToEdit })
   }
 
@@ -276,7 +282,7 @@ export function UsersListPage() {
     deleteMutation.mutate(userToDelete.id)
   }
 
-  const handleActivate = (_id: string) => {
+  const handleActivate = () => {
     toast.error('Hesap tekrar aktif etme API tarafında henüz desteklenmiyor')
   }
 
@@ -363,9 +369,9 @@ export function UsersListPage() {
               <UserTable
                 users={users}
                 totalItems={totalItems}
-                page={page}
+                page={effectivePage}
                 pageSize={pageSize}
-                onPageChange={setPage}
+                onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
                 onPageSizeChange={(next) => {
                   setPageSize(next)
                   setPage(1)
@@ -384,9 +390,9 @@ export function UsersListPage() {
               <UserTable
                 users={users.filter(u => u.status === UserStatus.ACTIVE)}
                 totalItems={totalItems}
-                page={page}
+                page={effectivePage}
                 pageSize={pageSize}
-                onPageChange={setPage}
+                onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
                 onPageSizeChange={(next) => {
                   setPageSize(next)
                   setPage(1)
@@ -405,9 +411,9 @@ export function UsersListPage() {
               <UserTable
                 users={users.filter(u => u.status === UserStatus.PENDING)}
                 totalItems={totalItems}
-                page={page}
+                page={effectivePage}
                 pageSize={pageSize}
-                onPageChange={setPage}
+                onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
                 onPageSizeChange={(next) => {
                   setPageSize(next)
                   setPage(1)
@@ -721,6 +727,71 @@ export function UsersListPage() {
         </ModalContent>
       </Modal>
 
+      {/* Rol değişimi onayı */}
+      <Modal
+        open={roleChangeConfirmOpen}
+        onOpenChange={(open) => {
+          setRoleChangeConfirmOpen(open)
+          if (!open) setPendingRoleChange(null)
+        }}
+      >
+        <ModalContent className="max-w-md">
+          <ModalHeader>
+            <ModalTitle>Rol değişikliği onayı</ModalTitle>
+            <ModalDescription>
+              Rol değişikliği, kullanıcının eski rolüne ait verilerin silinmesine neden olabilir (örn: diyetisyen → uzman).
+              Devam etmek istiyor musunuz?
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="space-y-3">
+            {selectedUser && pendingRoleChange && (
+              <div className="rounded-xl border border-surface-200 bg-surface-50 p-3 text-sm space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-surface-500">Kullanıcı</span>
+                  <span className="font-medium text-surface-800">
+                    {selectedUser.firstName} {selectedUser.lastName}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-surface-500">Mevcut rol</span>
+                  <span className="font-medium text-surface-800">{USER_ROLE_LABELS[pendingRoleChange.from]}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-surface-500">Yeni rol</span>
+                  <span className="font-medium text-surface-800">{USER_ROLE_LABELS[pendingRoleChange.to]}</span>
+                </div>
+              </div>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRoleChangeConfirmOpen(false)
+                setPendingRoleChange(null)
+                setEditRoleOpen(true)
+              }}
+              disabled={updateRoleMutation.isPending}
+            >
+              Vazgeç
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!pendingRoleChange) return
+                updateRoleMutation.mutate({ id: pendingRoleChange.id, role: pendingRoleChange.to })
+                setRoleChangeConfirmOpen(false)
+                setPendingRoleChange(null)
+              }}
+              disabled={!pendingRoleChange || updateRoleMutation.isPending}
+              loading={updateRoleMutation.isPending}
+            >
+              Onayla ve değiştir
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       {/* Kullanıcı detay modalı — API'deki tüm alanlar */}
       <Modal open={profileOpen} onOpenChange={setProfileOpen}>
         <ModalContent className="max-w-lg">
@@ -772,10 +843,7 @@ export function UsersListPage() {
                   <p className="text-surface-500 text-[11px] mb-1">Güncellenme</p>
                   <p className="font-medium text-surface-800">{formatDate(profileUser.updatedAt)}</p>
                 </div>
-                <div className="rounded-lg border border-surface-200 p-3 col-span-2">
-                  <p className="text-surface-500 text-[11px] mb-1">Silinme (deletedAt)</p>
-                  <p className="font-medium text-surface-800">{profileUser.deletedAt ? formatDate(profileUser.deletedAt) : '-'}</p>
-                </div>
+              
               </div>
             </ModalBody>
           )}

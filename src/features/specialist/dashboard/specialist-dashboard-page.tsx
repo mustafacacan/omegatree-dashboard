@@ -9,7 +9,7 @@ import {
 import { ROUTES, raporDuzenleyiciPath } from '@/utils/routes'
 import { formatDate } from '@/lib/utils'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { getExperts } from '@/services/experts.service'
+import { getExpertTasks } from '@/services/experts.service'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar,
@@ -86,37 +86,37 @@ export function SpecialistDashboardPage() {
 
   const pendingCountQuery = useQuery({
     queryKey: ['experts', 'dashboard', 'count', 'pending'],
-    queryFn: () => getExperts({ status: 'pending', page: 1, limit: 1 }),
+    queryFn: () => getExpertTasks({ status: 'pending', page: 1, limit: 1 }),
     retry: 1,
   })
   const inProgressCountQuery = useQuery({
     queryKey: ['experts', 'dashboard', 'count', 'in_progress'],
-    queryFn: () => getExperts({ status: 'in_progress', page: 1, limit: 1 }),
+    queryFn: () => getExpertTasks({ status: 'in_progress', page: 1, limit: 1 }),
     retry: 1,
   })
   const completedCountQuery = useQuery({
     queryKey: ['experts', 'dashboard', 'count', 'completed'],
-    queryFn: () => getExperts({ status: 'completed', page: 1, limit: 1 }),
+    queryFn: () => getExpertTasks({ status: 'completed', page: 1, limit: 1 }),
     retry: 1,
   })
 
   const pendingListQuery = useQuery({
     queryKey: ['experts', 'dashboard', 'list', 'pending'],
-    queryFn: () => getExperts({ status: 'pending', page: 1, limit: 5 }),
+    queryFn: () => getExpertTasks({ status: 'pending', page: 1, limit: 5 }),
     placeholderData: keepPreviousData,
     retry: 1,
   })
 
   const completedListQuery = useQuery({
     queryKey: ['experts', 'dashboard', 'list', 'completed'],
-    queryFn: () => getExperts({ status: 'completed', page: 1, limit: 50 }),
+    queryFn: () => getExpertTasks({ status: 'completed', page: 1, limit: 50 }),
     placeholderData: keepPreviousData,
     retry: 1,
   })
 
   const inProgressListQuery = useQuery({
     queryKey: ['experts', 'dashboard', 'list', 'in_progress'],
-    queryFn: () => getExperts({ status: 'in_progress', page: 1, limit: 1 }),
+    queryFn: () => getExpertTasks({ status: 'in_progress', page: 1, limit: 1 }),
     placeholderData: keepPreviousData,
     retry: 1,
   })
