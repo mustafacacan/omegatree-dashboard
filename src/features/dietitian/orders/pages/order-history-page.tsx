@@ -186,7 +186,7 @@ export function DietitianOrderHistoryPage() {
                         </td>
                         <td className="px-5 py-3.5">
                           <span className="text-[12px] text-surface-700">{kitName}</span>
-                          <span className="text-[11px] text-surface-500 ml-1">· {order.quantity} adet</span>
+                          <span className="text-[11px] text-surface-500 ml-1">· {order.quantity} paket</span>
                         </td>
                         <td className="px-5 py-3.5">
                           <span className="text-[12px] text-surface-600">{formatDate(order.createdAt ?? '')}</span>
@@ -270,7 +270,7 @@ export function DietitianOrderHistoryPage() {
             <ModalDescription>
               {orderDetail && (
                 <>
-                  {orderDetail.salesKit?.name ?? '—'} · {orderDetail.quantity} adet · {formatCurrency(Number(orderDetail.totalPrice) || 0)}
+                  {orderDetail.salesKit?.name ?? '—'} · {orderDetail.quantity} paket · {formatCurrency(Number(orderDetail.totalPrice) || 0)}
                 </>
               )}
             </ModalDescription>
@@ -297,7 +297,7 @@ export function DietitianOrderHistoryPage() {
                     <p className="font-medium text-surface-800">{orderDetail.salesKit?.name ?? '—'}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-surface-500">Adet</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-surface-500">Paket adedi</p>
                     <p className="font-medium text-surface-800">{orderDetail.quantity}</p>
                   </div>
                   <div>

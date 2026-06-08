@@ -385,8 +385,7 @@
                     "district",
                     "street",
                     "neighborhood",
-                    "no",
-                    "postalCode"
+                    "no"
                 ],
                 "additionalProperties": false
             },
@@ -531,7 +530,6 @@
                     "district",
                     "street",
                     "neighborhood",
-                    "postalCode",
                     "createdAt",
                     "updatedAt"
                 ],

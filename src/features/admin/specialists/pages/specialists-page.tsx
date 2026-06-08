@@ -166,14 +166,14 @@ function SpecialistsPage() {
   })
 
   const submitNew = () => {
-    if (!form.phone.trim() || !form.companyName.trim()) {
-      toast.error('Kurum adı ve telefon zorunludur')
+    if (!form.phone.trim()) {
+      toast.error('Telefon zorunludur')
       return
     }
     createMutation.mutate({
       firstName: form.firstName.trim() || undefined,
       lastName: form.lastName.trim() || undefined,
-      companyName: form.companyName.trim(),
+      companyName: form.companyName.trim() || undefined,
       email: form.email.trim() || undefined,
       phone: form.phone.trim(),
       role: UserRole.SPECIALIST,
@@ -389,10 +389,11 @@ function SpecialistsPage() {
               />
             </div>
             <Input
-              label="Kurum Adı *"
+              label="Kurum Adı"
               value={form.companyName}
               onChange={(e) => setForm((s) => ({ ...s, companyName: e.target.value }))}
               placeholder="Kurum adı"
+              hint="Opsiyonel"
             />
             <div className="grid grid-cols-2 gap-3">
               <Input
@@ -402,11 +403,12 @@ function SpecialistsPage() {
                 placeholder="05XX XXX XX XX"
               />
               <Input
-                label="E-posta *"
+                label="E-posta"
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
                 placeholder="ornek@email.com"
+                hint="Boş bırakabilirsiniz."
               />
             </div>
             <div className="space-y-1.5">
@@ -471,11 +473,12 @@ function SpecialistsPage() {
                 placeholder="05XX XXX XX XX"
               />
               <Input
-                label="E-posta *"
+                label="E-posta"
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
                 placeholder="ornek@email.com"
+                hint="Boş bırakabilirsiniz."
               />
             </div>
           </ModalBody>

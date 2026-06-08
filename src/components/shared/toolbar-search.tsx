@@ -24,7 +24,7 @@ export function ToolbarSearch({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          'w-full sm:w-52 rounded-xl border border-surface-200 bg-surface-50 py-2 pl-9 pr-3 text-sm text-surface-900 outline-none',
+          'w-full sm:w-56 md:w-64 rounded-xl border border-surface-200 bg-surface-50 py-2 pl-9 pr-3 text-sm text-surface-900 outline-none',
           'focus:border-primary-500 focus:ring-1 focus:ring-primary-200',
           inputClassName
         )}

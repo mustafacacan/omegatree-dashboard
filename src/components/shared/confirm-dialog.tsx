@@ -42,8 +42,8 @@ export function ConfirmDialog({
               <div
                 className={
                   variant === 'danger'
-                    ? 'flex items-center justify-center h-10 w-10 rounded-full bg-red-50 text-danger'
-                    : 'flex items-center justify-center h-10 w-10 rounded-full bg-amber-50 text-warning'
+                    ? 'flex items-center justify-center h-10 w-10 rounded-full bg-red-50 text-danger shrink-0 dark:bg-danger/20'
+                    : 'flex items-center justify-center h-10 w-10 rounded-full bg-amber-50 text-warning shrink-0 dark:bg-warning/20'
                 }
               >
                 <AlertTriangle className="h-5 w-5" />

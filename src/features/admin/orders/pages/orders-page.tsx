@@ -12,6 +12,8 @@ import { TablePagination } from '@/components/shared/table-pagination'
 import { PdfViewer } from '@/components/shared/pdf-viewer'
 import { useWorkflowStore } from '@/stores/workflow.store'
 import { getOrderById, getOrdersWithPagination, updateOrderStatus, type OrderItem } from '@/services/orders.service'
+import { invalidateAdminSidebarCounts } from '@/lib/admin-sidebar-counts'
+import { resolveMediaUrl } from '@/lib/media-url'
 import {
   OrderKitAssignStep,
   type OrderKitAssignFooterState,
@@ -135,14 +137,22 @@ export function OrdersPage() {
         ? (rawObj.data as Record<string, unknown>)
         : (rawObj ?? {})
 
+    const dekontMedia =
+      data.dekontMedia && typeof data.dekontMedia === 'object'
+        ? (data.dekontMedia as Record<string, unknown>)
+        : null
     const url =
-      (data.dekontMedia && typeof data.dekontMedia === 'object'
-        ? (data.dekontMedia as Record<string, unknown>).url
-        : undefined) ??
-      data.dekontMediaUrl ??
-      data.dekontUrl
+      (typeof dekontMedia?.url === 'string' ? dekontMedia.url : undefined) ??
+      (typeof data.dekontMediaUrl === 'string' ? data.dekontMediaUrl : undefined) ??
+      (typeof data.dekontUrl === 'string' ? data.dekontUrl : undefined)
+    const filename =
+      typeof dekontMedia?.filename === 'string'
+        ? dekontMedia.filename
+        : typeof dekontMedia?.file === 'string'
+          ? dekontMedia.file
+          : undefined
 
-    return typeof url === 'string' && url.trim().length > 0 ? url : null
+    return resolveMediaUrl(url, filename)
   }, [selectedOrderDetail])
 
   const dekontIsPdf = useMemo(() => {
@@ -180,6 +190,7 @@ export function OrdersPage() {
     onSuccess: async () => {
       toast.success('Sipariş tamamlandı')
       await queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
+      await invalidateAdminSidebarCounts(queryClient)
       if (selectedOrder) {
         await queryClient.invalidateQueries({ queryKey: ['orders', 'detail', selectedOrder] })
       }
@@ -490,12 +501,11 @@ export function OrdersPage() {
                         .join(' ') || '—'
                     }
                     remainingSlots={remainingQty}
-                    orderedQuantity={currentOrder?.qty ?? orderFulfillmentKitCount}
-                    salesKitQuantity={
-                      orderDetailForUi.salesKit?.quantity != null
-                        ? Number(orderDetailForUi.salesKit.quantity)
-                        : null
-                    }
+                    totalKitsOrdered={currentOrder?.qty ?? orderFulfillmentKitCount}
+                    orderedPackageCount={Math.max(
+                      0,
+                      Math.floor(Number(orderDetailForUi.quantity) || 0),
+                    )}
                     workflowOrderId={selectedOrder}
                     onAssigned={({ nowComplete }) => {
                       if (nowComplete) setModalStep(3)

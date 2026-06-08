@@ -22,6 +22,7 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { getClientsByDietician } from '@/services/dietician-clients.service'
 import { assignDieticianClientKitToClient, getDieticianClientKitById, getDieticianClientKits, sendKitToLaboratory } from '@/services/dietician-client-kits.service'
 import { createClient, getClientDetail } from '@/services/clients.service'
+import { upsertFoodConsumptionRecord } from '@/services/food-consumption-records.service'
 import { getMyStockList } from '@/services/stocks.service'
 import { useCurrentUser } from '@/stores/auth.store'
 import { UserRole } from '@/utils/constants'
@@ -29,6 +30,9 @@ import { UserRole } from '@/utils/constants'
 const DIETITIAN_CLIENTS_QUERY_KEY = ['dieticians', 'get-clients-by-dietician'] as const
 
 type ActiveTab = 'clients' | 'kits'
+type AlcoholFrequency = 'never' | 'rarely' | 'sometimes' | 'often' | 'daily'
+type SmokingFrequency = AlcoholFrequency
+type BowelIssue = 'none' | 'diarrhea' | 'constipation' | 'both'
 
 export function ClientsListPage() {
   const [tab, setTab] = useState<ActiveTab>('clients')
@@ -51,7 +55,7 @@ export function ClientsListPage() {
     status?: 'in_client' | 'in_laboratory' | 'in_expert' | 'delivered' | 'cancelled' | 'completed'
   } | null>(null)
   const [newOpen, setNewOpen] = useState(false)
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -67,6 +71,19 @@ export function ClientsListPage() {
     hipCircumference: '',
     profession: '',
     education: '',
+    mealsPerDay: '',
+    fastFoodMealsPerDay: '',
+    dailyWaterLiters: '',
+    defecationFrequency: '',
+    alcoholFrequency: '' as '' | AlcoholFrequency,
+    smokingFrequency: '' as '' | SmokingFrequency,
+    avoidedFoods: '',
+    discomfortFoods: '',
+    bowelIssue: '' as '' | BowelIssue,
+    gastrointestinalDisease: '',
+    nightEatingHabit: false,
+    eatingDisorderBehaviors: false,
+    nutritionNotes: '',
   })
   const queryClient = useQueryClient()
   const currentUser = useCurrentUser()
@@ -251,14 +268,98 @@ export function ClientsListPage() {
       hipCircumference: '',
       profession: '',
       education: '',
+      mealsPerDay: '',
+      fastFoodMealsPerDay: '',
+      dailyWaterLiters: '',
+      defecationFrequency: '',
+      alcoholFrequency: '',
+      smokingFrequency: '',
+      avoidedFoods: '',
+      discomfortFoods: '',
+      bowelIssue: '',
+      gastrointestinalDisease: '',
+      nightEatingHabit: false,
+      eatingDisorderBehaviors: false,
+      nutritionNotes: '',
     })
     setStep(1)
   }
 
   const createClientMutation = useMutation({
     mutationFn: createClient,
-    onSuccess: () => {
+    onSuccess: async (created) => {
       queryClient.invalidateQueries({ queryKey: DIETITIAN_CLIENTS_QUERY_KEY })
+      const foodConsumptionRecord = (() => {
+        const mealsPerDay = form.mealsPerDay.trim() ? Number(form.mealsPerDay) : NaN
+        const dailyWaterLiters = form.dailyWaterLiters.trim() ? Number(form.dailyWaterLiters) : NaN
+        const fastFoodMealsPerDay = form.fastFoodMealsPerDay.trim() ? Number(form.fastFoodMealsPerDay) : NaN
+        const defecationFrequency = form.defecationFrequency.trim()
+
+        const alcoholFrequency = form.alcoholFrequency
+        const smokingFrequency = form.smokingFrequency
+
+        const avoidedFoods = form.avoidedFoods.trim() || 'none'
+        const discomfortFoods = form.discomfortFoods.trim() || 'none'
+        const bowelIssue = form.bowelIssue || 'none'
+        const gastrointestinalDisease = form.gastrointestinalDisease.trim() || 'none'
+
+        const hasAnyInput =
+          form.mealsPerDay.trim() !== '' ||
+          form.fastFoodMealsPerDay.trim() !== '' ||
+          form.dailyWaterLiters.trim() !== '' ||
+          form.defecationFrequency.trim() !== '' ||
+          form.alcoholFrequency !== '' ||
+          form.smokingFrequency !== '' ||
+          form.avoidedFoods.trim() !== '' ||
+          form.discomfortFoods.trim() !== '' ||
+          form.bowelIssue !== '' ||
+          form.gastrointestinalDisease.trim() !== '' ||
+          form.nutritionNotes.trim() !== '' ||
+          form.nightEatingHabit === true ||
+          form.eatingDisorderBehaviors === true
+
+        if (!hasAnyInput) return undefined
+
+        if (
+          !Number.isFinite(mealsPerDay) ||
+          !Number.isFinite(dailyWaterLiters) ||
+          !Number.isFinite(fastFoodMealsPerDay) ||
+          !defecationFrequency ||
+          !alcoholFrequency ||
+          !smokingFrequency
+        ) {
+          toast.error('Beslenme formu için zorunlu alanlar: Öğün/gün, Fastfood/gün, Su (L), Dışkılama, Alkol, Sigara')
+          return undefined
+        }
+
+        return {
+          mealsPerDay,
+          alcoholFrequency,
+          smokingFrequency,
+          avoidedFoods,
+          dailyWaterLiters,
+          fastFoodMealsPerDay,
+          defecationFrequency,
+          discomfortFoods,
+          bowelIssue,
+          gastrointestinalDisease,
+          nightEatingHabit: !!form.nightEatingHabit,
+          eatingDisorderBehaviors: !!form.eatingDisorderBehaviors,
+          ...(form.nutritionNotes.trim() ? { notes: form.nutritionNotes.trim() } : {}),
+        }
+      })()
+
+      if (foodConsumptionRecord) {
+        try {
+          await upsertFoodConsumptionRecord({
+            clientId: created.id,
+            ...foodConsumptionRecord,
+          })
+        } catch (err: unknown) {
+          toast.error(getApiErrorMessage(err, { fallback: 'Beslenme formu kaydedilemedi' }))
+        }
+      }
+
       toast.success('Danışan başarıyla oluşturuldu')
       setNewOpen(false)
       resetNewForm()
@@ -301,6 +402,7 @@ export function ClientsListPage() {
       if (hip !== undefined && !Number.isNaN(hip)) partial.hipCircumference = hip
       return Object.keys(partial).length ? partial : undefined
     })()
+
     createClientMutation.mutate({
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
@@ -596,7 +698,7 @@ export function ClientsListPage() {
           <ModalHeader>
             <ModalTitle>Yeni Danışan Ekle</ModalTitle>
             <ModalDescription>
-              Danışan bilgileri ve isteğe bağlı anamnez alanlarını doldurun.
+              Danışan bilgileri, isteğe bağlı anamnez ve beslenme alanlarını doldurun.
             </ModalDescription>
           </ModalHeader>
           <ModalBody className="space-y-4">
@@ -619,6 +721,16 @@ export function ClientsListPage() {
                 }`}
               >
                 <Users className="h-4 w-4" /> Anamnez (Opsiyonel)
+              </button>
+              <div className="h-px w-4 bg-surface-200" />
+              <button
+                type="button"
+                onClick={() => setStep(3)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  step === 3 ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700' : 'text-surface-500 dark:text-surface-400 border border-transparent'
+                }`}
+              >
+                <Users className="h-4 w-4" /> Beslenme (Opsiyonel)
               </button>
             </div>
 
@@ -734,15 +846,95 @@ export function ClientsListPage() {
                 />
               </>
             )}
+
+            {step === 3 && (
+              <>
+                <p className="form-section-title">Beslenme Formu (Opsiyonel)</p>
+                <p className="text-[12px] text-surface-500">
+                  Bu formu boş bırakabilirsiniz. Herhangi bir alan doldurulursa kaydedilir; eksik zorunlu alan varsa uyarı verilir.
+                </p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Öğün / gün *" type="number" value={form.mealsPerDay} onChange={(e) => setForm((s) => ({ ...s, mealsPerDay: e.target.value }))} placeholder="3" />
+                  <Input label="Fastfood / gün *" type="number" value={form.fastFoodMealsPerDay} onChange={(e) => setForm((s) => ({ ...s, fastFoodMealsPerDay: e.target.value }))} placeholder="0" />
+                  <Input label="Su (L) *" type="number" value={form.dailyWaterLiters} onChange={(e) => setForm((s) => ({ ...s, dailyWaterLiters: e.target.value }))} placeholder="2.5" />
+                  <Input label="Dışkılama *" value={form.defecationFrequency} onChange={(e) => setForm((s) => ({ ...s, defecationFrequency: e.target.value }))} placeholder="Örn: daily" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-[13px] font-medium text-surface-700">Alkol *</label>
+                    <Select value={form.alcoholFrequency} onValueChange={(v) => setForm((s) => ({ ...s, alcoholFrequency: v as AlcoholFrequency }))}>
+                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
+                      <SelectContent>
+                        {['never', 'rarely', 'sometimes', 'often', 'daily'].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[13px] font-medium text-surface-700">Sigara *</label>
+                    <Select value={form.smokingFrequency} onValueChange={(v) => setForm((s) => ({ ...s, smokingFrequency: v as SmokingFrequency }))}>
+                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
+                      <SelectContent>
+                        {['never', 'rarely', 'sometimes', 'often', 'daily'].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Kaçınılan gıdalar *" value={form.avoidedFoods} onChange={(e) => setForm((s) => ({ ...s, avoidedFoods: e.target.value }))} placeholder="Örn: none" />
+                  <Input label="Rahatsız eden gıdalar *" value={form.discomfortFoods} onChange={(e) => setForm((s) => ({ ...s, discomfortFoods: e.target.value }))} placeholder="Örn: none" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-[13px] font-medium text-surface-700">Bağırsak sorunu *</label>
+                    <Select value={form.bowelIssue} onValueChange={(v) => setForm((s) => ({ ...s, bowelIssue: v as BowelIssue }))}>
+                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
+                      <SelectContent>
+                        {['none', 'diarrhea', 'constipation', 'both'].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Input label="GIS hastalığı *" value={form.gastrointestinalDisease} onChange={(e) => setForm((s) => ({ ...s, gastrointestinalDisease: e.target.value }))} placeholder="Örn: none" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="flex items-center gap-2 text-[12px] text-surface-700">
+                    <input
+                      type="checkbox"
+                      checked={form.nightEatingHabit}
+                      onChange={(e) => setForm((s) => ({ ...s, nightEatingHabit: e.target.checked }))}
+                      className="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    Gece yeme alışkanlığı *
+                  </label>
+                  <label className="flex items-center gap-2 text-[12px] text-surface-700">
+                    <input
+                      type="checkbox"
+                      checked={form.eatingDisorderBehaviors}
+                      onChange={(e) => setForm((s) => ({ ...s, eatingDisorderBehaviors: e.target.checked }))}
+                      className="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    Yeme bozukluğu davranışı *
+                  </label>
+                </div>
+
+                <Input label="Not" value={form.nutritionNotes} onChange={(e) => setForm((s) => ({ ...s, nutritionNotes: e.target.value }))} placeholder="Opsiyonel" />
+              </>
+            )}
           </ModalBody>
           <ModalFooter>
-            {step === 2 ? (
-              <Button variant="outline" onClick={() => setStep(1)}>Geri</Button>
+            {step === 2 || step === 3 ? (
+              <Button variant="outline" onClick={() => setStep(step === 3 ? 2 : 1)}>Geri</Button>
             ) : (
               <Button variant="outline" onClick={() => setNewOpen(false)}>İptal</Button>
             )}
             {step === 1 ? (
               <Button variant="primary" onClick={() => setStep(2)}>Devam — Anamnez</Button>
+            ) : step === 2 ? (
+              <Button variant="primary" onClick={() => setStep(3)}>Devam — Beslenme</Button>
             ) : (
               <Button variant="primary" onClick={submitNewClient} disabled={createClientMutation.isPending}>
                 {createClientMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}

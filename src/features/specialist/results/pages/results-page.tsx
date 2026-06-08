@@ -17,6 +17,7 @@ import { ROUTES } from '@/utils/routes'
 import { formatDateTime } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { getResultsPage, updateResult, type Result, type ResultStatus, type UpdateResultInput } from '@/services/results.service'
+import { invalidateAdminSidebarCounts } from '@/lib/admin-sidebar-counts'
 
 function isProbablyPdf(url?: string | null) {
   if (!url) return false
@@ -96,6 +97,7 @@ export function SpecialistResultsPage() {
     mutationFn: async (params: { id: number; input: UpdateResultInput }) => updateResult(params.id, params.input),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['results'] })
+      await invalidateAdminSidebarCounts(queryClient)
       setUploadId(null)
       resetUploadForm()
     },

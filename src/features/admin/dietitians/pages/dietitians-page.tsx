@@ -24,6 +24,34 @@ import {
   getDieticianById,
   type AdminDietitianRow,
 } from '@/services/dieticians.service'
+import { getDieticianClients, type DieticianClient } from '@/services/dietician-clients.service'
+
+function DieticianClientsList({ dieticianId }: { dieticianId: number }) {
+  const clientsQuery = useQuery({
+    queryKey: ['dietician', 'clients', dieticianId],
+    queryFn: () => getDieticianClients(dieticianId),
+    enabled: !!dieticianId,
+    staleTime: 30_000,
+  })
+
+  const clients = clientsQuery.data ?? []
+  if (clientsQuery.isLoading) return <p className="text-sm text-surface-500">Yükleniyor...</p>
+  if (clients.length === 0) return <p className="text-sm text-surface-500">Atanmış danışan yok.</p>
+
+  return (
+    <div className="space-y-2 max-h-36 overflow-y-auto">
+      {clients.map((c: DieticianClient) => (
+        <div key={c.id} className="flex items-center justify-between p-2 rounded-md bg-surface-50 border border-surface-200">
+          <div>
+            <p className="text-sm font-medium text-surface-900">{c.clientName ?? '—'}</p>
+            <p className="text-[12px] text-surface-500">{c.clientEmail ?? c.clientPhone ?? '—'}</p>
+          </div>
+          <div className="text-[11px] text-surface-500">{c.createdAt ? new Date(c.createdAt).toLocaleDateString('tr-TR') : ''}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
 import { updateUser, deleteUser } from '@/services/users.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
@@ -178,19 +206,15 @@ function DietitiansPage() {
   }
 
   const submitNew = () => {
-    if (!form.phone.trim() || !form.companyName.trim()) {
-      toast.error('Kurum adı ve telefon zorunludur')
-      return
-    }
-    if (!form.email.trim()) {
-      toast.error('E-posta zorunludur')
+    if (!form.phone.trim()) {
+      toast.error('Telefon zorunludur')
       return
     }
     createMutation.mutate({
       firstName: form.firstName.trim() || undefined,
       lastName: form.lastName.trim() || undefined,
-      companyName: form.companyName.trim(),
-      email: form.email.trim(),
+      companyName: form.companyName.trim() || undefined,
+      email: form.email.trim() || undefined,
       phone: form.phone.trim(),
       gender: form.gender,
     })
@@ -310,13 +334,27 @@ function DietitiansPage() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 text-sm text-surface-700">
-                    <Phone className="h-4 w-4 text-surface-400 shrink-0" />
-                    <span>{selected.phone || '-'}</span>
+                  <div className="flex flex-col gap-2 text-sm text-surface-700">
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-surface-400 shrink-0" />
+                      <span>{selected.phone || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-4 w-4 text-surface-400 shrink-0" />
+                      <span>{selected.email || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-surface-500 text-sm">Kurum:</span>
+                      <span className="font-medium text-surface-800">{selected.companyName ?? '-'}</span>
+                    </div>
                   </div>
-                  <p className="text-xs text-surface-500">
-                    Kayıt tarihi: {formatDate(selected.createdAt)}
-                  </p>
+                  <p className="text-xs text-surface-500">Kayıt tarihi: {formatDate(selected.createdAt)}</p>
+
+                  {/* Atanan danışanlar */}
+                  <div className="pt-3">
+                    <h4 className="text-[13px] font-semibold text-surface-900 mb-2">Atanan Danışanlar</h4>
+                    <DieticianClientsList dieticianId={selected.dieticianId} />
+                  </div>
                 </div>
               </div>
             )}
@@ -356,10 +394,11 @@ function DietitiansPage() {
               />
             </div>
             <Input
-              label="Kurum Adı *"
+              label="Kurum Adı"
               value={form.companyName}
               onChange={(e) => setForm((s) => ({ ...s, companyName: e.target.value }))}
               placeholder="Kurum adı"
+              hint="Opsiyonel"
             />
             <div className="grid grid-cols-2 gap-3">
               <Input
@@ -369,11 +408,12 @@ function DietitiansPage() {
                 placeholder="05XX XXX XX XX"
               />
               <Input
-                label="E-posta *"
+                label="E-posta"
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
                 placeholder="ornek@email.com"
+                hint="Boş bırakabilirsiniz."
               />
             </div>
             <div className="space-y-1.5">
@@ -438,11 +478,12 @@ function DietitiansPage() {
                 placeholder="05XX XXX XX XX"
               />
               <Input
-                label="E-posta *"
+                label="E-posta"
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
                 placeholder="ornek@email.com"
+                hint="Boş bırakabilirsiniz."
               />
             </div>
           </ModalBody>

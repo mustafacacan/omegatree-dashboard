@@ -11,7 +11,7 @@ export function PanelHeader({ title, description, actions, className }: PanelHea
   return (
     <div
       className={cn(
-        'p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200',
+        'p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200',
         className
       )}
     >
@@ -22,7 +22,7 @@ export function PanelHeader({ title, description, actions, className }: PanelHea
         )}
       </div>
 
-      {actions && <div className="flex items-center gap-2 flex-wrap justify-end">{actions}</div>}
+      {actions && <div className="flex w-full flex-wrap items-center gap-2 justify-start sm:w-auto sm:justify-end">{actions}</div>}
     </div>
   )
 }

@@ -37,7 +37,7 @@ export function PageHeader({ title, description, breadcrumbs, actions }: PageHea
         </nav>
       )}
       {(title || description || actions) && (
-        <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
           {(title || description) && (
             <div className="min-w-0">
               {title && (
@@ -52,7 +52,7 @@ export function PageHeader({ title, description, breadcrumbs, actions }: PageHea
               )}
             </div>
           )}
-          {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+          {actions && <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end">{actions}</div>}
         </div>
       )}
     </div>

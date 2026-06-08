@@ -23,7 +23,7 @@ const buttonVariants = cva(
         gradient:
           'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-sm hover:from-primary-600 hover:to-primary-700 hover:shadow-[0_4px_12px_rgba(139,154,75,0.3)]',
         outline:
-          'border border-surface-200 bg-white text-surface-700 hover:bg-surface-100 hover:text-surface-900 hover:border-surface-300',
+          'border border-surface-200 bg-panel text-surface-700 hover:bg-surface-100 hover:text-surface-900 hover:border-surface-300',
         ghost:
           'text-surface-600 hover:bg-surface-100 hover:text-surface-800',
         destructive:

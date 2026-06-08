@@ -37,6 +37,7 @@ import { getAddresses, getAddressLabel, getAddressFullLine } from '@/services/ad
 import { getActiveBankInfos, type BankInfo } from '@/services/bank-infos.service'
 import { SalesKitImage } from '@/components/shared/sales-kit-image'
 import { ROUTES } from '@/utils/routes'
+import { invalidateAdminSidebarCounts } from '@/lib/admin-sidebar-counts'
 
 const W = {
   olive: '#8B9A4B',
@@ -59,6 +60,8 @@ const stagger = { animate: { transition: { staggerChildren: 0.05 } } }
 
 const ORDERS_QUERY_KEY = ['orders'] as const
 const ADDRESSES_QUERY_KEY = ['addresses'] as const
+/** Sipariş satırındaki quantity = paket adedi (paket içi kit sayısı değil). */
+const MAX_PACKAGE_QTY = 999
 
 type PaymentMethodUi = 'credit_card' | 'transfer'
 type PaymentMethodApi = 'credit_card' | 'eft' | 'havale'
@@ -123,9 +126,14 @@ export function DietitianOrderPage() {
         isPaid: false,
         addressId,
       }),
-    onSuccess: () => {
+    onSuccess: (_created, variables) => {
       queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
-      toast.success('Sipariş başarıyla oluşturuldu.')
+      invalidateAdminSidebarCounts(queryClient)
+      const isBankTransfer =
+        variables.paymentMethod === 'havale' || variables.paymentMethod === 'eft'
+      if (!isBankTransfer) {
+        toast.success('Sipariş başarıyla oluşturuldu.')
+      }
     },
     onError: (err: unknown) => {
       toast.error(getApiErrorMessage(err, { fallback: 'Sipariş oluşturulamadı. Lütfen tekrar deneyin.' }))
@@ -150,10 +158,11 @@ export function DietitianOrderPage() {
     },
   })
 
-  const maxQty = selectedKit ? Math.max(1, Math.min(selectedKit.quantity, 999)) : 1
+  const maxQty = selectedKit ? MAX_PACKAGE_QTY : 1
   const safeQty = selectedKit ? Math.min(maxQty, Math.max(1, orderQty)) : 0
   const total = selectedKit ? selectedKit.price * safeQty : 0
-  const totalKits = selectedKit ? selectedKit.quantity * safeQty : 0
+  const kitsPerPackage = selectedKit ? Math.max(1, selectedKit.quantity) : 0
+  const totalKits = selectedKit ? kitsPerPackage * safeQty : 0
 
   const handleSelectKit = (kit: SalesKit) => {
     setSelectedKit(kit)
@@ -166,7 +175,7 @@ export function DietitianOrderPage() {
       return
     }
     if (safeQty <= 0) {
-      toast.error('Geçerli adet girin.')
+      toast.error('Geçerli paket adedi girin.')
       return
     }
     if (addresses.length === 0) {
@@ -197,24 +206,18 @@ export function DietitianOrderPage() {
         paymentMethod: apiPaymentMethod,
       },
       {
-        onSuccess: (created) => {
+        onSuccess: () => {
           setConfirmOrderModalOpen(false)
           setSelectedKit(null)
           setOrderQty(1)
           setSelectedAddressId(null)
 
-          if (paymentMethod === 'transfer' && created?.id != null) {
-            toast.message('Dekontu Sipariş Geçmişim sayfasından siparişinizin üzerinden ekleyebilirsiniz.')
-            const createdId = Number(created.id)
-            if (Number.isFinite(createdId) && createdId > 0) {
-              setDekontTargetOrderId(createdId)
-              setDekontModalOrder({
-                id: createdId,
-                orderNumber: (created as unknown as { orderNumber?: string }).orderNumber,
-                totalPrice: (created as unknown as { totalPrice?: unknown }).totalPrice as Order['totalPrice'],
-              })
-              setDekontModalOpen(true)
-            }
+          if (paymentMethod === 'transfer') {
+            toast.success('Sipariş oluşturuldu', {
+              description:
+                'Ödeme dekontunu Sipariş Geçmişi sayfasından ilgili siparişin üzerinden ekleyebilirsiniz.',
+              duration: 8000,
+            })
           }
         },
       }
@@ -276,7 +279,7 @@ export function DietitianOrderPage() {
               animate="animate"
             >
               {salesKits.map((k, i) => {
-                const imageUrl = getSalesKitImageUrl(k.imageData?.url)
+                const imageUrl = getSalesKitImageUrl(k.imageData?.url, k.imageData?.file)
                 const showImg = imageUrl && !failedImageIds.has(k.id)
                 const isSelected = selectedKit?.id === k.id
                 return (
@@ -331,7 +334,7 @@ export function DietitianOrderPage() {
                           <span className="font-bold text-lg tabular-nums text-surface-800">
                             {formatCurrency(k.price)}
                           </span>
-                          <span className="text-xs text-surface-500">/ adet · {k.quantity} kit</span>
+                          <span className="text-xs text-surface-500">/ paket · {k.quantity} kit</span>
                         </div>
                       </div>
                     </button>
@@ -374,7 +377,7 @@ export function DietitianOrderPage() {
                       <p className="text-[13px] font-medium text-surface-800 truncate">Seçilen paket: {selectedKit.name}</p>
                       <div className="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
                         <div className="flex items-center gap-2">
-                          <span className="text-[13px] text-surface-600">Adet</span>
+                          <span className="text-[13px] text-surface-600">Paket adedi</span>
                           <div className="flex items-center rounded-lg border border-border bg-white overflow-hidden h-8">
                             <button
                               type="button"

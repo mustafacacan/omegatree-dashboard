@@ -13,6 +13,7 @@ import { useLaboratoriesStore } from '@/stores/laboratories.store'
 import { toast } from 'sonner'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createDamagedKit } from '@/services/damaged-kits.service'
+import { invalidateAdminSidebarCounts } from '@/lib/admin-sidebar-counts'
 import { getDieticianClientKitById, getDieticianClientKits, type DieticianClientKit } from '@/services/dietician-client-kits.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
@@ -126,6 +127,7 @@ export function KitsPage() {
         createDamagedKit(kitId, { reason, imageFile }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['damaged-kits'] })
+      invalidateAdminSidebarCounts(queryClient)
     },
     onError: (err: { response?: { data?: { message?: string; errors?: string[] } } }) => {
       toast.error(getApiErrorMessage(err, { fallback: 'Iade talebi gonderilemedi.' }))

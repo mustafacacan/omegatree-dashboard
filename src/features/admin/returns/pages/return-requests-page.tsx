@@ -14,6 +14,7 @@ import { Search, RotateCcw, XCircle, Package, Eye, MoreHorizontal, Loader2 } fro
 import { motion } from 'framer-motion'
 import { formatDateTime } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { resolveMediaUrl } from '@/lib/media-url'
 import { toast } from 'sonner'
 import {
   getDamagedKits,
@@ -24,6 +25,7 @@ import {
 } from '@/services/damaged-kits.service'
 import { PdfViewer } from '@/components/shared/pdf-viewer'
 import { getStocks, type Stock } from '@/services/stocks.service'
+import { invalidateAdminSidebarCounts } from '@/lib/admin-sidebar-counts'
 
 const DAMAGED_KITS_QUERY_KEY = ['damaged-kits'] as const
 const STOCKS_AVAILABLE_QUERY_KEY = ['stocks', 'available'] as const
@@ -253,6 +255,7 @@ export function ReturnRequestsPage() {
     mutationFn: (id: string) => approveDamagedKit(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DAMAGED_KITS_QUERY_KEY })
+      invalidateAdminSidebarCounts(queryClient)
     },
   })
 
@@ -298,21 +301,30 @@ export function ReturnRequestsPage() {
   const requestMediaUrl = useMemo((): string | null => {
     if (!modalRequest) return null
     const d = modalRequest as Record<string, unknown>
-    const url =
+    const mediaObj =
       (d.damageImage && typeof d.damageImage === 'object' && d.damageImage !== null
-        ? (d.damageImage as Record<string, unknown>).url
+        ? (d.damageImage as Record<string, unknown>)
         : undefined) ??
       (d.mediaId && typeof d.mediaId === 'object' && d.mediaId !== null
-        ? (d.mediaId as Record<string, unknown>).url
+        ? (d.mediaId as Record<string, unknown>)
         : undefined) ??
       (d.media && typeof d.media === 'object' && d.media !== null
-        ? (d.media as Record<string, unknown>).url
+        ? (d.media as Record<string, unknown>)
         : undefined) ??
       (d.imageData && typeof d.imageData === 'object' && d.imageData !== null
-        ? (d.imageData as Record<string, unknown>).url
+        ? (d.imageData as Record<string, unknown>)
         : undefined)
 
-    return typeof url === 'string' && url.trim().length > 0 ? url : null
+    if (!mediaObj) return null
+    const url = typeof mediaObj.url === 'string' ? mediaObj.url : undefined
+    const filename =
+      typeof mediaObj.filename === 'string'
+        ? mediaObj.filename
+        : typeof mediaObj.file === 'string'
+          ? mediaObj.file
+          : undefined
+
+    return resolveMediaUrl(url, filename)
   }, [modalRequest])
 
   const requestMediaIsPdf = useMemo(() => {

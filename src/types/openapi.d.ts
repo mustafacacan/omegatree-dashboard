@@ -5290,7 +5290,7 @@ export interface components {
              * @description Postal code
              * @example 34710
              */
-            postalCode: string;
+            postalCode?: string;
         };
         UpdateAddress: {
             /**
@@ -5397,7 +5397,7 @@ export interface components {
              * @description Postal code
              * @example 34710
              */
-            postalCode: string;
+            postalCode?: string;
             /**
              * Format: date-time
              * @description Creation date

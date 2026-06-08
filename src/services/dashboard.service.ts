@@ -43,6 +43,7 @@ export type AdminDashboardData = {
         type?: string
         message?: string
         actorName?: string
+        actorRole?: string
         createdAt?: string
     }>
     recentKitMovements?: Array<{
@@ -64,5 +65,24 @@ export type AdminDashboardData = {
 /** GET /dashboard/admin — Admin dashboard aggregates */
 export async function getAdminDashboard(): Promise<AdminDashboardData> {
     const { data } = await api.get<AdminDashboardResponse>('/dashboard/admin')
+    return data?.data ?? {}
+}
+
+export type AdminSidebarCountsData = {
+    pendingOrders?: number
+    pendingReturnRequests?: number
+    pendingReportApprovals?: number
+    pendingUsers?: number
+}
+
+type AdminSidebarCountsResponse = {
+    success?: boolean
+    message?: string
+    data?: AdminSidebarCountsData
+}
+
+/** GET /dashboard/admin/sidebar-counts — lightweight admin sidebar badge counts */
+export async function getAdminSidebarCounts(): Promise<AdminSidebarCountsData> {
+    const { data } = await api.get<AdminSidebarCountsResponse>('/dashboard/admin/sidebar-counts')
     return data?.data ?? {}
 }

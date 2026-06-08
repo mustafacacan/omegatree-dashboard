@@ -1,6 +1,6 @@
 import { api } from '@/lib/axios'
 import type { components } from '@/types/openapi'
-import { getApiBaseUrl } from '@/lib/env'
+import { resolveMediaUrl } from '@/lib/media-url'
 
 type SalesKitResponse = components['schemas']['SalesKitResponse']
 
@@ -86,18 +86,12 @@ function mapApiKit(apiKit: SalesKitResponse | Record<string, unknown>): SalesKit
   }
 }
 
-/** Görsel URL'si: API'den gelen imageData.url (tam veya relative) kullanılır */
-export function getSalesKitImageUrl(url: string | undefined): string | null {
-  if (!url || typeof url !== 'string' || !url.trim()) return null
-  const u = url.trim()
-  if (u.startsWith('http://') || u.startsWith('https://')) return u
-  const apiBase = getApiBaseUrl()
-  const base = String(apiBase).replace(/\/api\/?$/, '')
-  if (u.startsWith('undefined') || u.startsWith('undefined/')) {
-    const fixed = u.replace(/^undefined\/?/, '/')
-    return `${base}${fixed.startsWith('/') ? '' : '/'}${fixed}`
-  }
-  return `${base}${u.startsWith('/') ? '' : '/'}${u}`
+/** Görsel URL'si: API `url` veya `filename` üzerinden CDN/MinIO adresi. */
+export function getSalesKitImageUrl(
+  url: string | undefined,
+  filename?: string | undefined,
+): string | null {
+  return resolveMediaUrl(url, filename)
 }
 
 /** Backend dönüşü: { data: [...] } veya { data: { items: [...] } } */

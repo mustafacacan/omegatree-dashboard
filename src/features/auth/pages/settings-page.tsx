@@ -161,6 +161,7 @@ function DietitianAddressesCard() {
       .filter(Boolean)
       .join(', ')
 
+    const postalCode = form.postalCode.trim()
     const body = {
       title: form.title,
       country: form.country,
@@ -168,9 +169,9 @@ function DietitianAddressesCard() {
       district: form.district.trim(),
       street: form.street.trim(),
       neighborhood: form.neighborhood.trim(),
-      postalCode: form.postalCode.trim(),
       no: form.no.trim(),
       fullAddress: fullAddress || undefined,
+      ...(postalCode ? { postalCode } : {}),
     }
 
     if (editing) {
@@ -319,6 +320,7 @@ function DietitianAddressesCard() {
             />
             <Input
               label="Posta kodu"
+              hint="Opsiyonel"
               value={form.postalCode}
               onChange={(e) => setForm((f) => ({ ...f, postalCode: e.target.value }))}
               placeholder="34710"

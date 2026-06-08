@@ -87,20 +87,20 @@ export function Header() {
 
   return (
     <header
-      className="sticky top-0 z-30 h-16 bg-panel/90 dark:bg-surface-100/90 backdrop-blur-md border-b border-surface-200 shadow-sm"
+      className="sticky top-0 z-30 min-h-16 bg-panel/90 dark:bg-surface-100/90 backdrop-blur-md border-b border-surface-200 shadow-sm"
     >
-      <div className="h-full flex items-center justify-between px-4 lg:px-6">
+      <div className="flex min-h-16 items-center justify-between gap-3 px-3 py-2 sm:px-4 lg:px-6">
         {/* Left side */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <button
             type="button"
-            className="lg:hidden p-2.5 rounded-xl transition-colors text-surface-700"
+            className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-surface-200 bg-white/70 transition-colors text-surface-700 shadow-sm"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
           <div className="min-w-0">
-            <h2 className="text-[15px] sm:text-[17px] font-semibold truncate text-surface-900">
+            <h2 className="text-[14px] sm:text-[17px] font-semibold truncate text-surface-900">
               {pageTitle}
             </h2>
             <p className="hidden sm:block text-[11px] truncate text-surface-500">
@@ -110,12 +110,12 @@ export function Header() {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Dark mode toggle */}
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl transition-colors text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-200"
+            className="flex h-10 w-10 items-center justify-center rounded-xl transition-colors text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-200"
             title={theme === 'dark' ? 'Açık moda geç' : 'Koyu moda geç'}
             aria-label={theme === 'dark' ? 'Açık moda geç' : 'Koyu moda geç'}
           >
@@ -127,14 +127,14 @@ export function Header() {
           </button>
 
           {/* Divider */}
-          <div className="h-6 w-px mx-1.5 bg-surface-200" />
+          <div className="hidden sm:block h-6 w-px mx-1.5 bg-surface-200" />
 
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-2.5 rounded-xl py-1.5 px-2.5 transition-colors hover:bg-surface-100"
+                className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-surface-100"
               >
                 <Avatar
                   name={`${user.firstName} ${user.lastName}`}

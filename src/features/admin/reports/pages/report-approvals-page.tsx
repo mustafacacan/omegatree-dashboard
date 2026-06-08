@@ -16,6 +16,7 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { getPendingResultsPage, getResultById, getResultsPage, updateResult, type Result } from '@/services/results.service'
+import { invalidateAdminSidebarCounts } from '@/lib/admin-sidebar-counts'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -238,6 +239,7 @@ export function ReportApprovalsPage() {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'results', 'pending'] })
       await queryClient.invalidateQueries({ queryKey: ['admin', 'results', 'approved'] })
       await queryClient.invalidateQueries({ queryKey: ['admin', 'results', 'detail', vars.id] })
+      await invalidateAdminSidebarCounts(queryClient)
       setConfirmDecision(null)
     },
     onError: (err) => {

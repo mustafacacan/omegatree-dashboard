@@ -4,7 +4,7 @@ import type { components } from '@/types/openapi'
 /**
  * Addresses API:
  * - GET  /addresses       → 200: { success, message, data: { totalItems, totalPages, currentPage, items: Address[] } }
- * - POST /addresses       → 201: Address (body: title, country, city, district, street, neighborhood, postalCode)
+ * - POST /addresses       → 201: Address (body: title, country, city, district, street, neighborhood, postalCode?)
  * - GET  /addresses/:id  → 200: Address
  * - PUT  /addresses/:id  → 200: Address (body: same as POST)
  */

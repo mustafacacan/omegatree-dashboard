@@ -93,7 +93,7 @@ export async function createOrder(
   if (params.addressId != null) {
     form.append('addressId', String(params.addressId))
   }
-  const { data } = await api.post<OrderResponse>(
+  const { data } = await api.post<{ data?: OrderResponse } & OrderResponse>(
     `/orders/create/${salesKitId}`,
     form,
     {
@@ -102,7 +102,8 @@ export async function createOrder(
       },
     }
   )
-  return data
+  const order = (data && typeof data === 'object' && 'data' in data ? data.data : data) as OrderResponse
+  return order
 }
 
 /** Get all orders — response: { success, message, data: { totalItems, totalPages, currentPage, items } } */

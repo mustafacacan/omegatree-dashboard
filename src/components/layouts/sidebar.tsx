@@ -3,9 +3,13 @@ import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/stores/sidebar.store'
 import { useCurrentRole } from '@/stores/auth.store'
-import { useWorkflowStore } from '@/stores/workflow.store'
-import { UserRole, KitStatus } from '@/utils/constants'
+import { UserRole } from '@/utils/constants'
 import { ROUTES, ROLE_HOME } from '@/utils/routes'
+import { useAdminSidebarBadges } from '@/hooks/use-admin-sidebar-badges'
+import {
+  formatSidebarBadgeCount,
+  getAdminSidebarBadgeForHref,
+} from '@/lib/admin-sidebar-counts'
 import { Tooltip, TooltipProvider } from '@/components/ui'
 import {
   LayoutDashboard,
@@ -36,7 +40,6 @@ interface NavItem {
   label: string
   href: string
   icon: LucideIcon
-  badge?: number
 }
 
 interface NavGroup {
@@ -128,23 +131,16 @@ export function Sidebar() {
   const { collapsed, toggle, mobileOpen, setMobileOpen } = useSidebarStore()
   const role = useCurrentRole()
   const location = useLocation()
-  const kits = useWorkflowStore((s) => s.kits)
-  const orders = useWorkflowStore((s) => s.orders)
-  const returnRequestCount = kits.filter((k) => k.status === KitStatus.RETURN_REQUESTED).length
-  const pendingOrderCount = orders.filter((o) => o.assignedBarcodes.length < o.qty).length
-  const pendingReportApprovalCount = kits.filter(
-    (k) => k.status === KitStatus.ADMIN_APPROVAL && (k.reportStatus === 'ADMIN_APPROVAL' || !k.reportStatus)
-  ).length
+  const { counts: adminBadgeCounts } = useAdminSidebarBadges()
 
   if (!role) return null
 
   const navGroups = getNavGroups(role)
+  const isAdmin = role === UserRole.ADMIN
 
-  const getBadge = (item: NavItem): number | undefined => {
-    if (item.href === ROUTES.YONETICI_IADELER) return returnRequestCount
-    if (item.href === ROUTES.YONETICI_SIPARISLER) return pendingOrderCount
-    if (item.href === ROUTES.YONETICI_RAPORLAR) return pendingReportApprovalCount
-    return item.badge
+  const getBadgeCount = (href: string): number => {
+    if (!isAdmin) return 0
+    return getAdminSidebarBadgeForHref(href, adminBadgeCounts)
   }
 
   return (
@@ -161,11 +157,12 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          'fixed left-0 top-0 z-40 h-screen flex flex-col bg-panel border-r border-surface-200',
-          'transition-all duration-300 ease-out',
-          collapsed ? 'w-[72px]' : 'w-[260px] shadow-sidebar',
+          'fixed left-0 top-0 z-40 h-[100dvh] flex w-[min(88vw,320px)] flex-col bg-panel border-r border-surface-200 shadow-sidebar',
+          'transition-all duration-300 ease-out will-change-transform',
+          collapsed ? 'lg:w-[72px]' : 'lg:w-[260px]',
           'lg:translate-x-0',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          'pb-[env(safe-area-inset-bottom)]'
         )}
       >
         {/* Logo */}
@@ -187,7 +184,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5 overscroll-contain">
           {navGroups.map((group, gi) => (
             <div key={gi}>
               {!collapsed && group.title && (
@@ -204,7 +201,7 @@ export function Sidebar() {
                   const isActive =
                     location.pathname === item.href ||
                     (item.href !== roleRoot && location.pathname.startsWith(item.href))
-                  const badge = getBadge(item)
+                  const badgeCount = getBadgeCount(item.href)
 
                   const linkContent = (
                     <NavLink
@@ -225,15 +222,22 @@ export function Sidebar() {
                           transition={{ type: 'spring', stiffness: 380, damping: 32 }}
                         />
                       )}
-                      <item.icon
-                        className={cn('h-5 w-5 shrink-0', isActive ? 'text-primary-600' : 'text-surface-500')}
-                      />
+                      <span className="relative shrink-0">
+                        <item.icon
+                          className={cn('h-5 w-5', isActive ? 'text-primary-600' : 'text-surface-500')}
+                        />
+                        {collapsed && badgeCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-500 px-0.5 text-[9px] font-bold leading-none text-white">
+                            {formatSidebarBadgeCount(badgeCount)}
+                          </span>
+                        )}
+                      </span>
                       {!collapsed && (
                         <span className="truncate flex-1">{item.label}</span>
                       )}
-                      {!collapsed && badge != null && badge > 0 && (
-                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full text-[8px] font-bold px-1 bg-primary-100 text-primary-600">
-                          {badge}
+                      {!collapsed && badgeCount > 0 && (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1 text-[10px] font-bold text-primary-700">
+                          {formatSidebarBadgeCount(badgeCount)}
                         </span>
                       )}
                     </NavLink>
@@ -256,7 +260,7 @@ export function Sidebar() {
 
        
         {/* Collapse toggle */}
-        <div className="p-3 border-t border-surface-200">
+        <div className="hidden lg:block p-3 border-t border-surface-200">
           <button
             type="button"
             onClick={toggle}

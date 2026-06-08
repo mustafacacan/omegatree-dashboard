@@ -44,6 +44,7 @@ import {
   updateStockAlertSettings,
 } from '@/services/stocks.service'
 import { createDamagedKit } from '@/services/damaged-kits.service'
+import { invalidateAdminSidebarCounts } from '@/lib/admin-sidebar-counts'
 import { toast } from 'sonner'
 
 type BarcodeState = 'idle' | 'checking' | 'success' | 'error'
@@ -211,6 +212,7 @@ export function MyStockPage() {
       toast.success('İade talebiniz alındı')
       closeReturnModal()
       queryClient.invalidateQueries({ queryKey: ['stocks', 'my-stock-list'] })
+      invalidateAdminSidebarCounts(queryClient)
     } catch (err) {
       toast.error(getApiErrorMessage(err as { response?: { data?: { message?: string } }; message?: string }, { fallback: 'İade talebi oluşturulamadı.' }))
       setReturnSubmitting(false)
@@ -269,7 +271,7 @@ export function MyStockPage() {
                 }
               }}
               placeholder={String(minStockAlert || 0)}
-              className="w-20 rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-200 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-200 dark:focus:ring-primary-800"
+              className="w-20 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-sm text-surface-900 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
             />
             <Button
               variant="primary"
@@ -315,17 +317,17 @@ export function MyStockPage() {
       {/* Stok uyarısı */}
       {minStockAlert > 0 && availableKits.length < minStockAlert && (
         <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
-          <div className="rounded-2xl p-4 flex items-center gap-3 border border-amber-200 bg-amber-50/70">
-            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-amber-100">
-              <AlertTriangle className="h-5 w-5 text-amber-700" />
+          <div className="rounded-2xl p-4 flex items-center gap-3 border border-amber-200 bg-amber-50/70 dark:border-amber-800/40 dark:bg-amber-950/30">
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-amber-100 dark:bg-amber-900/40">
+              <AlertTriangle className="h-5 w-5 text-amber-700 dark:text-amber-400" />
             </div>
             <div className="flex-1">
-              <p className="text-[12px] font-semibold text-amber-900">Stok uyarısı</p>
-              <p className="text-[11px] text-amber-800">
+              <p className="text-[12px] font-semibold text-amber-900 dark:text-amber-200">Stok uyarısı</p>
+              <p className="text-[11px] text-amber-800 dark:text-amber-300/90">
                 Kullanılabilir kit sayınız ({availableKits.length}) minimum limitinizin ({minStockAlert}) altında. Yeni sipariş vermenizi öneririz.
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)} className="border-amber-300 text-amber-900">
+            <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.DIYETISYEN_SIPARISLER)} className="border-amber-300 text-amber-900 dark:border-amber-700 dark:text-amber-200">
               Sipariş ver
             </Button>
           </div>
@@ -341,11 +343,11 @@ export function MyStockPage() {
               description={`Kullanılabilir: ${availableKits.length} · Kullanılan: ${usedKits.length}`}
               actions={
                 <>
-                  <TabsList className="bg-surface-100 dark:bg-surface-200/60 p-0.5 rounded-lg">
-                    <TabsTrigger value="in-stock" className="rounded-md text-[12px] data-[state=active]:bg-white dark:data-[state=active]:bg-surface-100">
+                  <TabsList className="bg-surface-100 p-0.5 rounded-lg">
+                    <TabsTrigger value="in-stock" className="rounded-md text-[12px] data-[state=active]:bg-panel data-[state=active]:shadow-sm">
                       Stoktaki ({filteredAvailable.length})
                     </TabsTrigger>
-                    <TabsTrigger value="used" className="rounded-md text-[12px] data-[state=active]:bg-white dark:data-[state=active]:bg-surface-100">
+                    <TabsTrigger value="used" className="rounded-md text-[12px] data-[state=active]:bg-panel data-[state=active]:shadow-sm">
                       Kullanılan ({filteredUsed.length})
                     </TabsTrigger>
                   </TabsList>
@@ -372,7 +374,7 @@ export function MyStockPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                    <tr className="bg-surface-100 border-b border-surface-200">
                       <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
                       <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Teslim</th>
                       <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
@@ -396,9 +398,9 @@ export function MyStockPage() {
                       </tr>
                     ) : (
                       filteredAvailable.map((kit) => (
-                        <tr key={kit.barcode} className="border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200 transition-colors">
+                        <tr key={kit.barcode} className="border-b border-surface-200 hover:bg-surface-50 transition-colors">
                           <td className="px-5 py-3.5">
-                            <code className="text-xs font-mono bg-surface-100 dark:bg-surface-200/60 px-2 py-0.5 rounded text-surface-600">{kit.barcode}</code>
+                            <code className="text-xs font-mono bg-surface-100 px-2 py-0.5 rounded text-surface-600">{kit.barcode}</code>
                           </td>
                           <td className="px-5 py-3.5 text-[12px] text-surface-500">{formatDate(kit.receivedAt)}</td>
                           <td className="px-5 py-3.5">{badgeForKit(kit)}</td>
@@ -414,7 +416,7 @@ export function MyStockPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-surface-100 dark:bg-surface-200/80 border-b border-surface-200">
+                    <tr className="bg-surface-100 border-b border-surface-200">
                       <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
                       <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Not</th>
                       <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
@@ -437,9 +439,9 @@ export function MyStockPage() {
                       </tr>
                     ) : (
                       filteredUsed.map((kit) => (
-                        <tr key={kit.barcode} className="border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200 transition-colors">
+                        <tr key={kit.barcode} className="border-b border-surface-200 hover:bg-surface-50 transition-colors">
                           <td className="px-5 py-3.5">
-                            <code className="text-xs font-mono bg-surface-100 dark:bg-surface-200/60 px-2 py-0.5 rounded text-surface-600">{kit.barcode}</code>
+                            <code className="text-xs font-mono bg-surface-100 px-2 py-0.5 rounded text-surface-600">{kit.barcode}</code>
                           </td>
                           <td className="px-5 py-3.5 text-[12px] text-surface-500">
                             {kit.uiStatus === 'assigned'
@@ -553,7 +555,7 @@ export function MyStockPage() {
 
       {/* Kit Teslim Al modali */}
       <Modal open={receiveKitModalOpen} onOpenChange={(open) => !open && closeReceiveKitModal()}>
-        <ModalContent className="max-w-2xl">
+        <ModalContent className="max-w-lg">
           <ModalHeader>
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-primary-100 text-primary-600">
@@ -561,7 +563,7 @@ export function MyStockPage() {
               </div>
               <div>
                 <ModalTitle>Kit Teslim Al</ModalTitle>
-                <ModalDescription className="text-surface-700 dark:text-surface-700 font-medium mt-0.5">
+                <ModalDescription>
                   Kargonuz geldiğinde kit üzerindeki barkod numarasını girin.
                 </ModalDescription>
               </div>
@@ -580,12 +582,12 @@ export function MyStockPage() {
                   <div className="h-14 w-14 rounded-full mx-auto mb-3 flex items-center justify-center bg-success/10">
                     <CheckCircle className="h-7 w-7 text-success" />
                   </div>
-                  <h4 className="text-[15px] font-bold text-surface-800">Kit başarıyla teslim alındı!</h4>
-                  <p className="text-[12px] mt-2 text-surface-500">
+                  <h4 className="text-[15px] font-bold text-surface-900">Kit başarıyla teslim alındı!</h4>
+                  <p className="text-[12px] mt-2 text-surface-600">
                     <code className="font-mono font-semibold text-primary-600">{barcodeInput}</code> barkodlu kit stoğunuza eklendi.
                   </p>
-                  <div className="flex items-center justify-center gap-2 mt-4">
-                    <Button variant="outline" size="sm" onClick={resetBarcode}>
+                  <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-center gap-2 mt-4">
+                    <Button variant="outline" size="sm" onClick={resetBarcode} className="gap-1.5">
                       <ScanLine className="h-3.5 w-3.5" /> Başka kit teslim al
                     </Button>
                     <Button variant="primary" size="sm" onClick={closeReceiveKitModal} className="gap-1.5">
@@ -594,57 +596,65 @@ export function MyStockPage() {
                   </div>
                 </motion.div>
               ) : (
-                <motion.div key="input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <div className="flex gap-2">
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        value={barcodeInput}
-                        onChange={(e) => {
-                          setBarcodeInput(e.target.value)
-                          if (barcodeState === 'error') setBarcodeState('idle')
-                        }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleBarcodeSubmit() }}
-                        placeholder="Barkod (örn: OT-2025-00160)"
-                        className="w-full pl-9 pr-3 py-3 text-sm font-mono rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-200 dark:focus:ring-primary-800"
-                        style={{ borderColor: barcodeState === 'error' ? '#E87070' : undefined }}
-                        disabled={barcodeState === 'checking'}
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleBarcodeSubmit}
-                      disabled={!barcodeInput.trim() || barcodeState === 'checking'}
-                      className="shrink-0 gap-1.5"
-                    >
-                      {barcodeState === 'checking' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Teslim Al'}
-                    </Button>
+                <motion.div key="input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-500 pointer-events-none" />
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={barcodeInput}
+                      onChange={(e) => {
+                        setBarcodeInput(e.target.value)
+                        if (barcodeState === 'error') setBarcodeState('idle')
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleBarcodeSubmit() }}
+                      placeholder="Barkod (örn: OT-2025-00160)"
+                      className="w-full h-11 pl-10 pr-4 text-sm font-mono rounded-xl border border-surface-200 bg-surface-50 text-surface-900 placeholder:text-surface-500 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50"
+                      style={{ borderColor: barcodeState === 'error' ? 'var(--color-danger)' : undefined }}
+                      disabled={barcodeState === 'checking'}
+                    />
                   </div>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={handleBarcodeSubmit}
+                    disabled={!barcodeInput.trim() || barcodeState === 'checking'}
+                    className="w-full h-11 gap-2"
+                  >
+                    {barcodeState === 'checking' ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Kontrol ediliyor...
+                      </>
+                    ) : (
+                      <>
+                        <ScanLine className="h-4 w-4" />
+                        Teslim Al
+                      </>
+                    )}
+                  </Button>
                   {barcodeState === 'error' && errorMessage && (
                     <motion.div
                       initial={{ opacity: 0, y: -4 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-start gap-2 mt-3 p-3 rounded-xl bg-red-50 border border-red-200"
+                      className="flex items-start gap-2 p-3 rounded-xl bg-red-50 border border-red-200 dark:bg-danger/10 dark:border-danger/30"
                     >
-                      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-red-600" />
+                      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-danger" />
                       <div className="flex-1">
-                        <p className="text-xs font-medium text-red-700">{errorMessage}</p>
-                        <button type="button" onClick={resetBarcode} className="text-xs font-semibold mt-1 underline text-red-700">Tekrar Dene</button>
+                        <p className="text-xs font-medium text-danger">{errorMessage}</p>
+                        <button type="button" onClick={resetBarcode} className="text-xs font-semibold mt-1 underline text-danger">Tekrar Dene</button>
                       </div>
                     </motion.div>
                   )}
-                  <div className="flex items-center gap-4 mt-4 pt-4 border-t border-surface-200">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-4 border-t border-surface-200">
                     {[
                       { step: 1, text: 'Kit kargonuz gelsin' },
                       { step: 2, text: 'Barkod girin' },
                       { step: 3, text: 'Stoga eklensin' },
                     ].map((s) => (
                       <div key={s.step} className="flex items-center gap-1.5">
-                        <div className="h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300">{s.step}</div>
-                        <span className="text-[11px] text-surface-500">{s.text}</span>
+                        <div className="h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-primary-100 text-primary-700">{s.step}</div>
+                        <span className="text-[11px] text-surface-600">{s.text}</span>
                       </div>
                     ))}
                   </div>

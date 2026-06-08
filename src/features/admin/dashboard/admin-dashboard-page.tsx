@@ -5,12 +5,11 @@ import { Avatar } from '@/components/ui'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { KitStatus } from '@/utils/constants'
 import { ROUTES } from '@/utils/routes'
-import { formatCurrency } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { useCurrentUser } from '@/stores/auth.store'
 import { motion } from 'framer-motion'
 import {
   Package, Users, ShoppingCart, TrendingUp, TrendingDown,
-  CheckCircle, AlertTriangle, Truck, BarChart3,
   ArrowUpRight, ArrowRight, Loader2,
 } from 'lucide-react'
 import {
@@ -91,6 +90,11 @@ export function AdminDashboardPage() {
   const dietitiansCount = Number(cards?.activeDieticians ?? 0)
   const pendingOrdersCount = Number(cards?.pendingOrders ?? 0)
   const totalRevenue = Number(cards?.totalRevenue ?? 0)
+  const totalRevenueCardValue = new Intl.NumberFormat('tr-TR', {
+    style: 'currency',
+    currency: 'TRY',
+    maximumFractionDigits: 0,
+  }).format(totalRevenue)
 
   const monthlyRevenue = useMemo(() => {
     const months = dashboard?.revenueTrend?.months ?? []
@@ -146,31 +150,6 @@ export function AdminDashboardPage() {
     return weeklyKits.reduce((sum, d) => sum + d.value, 0)
   }, [dashboard?.weeklyKits?.total, weeklyKits])
 
-  const recentActivity = useMemo(() => {
-    const list = dashboard?.liveActivity ?? []
-
-    const pickVisual = (message: string | undefined) => {
-      const m = (message ?? '').toLowerCase()
-      if (m.startsWith('order:')) return { icon: ShoppingCart, color: W.orange, bg: W.orangeLight }
-      if (m.startsWith('laboratory-dietician:')) return { icon: Truck, color: W.olive, bg: W.oliveLight }
-      if (m.startsWith('dieticianclient:')) return { icon: Users, color: W.orange, bg: W.orangeLight }
-      if (m.includes('approve') || m.includes('approved')) return { icon: CheckCircle, color: W.green, bg: W.greenLight }
-      if (m.includes('cancel') || m.includes('reject')) return { icon: AlertTriangle, color: W.amber, bg: W.amberLight }
-      return { icon: BarChart3, color: W.olive, bg: W.oliveLight }
-    }
-
-    return list.slice(0, 6).map((a) => {
-      const v = pickVisual(a.message)
-      const actor = a.actorName ? `${a.actorName}: ` : ''
-      return {
-        icon: v.icon,
-        color: v.color,
-        bg: v.bg,
-        text: `${actor}${a.message ?? '—'}`,
-      }
-    })
-  }, [dashboard?.liveActivity])
-
   const recentKits = useMemo(() => {
     const list = dashboard?.recentKitMovements ?? []
     return list.slice(0, 6).map((m) => {
@@ -220,9 +199,6 @@ export function AdminDashboardPage() {
               <h1 className="text-[22px] font-bold text-surface-900">
                 Merhaba, {user?.firstName || 'Admin'}! <span className="inline-block animate-[wave_1.5s_ease-in-out_infinite]">&#x1F44B;</span>
               </h1>
-              <p className="text-[13px] mt-0.5 text-surface-500">
-                Bugunun ozetini inceleyelim. Sisteminiz aktif ve saglikli.
-              </p>
             </div>
           </motion.div>
 
@@ -232,29 +208,35 @@ export function AdminDashboardPage() {
               { title: 'Toplam Kit', value: isLoading ? '...' : totalKits.toLocaleString('tr-TR'), change: null, icon: Package, iconClass: 'text-brand-500', bgClass: 'from-primary-50 to-primary-100', accent: 'stat-accent-primary' },
               { title: 'Aktif Diyetisyen', value: String(dietitiansCount), change: null, icon: Users, iconClass: 'text-accent-amber', bgClass: 'from-orange-50 to-orange-100', accent: 'stat-accent-sky' },
               { title: 'Bekleyen Siparis', value: String(pendingOrdersCount), change: null, icon: ShoppingCart, iconClass: 'text-warning', bgClass: 'from-amber-50 to-amber-100', accent: 'stat-accent-amber' },
-              { title: 'Toplam Gelir', value: formatCurrency(totalRevenue), change: null, icon: TrendingUp, iconClass: 'text-success', bgClass: 'from-green-50 to-green-100', accent: 'stat-accent-violet' },
+              { title: 'Toplam Gelir', value: totalRevenueCardValue, change: null, icon: TrendingUp, iconClass: 'text-success', bgClass: 'from-green-50 to-green-100', accent: 'stat-accent-violet' },
             ].map((s, i) => {
               const Icon = s.icon
               const hasChange = s.change != null
               const up = hasChange && (s.change ?? 0) >= 0
+              const isRevenue = s.title === 'Toplam Gelir'
               return (
                 <motion.div key={s.title} {...fadeUp} transition={{ duration: 0.3, delay: i * 0.06 }}>
                   <div className={`rounded-2xl bg-panel border border-border p-5 min-h-[122px] hover-lift cursor-default flex items-center ${s.accent}`}>
                     <div className="flex items-center gap-3.5">
                       <div className={`h-12 w-12 rounded-full flex items-center justify-center shrink-0 bg-gradient-to-br ${s.bgClass}`}>
-                        <Icon className={`h-5 w-5 ${s.iconClass}`} />
+                        <Icon className={`h-[18px] w-[18px] ${s.iconClass}`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] font-medium uppercase tracking-wider leading-tight text-text-secondary">{s.title}</p>
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <span className="text-xl font-bold text-text-primary">{s.value}</span>
+                          <span className={cn(
+                            'max-w-full truncate text-lg sm:text-xl font-bold leading-tight text-text-primary tabular-nums',
+                            isRevenue && 'text-[16px] sm:text-[18px] font-semibold tracking-tight'
+                          )}>
+                            {s.value}
+                          </span>
                           {hasChange && (
                             <span
                               className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
                                 up ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
                               }`}
                             >
-                              {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+                              {up ? <TrendingUp className="h-2 w-2" /> : <TrendingDown className="h-2 w-2" />}
                               {up ? '+' : ''}{s.change ?? 0}%
                             </span>
                           )}
@@ -379,7 +361,7 @@ export function AdminDashboardPage() {
             </motion.div>
 
             {/* ── Haftalik Kit Aktivitesi — mini bar chart ── */}
-            <motion.div className="col-span-12 lg:col-span-4" {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
+            <motion.div className="col-span-12 lg:col-span-6" {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
               <div className="panel p-5 h-full flex flex-col">
                 <div className="flex items-start justify-between min-h-[54px] mb-4">
                   <div>
@@ -410,43 +392,8 @@ export function AdminDashboardPage() {
               </div>
             </motion.div>
 
-            {/* ── Canli Aktivite — Timeline ── */}
-            <motion.div className="col-span-12 lg:col-span-5" {...fadeUp} transition={{ duration: 0.35, delay: 0.25 }}>
-              <div className="panel p-5 h-full flex flex-col">
-                <div className="flex items-center justify-between min-h-[54px] mb-4">
-                  <h3 className="text-card-title">Canli Aktivite</h3>
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
-                    <div className="w-1.5 h-1.5 rounded-full animate-pulse bg-green-500" />
-                    <span className="text-[10px] font-semibold text-green-700 dark:text-green-400">Canli</span>
-                  </div>
-                </div>
-
-                <div className="relative flex-1">
-                  {/* Timeline line */}
-                  <div className="absolute left-[19px] top-4 bottom-4 w-px bg-gradient-to-b from-surface-200 to-transparent" />
-
-                  <div className="space-y-1">
-                    {recentActivity.map((act, i) => (
-                      <div key={i} className="relative flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-surface-50 transition-colors cursor-pointer group">
-                        <div
-                          className="relative z-10 h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ring-[3px] ring-panel transition-transform group-hover:scale-105"
-                          style={{ background: act.bg }}
-                        >
-                          <act.icon className="h-4.5 w-4.5" style={{ color: act.color }} />
-                        </div>
-                        <div className="min-w-0 flex-1 pt-1">
-                          <p className="text-[12px] font-medium leading-snug text-surface-700">{act.text}</p>
-                          
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
             {/* ── Kit Kategorileri — colored progress bars ── */}
-            <motion.div className="col-span-12 lg:col-span-3" {...fadeUp} transition={{ duration: 0.35, delay: 0.3 }}>
+            <motion.div className="col-span-12 lg:col-span-6" {...fadeUp} transition={{ duration: 0.35, delay: 0.3 }}>
               <div className="panel p-5 h-full flex flex-col">
                 <h3 className="text-card-title mb-1">Kit Durumlari</h3>
                 <p className="text-[12px] mb-5 text-text-secondary">Durumlara gore dagilim</p>

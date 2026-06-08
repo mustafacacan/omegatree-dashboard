@@ -31,7 +31,7 @@ export function TablePagination({
     <div
       className={`flex flex-col gap-3 border-t border-surface-200 bg-surface-50/50 p-4 sm:flex-row sm:items-center sm:justify-between ${className ?? ''}`}
     >
-      <div className="flex items-center gap-2 text-sm text-surface-600">
+      <div className="flex flex-wrap items-center gap-2 text-sm text-surface-600">
         <span>Sayfa basina</span>
         <Select value={String(safePageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
           <SelectTrigger className="h-9 w-16 border-surface-200 bg-white px-2 text-surface-700">
@@ -50,17 +50,18 @@ export function TablePagination({
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           variant="outline"
           size="sm"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage <= 1}
+          className="min-w-0 flex-1 sm:flex-none"
         >
           <ChevronLeft className="h-4 w-4" />
           Geri
         </Button>
-        <span className="min-w-20 text-center text-sm text-surface-600">
+        <span className="min-w-20 flex-1 text-center text-sm text-surface-600 sm:flex-none">
           {currentPage} / {totalPages}
         </span>
         <Button
@@ -68,6 +69,7 @@ export function TablePagination({
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
+          className="min-w-0 flex-1 sm:flex-none"
         >
           Ileri
           <ChevronRight className="h-4 w-4" />

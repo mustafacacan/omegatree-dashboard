@@ -27,6 +27,7 @@ import {
   verifyUser,
   getUsersWithPagination,
 } from '@/services/users.service'
+import { invalidateAdminSidebarCounts } from '@/lib/admin-sidebar-counts'
 
 const statusLabels: Record<UserStatus, string> = {
   [UserStatus.ACTIVE]: 'Aktif',
@@ -37,6 +38,9 @@ const statusLabels: Record<UserStatus, string> = {
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 const USERS_QUERY_KEY = ['users'] as const
+
+const roleUsesCompanyName = (role: UserRole) =>
+  role === UserRole.DIETITIAN || role === UserRole.LAB || role === UserRole.SPECIALIST
 
 export function UsersListPage() {
   const currentUser = useCurrentUser()
@@ -56,6 +60,7 @@ export function UsersListPage() {
   const [newUserForm, setNewUserForm] = useState({
     firstName: '',
     lastName: '',
+    companyName: '',
     email: '',
     phone: '',
     role: UserRole.ADMIN as UserRole,
@@ -98,6 +103,7 @@ export function UsersListPage() {
     mutationFn: verifyUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      invalidateAdminSidebarCounts(queryClient)
       setApprovalOpen(false)
       setSelectedUser(null)
       toast.success('Kullanıcı onaylandı')
@@ -111,6 +117,7 @@ export function UsersListPage() {
     mutationFn: deleteUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      invalidateAdminSidebarCounts(queryClient)
       setApprovalOpen(false)
       setSelectedUser(null)
       setDeleteConfirmOpen(false)
@@ -126,6 +133,7 @@ export function UsersListPage() {
     mutationFn: createUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      invalidateAdminSidebarCounts(queryClient)
       setNewUserOpen(false)
       resetNewUserForm()
       toast.success('Kullanıcı oluşturuldu')
@@ -139,6 +147,7 @@ export function UsersListPage() {
     mutationFn: ({ id, role }: { id: string; role: UserRole }) => updateUser(id, { role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      invalidateAdminSidebarCounts(queryClient)
       setEditRoleOpen(false)
       setSelectedUser(null)
       toast.success('Rol güncellendi')
@@ -166,6 +175,7 @@ export function UsersListPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      invalidateAdminSidebarCounts(queryClient)
       setEditUserOpen(false)
       setUserBeingEdited(null)
       toast.success('Kullanıcı bilgileri güncellendi')
@@ -189,6 +199,7 @@ export function UsersListPage() {
     setNewUserForm({
       firstName: '',
       lastName: '',
+      companyName: '',
       email: '',
       phone: '',
       role: UserRole.ADMIN,
@@ -201,6 +212,9 @@ export function UsersListPage() {
       toast.error('Ad, soyad ve telefon zorunludur')
       return
     }
+    const companyName = roleUsesCompanyName(newUserForm.role)
+      ? newUserForm.companyName.trim() || undefined
+      : undefined
     createMutation.mutate({
       firstName: newUserForm.firstName.trim(),
       lastName: newUserForm.lastName.trim(),
@@ -208,6 +222,7 @@ export function UsersListPage() {
       phone: newUserForm.phone.trim(),
       role: newUserForm.role,
       gender: newUserForm.gender,
+      companyName,
     })
   }
 
@@ -313,59 +328,77 @@ export function UsersListPage() {
       <Tabs defaultValue="all">
         <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
           <div className="panel">
-            <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
-              <div className="flex flex-wrap items-center gap-3">
-                <div>
-                  <h3 className="text-[15px] font-semibold text-surface-900">Kullanıcılar</h3>
-                <p className="text-[12px] mt-0.5 text-surface-500">Kayıtlı kullanıcılar ({totalItems} kişi)</p>
+            <div className="p-4 sm:p-5 border-b border-surface-200">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 min-w-0">
+                  <div className="min-w-0 shrink-0">
+                    <h3 className="text-[15px] font-semibold text-surface-900">Kullanıcılar</h3>
+                    <p className="text-[12px] mt-0.5 text-surface-500">
+                      Kayıtlı kullanıcılar ({totalItems} kişi)
+                    </p>
+                  </div>
+                  <TabsList className="w-full sm:w-auto shrink-0">
+                    <TabsTrigger value="all" className="flex-1 sm:flex-none px-3">
+                      Tümü
+                    </TabsTrigger>
+                    <TabsTrigger value="active" className="flex-1 sm:flex-none px-3">
+                      Aktif
+                    </TabsTrigger>
+                    <TabsTrigger value="pending" className="flex-1 sm:flex-none px-3">
+                      Bekleyen ({pendingUsers.length})
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
-                <TabsList className="ml-0">
-                <TabsTrigger value="all">Tümü</TabsTrigger>
-                <TabsTrigger value="active">Aktif</TabsTrigger>
-                  <TabsTrigger value="pending">Bekleyen ({pendingUsers.length})</TabsTrigger>
-                </TabsList>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap justify-end">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
-                  <input
-                    type="text"
-                    placeholder="Ad, e-posta ara..."
-                    value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value)
-                    setPage(1)
-                  }}
-                    className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
-                  />
-                </div>
-              <Select
-                value={roleFilter}
-                onValueChange={(v) => {
-                  setRoleFilter(v)
-                  setPage(1)
-                }}
-              >
-                  <SelectTrigger className="min-w-[10rem]">
-                    <Filter className="h-3.5 w-3.5 mr-2 text-surface-400" />
-                    <SelectValue placeholder="Rol" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tüm roller</SelectItem>
-                    <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
-                    <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
-                    <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
-                    <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
-                    <SelectItem value={UserRole.DANISAN}>Danışan</SelectItem>
-                  </SelectContent>
-                </Select>
-<Button variant="primary" size="sm" onClick={() => setNewUserOpen(true)}>
+
+                <div className="flex flex-col sm:flex-row sm:flex-wrap xl:flex-nowrap items-stretch sm:items-center gap-2 xl:ml-auto xl:justify-end min-w-0">
+                  <div className="relative w-full sm:w-[14rem] lg:w-[15rem] xl:w-[13.5rem] shrink-0">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Ad, e-posta ara..."
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value)
+                        setPage(1)
+                      }}
+                      className="w-full h-10 pl-9 pr-3 text-[12px] rounded-xl outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
+                    />
+                  </div>
+                  <div className="w-full sm:w-[10.5rem] shrink-0">
+                    <Select
+                      value={roleFilter}
+                      onValueChange={(v) => {
+                        setRoleFilter(v)
+                        setPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="w-full h-10">
+                        <Filter className="h-3.5 w-3.5 mr-2 text-surface-400 shrink-0" />
+                        <SelectValue placeholder="Rol" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tüm roller</SelectItem>
+                        <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
+                        <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
+                        <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
+                        <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
+                        <SelectItem value={UserRole.DANISAN}>Danışan</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setNewUserOpen(true)}
+                    className="w-full sm:w-auto shrink-0 whitespace-nowrap h-10 px-4"
+                  >
                     <Plus className="h-4 w-4" />
                     Yeni Admin Ekle
                   </Button>
+                </div>
               </div>
             </div>
-            <TabsContent value="all">
+            <TabsContent value="all" className="mt-0">
               <UserTable
                 users={users}
                 totalItems={totalItems}
@@ -386,7 +419,7 @@ export function UsersListPage() {
                 isLoading={usersQuery.isLoading}
               />
             </TabsContent>
-            <TabsContent value="active">
+            <TabsContent value="active" className="mt-0">
               <UserTable
                 users={users.filter(u => u.status === UserStatus.ACTIVE)}
                 totalItems={totalItems}
@@ -407,7 +440,7 @@ export function UsersListPage() {
                 isLoading={usersQuery.isLoading}
               />
             </TabsContent>
-            <TabsContent value="pending">
+            <TabsContent value="pending" className="mt-0">
               <UserTable
                 users={users.filter(u => u.status === UserStatus.PENDING)}
                 totalItems={totalItems}
@@ -546,7 +579,7 @@ export function UsersListPage() {
         <ModalContent className="max-w-2xl">
           <ModalHeader>
             <ModalTitle>Yeni Kullanıcı Ekle</ModalTitle>
-            <ModalDescription>Yeni kullaniciyi aktif olarak olusturun</ModalDescription>
+            <ModalDescription>Yeni kullanıcıyı aktif olarak oluşturun.</ModalDescription>
           </ModalHeader>
           <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
             <p className="form-section-title">Kişisel Bilgiler</p>
@@ -572,13 +605,23 @@ export function UsersListPage() {
                 placeholder="05XX XXX XX XX"
               />
               <Input
-                label="E-posta *"
+                label="E-posta"
                 type="email"
                 value={newUserForm.email}
                 onChange={(e) => setNewUserForm((s) => ({ ...s, email: e.target.value }))}
                 placeholder="ornek@email.com"
+                hint="Boş bırakılabilir."
               />
             </div>
+            {roleUsesCompanyName(newUserForm.role) && (
+              <Input
+                label="Kurum Adı"
+                value={newUserForm.companyName}
+                onChange={(e) => setNewUserForm((s) => ({ ...s, companyName: e.target.value }))}
+                placeholder="Kurum adı"
+                hint="Diyetisyen, laboratuvar ve uzman hesaplarında isteğe bağlıdır."
+              />
+            )}
             <div className="space-y-1.5">
               <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
               <Select
@@ -603,7 +646,7 @@ export function UsersListPage() {
               İptal
             </Button>
             <Button variant="primary" onClick={submitNewUser} disabled={createMutation.isPending} loading={createMutation.isPending}>
-              Admin Ekle
+              Kullanıcı Oluştur
             </Button>
           </ModalFooter>
         </ModalContent>

@@ -7,6 +7,11 @@ type ApiUser = components['schemas']['UserResponse']
 type CreateUserBody = components['schemas']['CreateUser']
 type UpdateUserBody = components['schemas']['UpdateUser']
 
+function normalizeOptionalText(value?: string) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
+}
+
 /** API rol string → uygulama UserRole */
 function mapApiRoleToAppRole(apiRole: string | undefined): UserRole {
   const roleMap: Record<string, UserRole> = {
@@ -191,13 +196,21 @@ export async function createUser(payload: {
   const body: Record<string, unknown> = {
     phone: payload.phone,
     email: payload.email,
-    companyName: payload.companyName,
     role: mapAppRoleToApiRole(payload.role),
     gender: payload.gender,
     identityNumber: payload.identityNumber,
   }
-  if (payload.firstName != null && String(payload.firstName).trim()) body.firstName = String(payload.firstName).trim()
-  if (payload.lastName != null && String(payload.lastName).trim()) body.lastName = String(payload.lastName).trim()
+  const firstName = normalizeOptionalText(payload.firstName)
+  const lastName = normalizeOptionalText(payload.lastName)
+  const companyName = normalizeOptionalText(payload.companyName)
+  const email = normalizeOptionalText(payload.email)
+  const identityNumber = normalizeOptionalText(payload.identityNumber)
+
+  if (firstName) body.firstName = firstName
+  if (lastName) body.lastName = lastName
+  if (companyName) body.companyName = companyName
+  if (email) body.email = email
+  if (identityNumber) body.identityNumber = identityNumber
 
   const { data } = await api.post<ApiUser & { isVerified?: boolean }>('/users', body)
   return mapApiUserToAppUser(data)
@@ -217,13 +230,20 @@ export async function updateUser(
   }
 ): Promise<User> {
   const body: UpdateUserBody = {}
-  if (payload.firstName != null) body.firstName = payload.firstName
-  if (payload.lastName != null) body.lastName = payload.lastName
-  if (payload.companyName != null) body.companyName = payload.companyName
-  if (payload.phone != null) body.phone = payload.phone
-  if (payload.email != null) body.email = payload.email
+  const firstName = normalizeOptionalText(payload.firstName)
+  const lastName = normalizeOptionalText(payload.lastName)
+  const companyName = normalizeOptionalText(payload.companyName)
+  const phone = normalizeOptionalText(payload.phone)
+  const email = normalizeOptionalText(payload.email)
+  const identityNumber = normalizeOptionalText(payload.identityNumber)
+
+  if (firstName) body.firstName = firstName
+  if (lastName) body.lastName = lastName
+  if (companyName) body.companyName = companyName
+  if (phone) body.phone = phone
+  if (email) body.email = email
   if (payload.role != null) body.role = mapAppRoleToApiRole(payload.role)
-  if (payload.identityNumber != null) body.identityNumber = payload.identityNumber
+  if (identityNumber) body.identityNumber = identityNumber
 
   const { data } = await api.put<ApiUser & { isVerified?: boolean }>(`/users/${id}`, body)
   return mapApiUserToAppUser(data)

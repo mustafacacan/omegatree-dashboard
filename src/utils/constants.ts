@@ -70,7 +70,7 @@ export const KIT_STATUS_LABELS: Record<KitStatus, string> = {
   [KitStatus.IN_STOCK]: 'Stokta',
   [KitStatus.ASSIGNED]: 'Zimmetlendi',
   [KitStatus.DELIVERED]: 'Teslim Edildi',
-  [KitStatus.CLIENT_RECEIVED]: 'Danisan Teslim Aldi',
+  [KitStatus.CLIENT_RECEIVED]: 'Danışan Teslim Aldı',
   [KitStatus.RETURN_REQUESTED]: 'Iade Talebi',
   [KitStatus.DAMAGED]: 'Hasarli',
   [KitStatus.SAMPLE_SENT]: 'Numune Gonderildi',
@@ -107,7 +107,7 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.DIETITIAN]: 'Diyetisyen',
   [UserRole.LAB]: 'Laboratuvar',
   [UserRole.SPECIALIST]: 'Uzman',
-  [UserRole.DANISAN]: 'Danisan',
+  [UserRole.DANISAN]: 'Danışan',
 }
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -129,7 +129,7 @@ export type DieticianClientKitStatusApi =
 
 export const DIETICIAN_CLIENT_KIT_STATUS_LABELS: Record<DieticianClientKitStatusApi, string> = {
   delivered: 'Teslim Edildi',
-  in_client: 'Danisanda',
+  in_client: 'Danışanda',
   in_laboratory: 'Laboratuvarda',
   in_expert: 'Uzmanda',
   completed: 'Tamamlandi',

@@ -142,10 +142,9 @@ export function PricingPage() {
     setCreateOpen(true)
   }
 
-  /** API response imageData.url kullan (tam URL veya relative) */
+  /** API response imageData.url veya filename üzerinden CDN adresi */
   const getDisplayImageUrl = (kit: SalesKit) =>
-    getSalesKitImageUrl(kit.imageData?.url) ??
-    (kit.imageData?.url?.startsWith('http') ? kit.imageData.url : null)
+    getSalesKitImageUrl(kit.imageData?.url, kit.imageData?.file)
 
   const openEdit = (kit: SalesKit) => {
     setEditKit(kit)

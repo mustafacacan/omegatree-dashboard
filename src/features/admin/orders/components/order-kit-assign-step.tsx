@@ -27,13 +27,10 @@ export interface OrderKitAssignStepProps {
   orderClientName: string
   /** Bu sipariş için hâlâ atanabilecek kit adedi (sipariş qty − zaten atanan) */
   remainingSlots: number
-  /** Sipariş satırı: sipariş edilen paket/kit adedi (Order.quantity) */
-  orderedQuantity: number
-  /**
-   * Siparişteki satış kiti kartındaki stok miktarı (items.salesKit.quantity).
-   * Tanımlıysa: tek seferde seçilecek adet = min(kalan, bu değer, sipariş adedi ile uyumlu üst sınır).
-   */
-  salesKitQuantity?: number | null
+  /** Zimmetlenecek toplam fiziksel kit adedi (Order.quantity × salesKit.quantity). */
+  totalKitsOrdered: number
+  /** Sipariş satırındaki paket adedi (Order.quantity). */
+  orderedPackageCount: number
   workflowOrderId: string
   onAssigned: (info: { nowComplete: boolean; addedCount: number }) => void
   /** Modal alt çubuğundaki Zimmetle butonu için durum (siparişler sayfası) */
@@ -54,27 +51,17 @@ function dietitianInitials(d: DieticianOption): string {
 
 /**
  * Seçim sınırları: kalan zimmet hakkı ve siparişteki toplam fiziksel kit hedefi (store’daki qty).
- * Ürün kartı `salesKit.quantity` üst sınır olarak da uygulanır (satır × ürün adedi ile uyumlu).
  */
 function computeSelectionBounds(
   remainingSlots: number,
-  orderedQuantity: number,
-  salesKitQuantity: number | null | undefined,
+  totalKitsOrdered: number,
 ): { minSelectable: number; maxSelectable: number } {
   const rem = Math.max(0, Math.floor(remainingSlots))
-  const ord = Math.max(0, Math.floor(orderedQuantity))
+  const total = Math.max(0, Math.floor(totalKitsOrdered))
 
   if (rem <= 0) return { minSelectable: 0, maxSelectable: 0 }
 
-  let maxSelectable = ord > 0 ? Math.min(rem, ord) : rem
-  const skuCap =
-    salesKitQuantity != null && Number.isFinite(Number(salesKitQuantity))
-      ? Math.max(1, Math.floor(Number(salesKitQuantity)))
-      : null
-  if (skuCap != null) {
-    maxSelectable = Math.min(maxSelectable, skuCap)
-  }
-  maxSelectable = Math.max(0, maxSelectable)
+  const maxSelectable = total > 0 ? Math.min(rem, total) : rem
 
   return {
     minSelectable: maxSelectable > 0 ? 1 : 0,
@@ -91,8 +78,8 @@ export const OrderKitAssignStep = forwardRef<OrderKitAssignStepHandle, OrderKitA
     orderUserId,
     orderClientName,
     remainingSlots,
-    orderedQuantity,
-    salesKitQuantity,
+    totalKitsOrdered,
+    orderedPackageCount,
     workflowOrderId,
     onAssigned,
     onAssignFooterState,
@@ -108,8 +95,8 @@ export const OrderKitAssignStep = forwardRef<OrderKitAssignStepHandle, OrderKitA
   const [selectedDietitianId, setSelectedDietitianId] = useState<number | null>(null)
 
   const { minSelectable, maxSelectable } = useMemo(
-    () => computeSelectionBounds(remainingSlots, orderedQuantity, salesKitQuantity),
-    [remainingSlots, orderedQuantity, salesKitQuantity],
+    () => computeSelectionBounds(remainingSlots, totalKitsOrdered),
+    [remainingSlots, totalKitsOrdered],
   )
 
   const { data: stocksRes, isLoading: stocksLoading } = useQuery({
@@ -186,7 +173,7 @@ export const OrderKitAssignStep = forwardRef<OrderKitAssignStepHandle, OrderKitA
       const stocks: Stock[] = stocksRes?.data ?? []
       const n = selectedStockIds.length
       if (n < minSelectable || n > maxSelectable) {
-        throw new Error(`En az ${minSelectable}, en fazla ${maxSelectable} kit seçin (sipariş: ${orderedQuantity}, kalan: ${remainingSlots}).`)
+        throw new Error(`En az ${minSelectable}, en fazla ${maxSelectable} kit seçin (${orderedPackageCount} paket · toplam ${totalKitsOrdered} kit, kalan: ${remainingSlots}).`)
       }
       const kitIds = kitIdsForApi(stocks)
       if (kitIds.length !== n) {
@@ -266,14 +253,7 @@ export const OrderKitAssignStep = forwardRef<OrderKitAssignStepHandle, OrderKitA
 
   const validationHint =
     maxSelectable > 0
-      ? `En az ${minSelectable}, en fazla ${maxSelectable} kit seçin (sipariş adedi: ${orderedQuantity}, atanabilir kalan: ${remainingSlots}).`
-      : null
-
-  const packHint =
-    salesKitQuantity != null &&
-    Number(salesKitQuantity) >= 2 &&
-    maxSelectable < remainingSlots
-      ? `Ürün kartı paket üst sınırı: ${salesKitQuantity} (bu adımda en çok ${maxSelectable} seçilebilir).`
+      ? `En az ${minSelectable}, en fazla ${maxSelectable} kit seçin (${orderedPackageCount} paket · toplam ${totalKitsOrdered} kit, atanabilir kalan: ${remainingSlots}).`
       : null
 
   return (
@@ -288,12 +268,6 @@ export const OrderKitAssignStep = forwardRef<OrderKitAssignStepHandle, OrderKitA
       {validationHint && (
         <p className="text-[12px] rounded-lg border border-primary-200 bg-primary-50/80 dark:bg-primary-900/20 dark:border-primary-800 px-3 py-2 text-primary-900 dark:text-primary-100">
           {validationHint}
-          {packHint && (
-            <>
-              <br />
-              <span className="text-primary-800/90 dark:text-primary-200/90">{packHint}</span>
-            </>
-          )}
         </p>
       )}
       {nSel > 0 && (nSel < minSelectable || nSel > maxSelectable) && (
