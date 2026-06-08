@@ -430,7 +430,7 @@ export interface GetExpertProfilesWithPaginationResult {
 export async function getExpertProfilesWithPagination(
   params: GetExpertUsersWithPaginationParams
 ): Promise<GetExpertProfilesWithPaginationResult> {
-  const { data } = await api.get<{
+  const { data: body } = await api.get<{
     success?: boolean
     message?: string
     data?: {
@@ -443,7 +443,6 @@ export async function getExpertProfilesWithPagination(
       currentPage?: number
     }
   }>('/experts', {
-    ...skipAuth,
     params: {
       page: params.page ?? 1,
       limit: params.limit ?? 10,
@@ -452,7 +451,8 @@ export async function getExpertProfilesWithPagination(
     },
   })
 
-  const list = data?.data?.items ?? []
+  const payload = body?.data
+  const list = payload?.items ?? []
   return {
     items: list
       .map((row) => {
@@ -462,9 +462,9 @@ export async function getExpertProfilesWithPagination(
         return { expertProfileId: profileId, user: mapApiUserToAppUser(u) }
       })
       .filter(Boolean) as ExpertProfileListItem[],
-    totalItems: data?.data?.totalItems ?? list.length,
-    totalPages: data?.data?.totalPages ?? 1,
-    currentPage: data?.data?.currentPage ?? 1,
+    totalItems: payload?.totalItems ?? list.length,
+    totalPages: payload?.totalPages ?? 1,
+    currentPage: payload?.currentPage ?? 1,
   }
 }
 
@@ -503,7 +503,7 @@ export interface ExpertProfileDetail {
 export async function getExpertProfileById(id: number | string): Promise<ExpertProfileDetail | null> {
   let data: unknown
   try {
-    ;({ data } = await api.get<unknown>(`/experts/${id}`, skipAuth))
+    ;({ data } = await api.get<unknown>(`/experts/${id}`))
   } catch (err: unknown) {
     const status = (err as { response?: { status?: number } })?.response?.status
     if (status === 404) return null
