@@ -17,7 +17,7 @@ import { TablePagination } from '@/components/shared/table-pagination'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { getExpertById, getExpertTasks, updateExpert } from '@/services/experts.service'
-import { getApiOrigin } from '@/lib/env'
+import { resolveMediaUrl } from '@/lib/media-url'
 
 type AssignmentRow = {
   expertId: number
@@ -52,18 +52,6 @@ function isProbablyImage(url?: string | null) {
   if (!url) return false
   const u = url.toLowerCase()
   return u.includes('.png') || u.includes('.jpg') || u.includes('.jpeg') || u.includes('.webp') || u.includes('.gif')
-}
-
-function resolveMediaUrl(raw?: string | null): string | null {
-  if (!raw) return null
-  const url = String(raw).trim()
-  if (!url) return null
-  if (/^(data:|blob:|https?:\/\/)/i.test(url)) return url
-
-  const origin = getApiOrigin()
-
-  if (url.startsWith('/')) return `${origin}${url}`
-  return `${origin}/${url}`
 }
 
 function DetailField({ label, value }: { label: string; value: ReactNode }) {

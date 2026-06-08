@@ -2,6 +2,9 @@ import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { TreePine } from 'lucide-react'
 import { useThemeStore } from '@/stores/theme.store'
+import { publicAssetUrl } from '@/lib/media-url'
+
+const LOGIN_BG_URL = publicAssetUrl('asset/img/home-one-bg.jpg')
 
 export function AuthLayout() {
   useEffect(() => {
@@ -19,7 +22,7 @@ export function AuthLayout() {
       <div className="hidden lg:flex lg:w-[640px] xl:w-[740px] relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/asset/img/home-one-bg.jpg')" }}
+          style={{ backgroundImage: `url('${LOGIN_BG_URL}')` }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/70" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(157,176,104,0.35),transparent_50%)]" />

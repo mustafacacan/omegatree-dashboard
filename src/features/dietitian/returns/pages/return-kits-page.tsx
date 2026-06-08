@@ -9,7 +9,7 @@ import { Badge, Button, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader
 import { formatDate } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { getDamagedKitDetails, getDamagedKitsWithPagination, type DamagedKit } from '@/services/damaged-kits.service'
-import { getApiOrigin } from '@/lib/env'
+import { resolveMediaUrl } from '@/lib/media-url'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -29,45 +29,25 @@ function statusBadge(item: DamagedKit) {
   return <Badge variant="info" dot>—</Badge>
 }
 
-/** Media rows store absolute URLs with server BACKEND_URL; dev/ngrok değişince host uyuşmaz. /uploads yolunu her zaman API origin ile eşle. */
-function resolveMediaUrl(url: unknown): string | null {
-  if (typeof url !== 'string') return null
-  const trimmed = url.trim()
-  if (!trimmed) return null
-  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return trimmed
-
-  const apiOrigin = getApiOrigin().replace(/\/$/, '')
-
-  const withOriginPath = (pathname: string, search: string, hash: string) => {
-    const path = pathname.startsWith('/') ? pathname : `/${pathname}`
-    return `${apiOrigin}${path}${search}${hash}`
-  }
-
-  if (/^https?:\/\//i.test(trimmed)) {
-    try {
-      const parsed = new URL(trimmed)
-      if (parsed.pathname.includes('/uploads')) {
-        return withOriginPath(parsed.pathname, parsed.search, parsed.hash)
-      }
-    } catch {
-      return trimmed
-    }
-    return trimmed
-  }
-
-  return withOriginPath(trimmed, '', '')
-}
-
 function pickDamageImageUrl(detail: Record<string, unknown> | null): string | null {
   if (!detail) return null
   const node = detail.damageImage
   if (node && typeof node === 'object') {
     const o = node as Record<string, unknown>
-    const raw = o.url ?? o.path
-    const resolved = resolveMediaUrl(raw)
+    const url = typeof o.url === 'string' ? o.url : undefined
+    const filename =
+      typeof o.filename === 'string'
+        ? o.filename
+        : typeof o.file === 'string'
+          ? o.file
+          : undefined
+    const resolved = resolveMediaUrl(url, filename)
     if (resolved) return resolved
   }
-  return resolveMediaUrl(detail.damageImageUrl) ?? resolveMediaUrl(detail.imageUrl)
+  return (
+    resolveMediaUrl(typeof detail.damageImageUrl === 'string' ? detail.damageImageUrl : undefined) ??
+    resolveMediaUrl(typeof detail.imageUrl === 'string' ? detail.imageUrl : undefined)
+  )
 }
 
 export function ReturnKitsPage() {
