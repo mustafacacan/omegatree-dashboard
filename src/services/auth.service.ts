@@ -167,7 +167,7 @@ export async function register(payload: RegisterPayload): Promise<void> {
 }
 
 /**
- * Şifremi unuttum: telefona SMS kodu gönderir.
+ * Şifremi unuttum: telefona sıfırlama linki içeren SMS gönderir.
  * API: POST /auth/forgot-password body: { phone }
  */
 export async function forgotPassword(phone: string): Promise<void> {
@@ -175,11 +175,19 @@ export async function forgotPassword(phone: string): Promise<void> {
 }
 
 /**
- * SMS kodu ve yeni şifre ile şifre sıfırlama.
- * API: POST /auth/reset-password body: { phone, code, newPassword, rePassword }
+ * SMS linkindeki token'ın geçerliliğini kontrol eder.
+ * API: POST /auth/validate-reset-token body: { token }
  */
-export async function resetPassword(phone: string, code: string, newPassword: string, rePassword: string): Promise<void> {
-  await api.post('/auth/reset-password', { phone, code, newPassword, rePassword })
+export async function validateResetToken(token: string): Promise<void> {
+  await api.post('/auth/validate-reset-token', { token })
+}
+
+/**
+ * Token ile şifre sıfırlama.
+ * API: POST /auth/reset-password body: { token, newPassword, rePassword }
+ */
+export async function resetPassword(token: string, newPassword: string, rePassword: string): Promise<void> {
+  await api.post('/auth/reset-password', { token, newPassword, rePassword })
 }
 
 /**

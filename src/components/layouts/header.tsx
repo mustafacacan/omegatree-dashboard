@@ -96,8 +96,11 @@ export function Header() {
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <button
             type="button"
-            className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-surface-200 bg-white/70 transition-colors text-surface-700 shadow-sm"
+            className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-surface-200 bg-panel transition-colors text-surface-700 shadow-sm"
             onClick={() => setMobileOpen(!mobileOpen)}
+            aria-expanded={mobileOpen}
+            aria-controls="app-sidebar"
+            aria-label={mobileOpen ? 'Menüyü kapat' : 'Menüyü aç'}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>

@@ -648,64 +648,64 @@ export function ClientsListPage() {
                       const awaitingLab = needsLabSend(k.status)
                       const statusInfo = kitStatusBadge(k.status)
                       return (
-                      <tr
-                        key={k.id}
-                        className={cn(
-                          'border-b border-surface-200 transition-colors',
-                          awaitingLab
-                            ? 'bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-50 dark:hover:bg-amber-900/15 border-l-[3px] border-l-amber-400'
-                            : 'hover:bg-surface-50 dark:hover:bg-surface-200',
-                        )}
-                      >
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-2">
-                            <Avatar name={k.clientName ?? '—'} size="sm" className="shrink-0" />
-                            <span className="text-[12px] font-medium text-surface-700">{k.clientName ?? '—'}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <code className="text-xs font-mono bg-surface-100 dark:bg-surface-200/60 px-2 py-0.5 rounded text-surface-600">{k.kitBarcode ?? '—'}</code>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          {k.status ? (
-                            <Badge variant={statusInfo.variant} size="sm">
-                              {statusInfo.label}
-                            </Badge>
-                          ) : (
-                            <span className="text-xs text-surface-400">—</span>
+                        <tr
+                          key={k.id}
+                          className={cn(
+                            'border-b border-surface-200 transition-colors',
+                            awaitingLab
+                              ? 'bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-50 dark:hover:bg-amber-900/15 border-l-[3px] border-l-amber-400'
+                              : 'hover:bg-surface-50 dark:hover:bg-surface-200',
                           )}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <Badge variant="outline">{k.kitName ?? 'Kit'}</Badge>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span className="text-[12px] text-surface-500">{k.createdAt ? formatDate(k.createdAt) : '—'}</span>
-                        </td>
-                        <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-2">
-                            {awaitingLab ? (
+                        >
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-2">
+                              <Avatar name={k.clientName ?? '—'} size="sm" className="shrink-0" />
+                              <span className="text-[12px] font-medium text-surface-700">{k.clientName ?? '—'}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <code className="text-xs font-mono bg-surface-100 dark:bg-surface-200/60 px-2 py-0.5 rounded text-surface-600">{k.kitBarcode ?? '—'}</code>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            {k.status ? (
+                              <Badge variant={statusInfo.variant} size="sm">
+                                {statusInfo.label}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-surface-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <Badge variant="outline">{k.kitName ?? 'Kit'}</Badge>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span className="text-[12px] text-surface-500">{k.createdAt ? formatDate(k.createdAt) : '—'}</span>
+                          </td>
+                          <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-2">
+                              {awaitingLab ? (
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  className="h-8 text-[12px] shadow-sm"
+                                  onClick={() => openEdit(toEditTarget(k))}
+                                >
+                                  <Send className="h-3.5 w-3.5" />
+                                  Laboratuvara Gönder
+                                </Button>
+                              ) : null}
                               <Button
-                                variant="primary"
+                                variant={awaitingLab ? 'outline' : 'ghost'}
                                 size="sm"
-                                className="h-8 text-[12px] shadow-sm"
-                                onClick={() => openEdit(toEditTarget(k))}
+                                className="h-8 text-[12px]"
+                                onClick={() => openKitDetail(k.id)}
                               >
-                                <Send className="h-3.5 w-3.5" />
-                                Laboratuvara Gönder
+                                <Eye className="h-3.5 w-3.5" />
+                                Detay
                               </Button>
-                            ) : null}
-                            <Button
-                              variant={awaitingLab ? 'outline' : 'ghost'}
-                              size="sm"
-                              className="h-8 text-[12px]"
-                              onClick={() => openKitDetail(k.id)}
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                              Detay
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
+                            </div>
+                          </td>
+                        </tr>
                       )
                     })
                   )}
@@ -740,9 +740,8 @@ export function ClientsListPage() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  step === 1 ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700' : 'text-surface-500 dark:text-surface-400 border border-transparent'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${step === 1 ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700' : 'text-surface-500 dark:text-surface-400 border border-transparent'
+                  }`}
               >
                 <UserPlus className="h-4 w-4" /> Kişisel Bilgiler
               </button>
@@ -750,9 +749,8 @@ export function ClientsListPage() {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  step === 2 ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700' : 'text-surface-500 dark:text-surface-400 border border-transparent'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${step === 2 ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700' : 'text-surface-500 dark:text-surface-400 border border-transparent'
+                  }`}
               >
                 <Users className="h-4 w-4" /> Anamnez (Opsiyonel)
               </button>
@@ -760,9 +758,8 @@ export function ClientsListPage() {
               <button
                 type="button"
                 onClick={() => setStep(3)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  step === 3 ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700' : 'text-surface-500 dark:text-surface-400 border border-transparent'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${step === 3 ? 'bg-primary-50 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700' : 'text-surface-500 dark:text-surface-400 border border-transparent'
+                  }`}
               >
                 <Users className="h-4 w-4" /> Beslenme (Opsiyonel)
               </button>

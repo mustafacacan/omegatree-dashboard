@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -133,6 +134,34 @@ export function Sidebar() {
   const location = useLocation()
   const { counts: adminBadgeCounts } = useAdminSidebarBadges()
 
+  // Mobilde drawer her zaman geniş etiketli; masaüstünde daraltma tercihi geçerli
+  const effectiveCollapsed = collapsed && !mobileOpen
+
+  useEffect(() => {
+    if (!mobileOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false)
+    }
+
+    const desktopQuery = window.matchMedia('(min-width: 1024px)')
+    const onDesktop = () => {
+      if (desktopQuery.matches) setMobileOpen(false)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    desktopQuery.addEventListener('change', onDesktop)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKeyDown)
+      desktopQuery.removeEventListener('change', onDesktop)
+    }
+  }, [mobileOpen, setMobileOpen])
+
   if (!role) return null
 
   const navGroups = getNavGroups(role)
@@ -148,34 +177,36 @@ export function Sidebar() {
       {/* Mobile overlay */}
       <div
         className={cn(
-          'fixed inset-0 z-30 lg:hidden transition-opacity duration-300 bg-black/25',
-          mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          'fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 lg:hidden',
+          mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0',
         )}
         onClick={() => setMobileOpen(false)}
-        aria-hidden
+        aria-hidden={!mobileOpen}
       />
 
       <aside
+        id="app-sidebar"
+        aria-modal={mobileOpen || undefined}
         className={cn(
-          'fixed left-0 top-0 z-40 h-[100dvh] flex w-[min(88vw,320px)] flex-col bg-panel border-r border-surface-200 shadow-sidebar',
-          'transition-all duration-300 ease-out will-change-transform',
+          'fixed left-0 top-0 z-50 flex h-[100dvh] w-[min(88vw,320px)] flex-col border-r border-surface-200 bg-panel shadow-sidebar',
+          'transition-transform duration-300 ease-out will-change-transform',
           collapsed ? 'lg:w-[72px]' : 'lg:w-[260px]',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-          'pb-[env(safe-area-inset-bottom)]'
+          'pb-[env(safe-area-inset-bottom)]',
         )}
       >
         {/* Logo */}
         <div
           className={cn(
             'flex items-center h-16 px-4 border-b border-surface-200',
-            collapsed ? 'justify-center' : 'gap-3'
+            effectiveCollapsed ? 'justify-center' : 'gap-3'
           )}
         >
           <div className="flex items-center justify-center h-10 w-10 rounded-xl shrink-0 bg-primary-500">
             <TreePine className="h-5 w-5 text-white" />
           </div>
-          {!collapsed && (
+          {!effectiveCollapsed && (
             <div className="overflow-hidden min-w-0">
               <h1 className="text-[13px] font-semibold leading-tight truncate text-surface-900">OmegaTree</h1>
               <p className="text-[8px] leading-tight text-surface-500">Kit Takip</p>
@@ -187,12 +218,12 @@ export function Sidebar() {
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5 overscroll-contain">
           {navGroups.map((group, gi) => (
             <div key={gi}>
-              {!collapsed && group.title && (
+              {!effectiveCollapsed && group.title && (
                 <p className="text-[8px] font-semibold uppercase tracking-wider mb-2 px-3 text-surface-500">
                   {group.title}
                 </p>
               )}
-              {collapsed && group.title && (
+              {effectiveCollapsed && group.title && (
                 <div className="h-px my-2 mx-2 bg-surface-200" />
               )}
               <div className="space-y-0.5">
@@ -215,7 +246,7 @@ export function Sidebar() {
                           : 'text-surface-700 hover:bg-surface-100 hover:text-surface-900'
                       )}
                     >
-                      {isActive && !collapsed && (
+                      {isActive && !effectiveCollapsed && (
                         <motion.span
                           layoutId="sidebar-active-pill"
                           className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-primary-500"
@@ -226,16 +257,16 @@ export function Sidebar() {
                         <item.icon
                           className={cn('h-5 w-5', isActive ? 'text-primary-600' : 'text-surface-500')}
                         />
-                        {collapsed && badgeCount > 0 && (
+                        {effectiveCollapsed && badgeCount > 0 && (
                           <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-500 px-0.5 text-[9px] font-bold leading-none text-white">
                             {formatSidebarBadgeCount(badgeCount)}
                           </span>
                         )}
                       </span>
-                      {!collapsed && (
+                      {!effectiveCollapsed && (
                         <span className="truncate flex-1">{item.label}</span>
                       )}
-                      {!collapsed && badgeCount > 0 && (
+                      {!effectiveCollapsed && badgeCount > 0 && (
                         <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1 text-[10px] font-bold text-primary-700">
                           {formatSidebarBadgeCount(badgeCount)}
                         </span>
@@ -243,7 +274,7 @@ export function Sidebar() {
                     </NavLink>
                   )
 
-                  if (collapsed) {
+                  if (effectiveCollapsed) {
                     return (
                       <Tooltip key={item.href} content={item.label} side="right">
                         {linkContent}

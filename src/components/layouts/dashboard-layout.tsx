@@ -6,12 +6,13 @@ import { Sidebar } from './sidebar'
 import { Header } from './header'
 
 export function DashboardLayout() {
-  const { collapsed, mobileOpen, setMobileOpen } = useSidebarStore()
+  const { collapsed, setMobileOpen } = useSidebarStore()
   const location = useLocation()
 
+  // Route değişince mobil menüyü kapat (mobileOpen dependency yok — açılışta anında kapanma bug'ı)
   useEffect(() => {
-    if (mobileOpen) setMobileOpen(false)
-  }, [location.pathname, mobileOpen, setMobileOpen])
+    setMobileOpen(false)
+  }, [location.pathname, setMobileOpen])
 
   return (
     <div className="min-h-screen relative overflow-x-clip bg-surface-100">
