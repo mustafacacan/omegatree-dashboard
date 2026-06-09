@@ -212,8 +212,8 @@ export function StockPage() {
       {/* Kit envanter tablosu */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
         <div className="panel">
-          <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-surface-200">
-            <div>
+          <div className="p-4 sm:p-5 flex flex-col gap-3 border-b border-surface-200">
+            <div className="min-w-0">
               <h3 className="text-[15px] font-semibold text-surface-900">Kit Envanter</h3>
               <p className="text-[12px] mt-0.5 text-surface-500">
                 {filterUserId != null
@@ -221,22 +221,23 @@ export function StockPage() {
                   : `Sizin stokunuzdaki tüm kitler (${totalItems} kit)`}
               </p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
-              <div className="relative">
+
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-2">
+              <div className="relative w-full lg:flex-1 lg:min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />
                 <input
                   type="text"
                   placeholder="Barkod ara..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
+                  className="w-full h-10 pl-9 pr-3 text-[12px] rounded-xl outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
               <Select
                 value={filterUserId === null ? 'all' : String(filterUserId)}
                 onValueChange={(v) => setFilterUserId(v === 'all' ? null : parseInt(v, 10))}
               >
-                <SelectTrigger className="min-w-[11rem]">
+                <SelectTrigger className="w-full h-10 lg:w-48 lg:shrink-0">
                   <SelectValue placeholder="Diyetisyen seçin" />
                 </SelectTrigger>
                 <SelectContent>
@@ -252,7 +253,7 @@ export function StockPage() {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="min-w-[10rem]">
+                <SelectTrigger className="w-full h-10 lg:w-44 lg:shrink-0">
                   <SelectValue placeholder="Tum Durumlar" />
                 </SelectTrigger>
                 <SelectContent>
@@ -263,7 +264,12 @@ export function StockPage() {
                   <SelectItem value="approval_pending">Onay bekliyor</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="primary" size="sm" onClick={() => setShowAssignModal(true)}>
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-full h-10 justify-center lg:w-auto lg:shrink-0"
+                onClick={() => setShowAssignModal(true)}
+              >
                 <ArrowRightLeft className="h-4 w-4" />
                 Kit Zimmetle
               </Button>

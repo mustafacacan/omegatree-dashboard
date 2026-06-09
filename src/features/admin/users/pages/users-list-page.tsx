@@ -329,29 +329,28 @@ export function UsersListPage() {
         <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
           <div className="panel">
             <div className="p-4 sm:p-5 border-b border-surface-200">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 min-w-0">
-                  <div className="min-w-0 shrink-0">
-                    <h3 className="text-[15px] font-semibold text-surface-900">Kullanıcılar</h3>
-                    <p className="text-[12px] mt-0.5 text-surface-500">
-                      Kayıtlı kullanıcılar ({totalItems} kişi)
-                    </p>
-                  </div>
-                  <TabsList className="w-full sm:w-auto shrink-0">
-                    <TabsTrigger value="all" className="flex-1 sm:flex-none px-3">
-                      Tümü
-                    </TabsTrigger>
-                    <TabsTrigger value="active" className="flex-1 sm:flex-none px-3">
-                      Aktif
-                    </TabsTrigger>
-                    <TabsTrigger value="pending" className="flex-1 sm:flex-none px-3">
-                      Bekleyen ({pendingUsers.length})
-                    </TabsTrigger>
-                  </TabsList>
+              <div className="flex flex-col gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-[15px] font-semibold text-surface-900">Kullanıcılar</h3>
+                  <p className="text-[12px] mt-0.5 text-surface-500">
+                    Kayıtlı kullanıcılar ({totalItems} kişi)
+                  </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:flex-wrap xl:flex-nowrap items-stretch sm:items-center gap-2 xl:ml-auto xl:justify-end min-w-0">
-                  <div className="relative w-full sm:w-[14rem] lg:w-[15rem] xl:w-[13.5rem] shrink-0">
+                <TabsList className="w-full h-10 p-1">
+                  <TabsTrigger value="all" className="flex-1 px-2 text-[12px] sm:text-[13px]">
+                    Tümü
+                  </TabsTrigger>
+                  <TabsTrigger value="active" className="flex-1 px-2 text-[12px] sm:text-[13px]">
+                    Aktif
+                  </TabsTrigger>
+                  <TabsTrigger value="pending" className="flex-1 px-2 text-[12px] sm:text-[13px]">
+                    Bekleyen ({pendingUsers.length})
+                  </TabsTrigger>
+                </TabsList>
+
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-2">
+                  <div className="relative w-full lg:flex-1 lg:min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400 pointer-events-none" />
                     <input
                       type="text"
@@ -364,33 +363,31 @@ export function UsersListPage() {
                       className="w-full h-10 pl-9 pr-3 text-[12px] rounded-xl outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                     />
                   </div>
-                  <div className="w-full sm:w-[10.5rem] shrink-0">
-                    <Select
-                      value={roleFilter}
-                      onValueChange={(v) => {
-                        setRoleFilter(v)
-                        setPage(1)
-                      }}
-                    >
-                      <SelectTrigger className="w-full h-10">
-                        <Filter className="h-3.5 w-3.5 mr-2 text-surface-400 shrink-0" />
-                        <SelectValue placeholder="Rol" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tüm roller</SelectItem>
-                        <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
-                        <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
-                        <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
-                        <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
-                        <SelectItem value={UserRole.DANISAN}>Danışan</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Select
+                    value={roleFilter}
+                    onValueChange={(v) => {
+                      setRoleFilter(v)
+                      setPage(1)
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-10 lg:w-44 lg:shrink-0">
+                      <Filter className="h-3.5 w-3.5 mr-2 text-surface-400 shrink-0" />
+                      <SelectValue placeholder="Rol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tüm roller</SelectItem>
+                      <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
+                      <SelectItem value={UserRole.DIETITIAN}>Diyetisyen</SelectItem>
+                      <SelectItem value={UserRole.LAB}>Laboratuvar</SelectItem>
+                      <SelectItem value={UserRole.SPECIALIST}>Uzman</SelectItem>
+                      <SelectItem value={UserRole.DANISAN}>Danışan</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button
                     variant="primary"
                     size="sm"
                     onClick={() => setNewUserOpen(true)}
-                    className="w-full sm:w-auto shrink-0 whitespace-nowrap h-10 px-4"
+                    className="w-full h-10 justify-center lg:w-auto lg:shrink-0 whitespace-nowrap px-4"
                   >
                     <Plus className="h-4 w-4" />
                     Yeni Admin Ekle
