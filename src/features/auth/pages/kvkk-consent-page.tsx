@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Button, Checkbox } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth.store'
 import { ROLE_HOME } from '@/utils/routes'
-import { Shield, TreePine } from 'lucide-react'
+import { OmegaTreeLogo } from '@/components/shared/omega-tree-logo'
+import { Shield } from 'lucide-react'
 import { toast } from 'sonner'
 
 export function KvkkConsentPage() {
@@ -30,15 +31,10 @@ export function KvkkConsentPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-50 p-4">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-card p-8 animate-fade-in">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600">
-            <TreePine className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-surface-900">OmegaTree</h1>
-            <p className="text-sm text-surface-500">Kisisel Verilerin Korunmasi</p>
-          </div>
+        <div className="mb-6 flex justify-center">
+          <OmegaTreeLogo variant="auth" />
         </div>
+        <p className="mb-6 text-center text-sm text-surface-500">Kişisel Verilerin Korunması</p>
 
         <div className="flex items-center gap-3 p-4 rounded-xl bg-primary-50 border border-primary-100 mb-6">
           <Shield className="h-5 w-5 text-primary-600 shrink-0" />

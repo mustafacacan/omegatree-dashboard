@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
-import { TreePine } from 'lucide-react'
+import { OmegaTreeLogo } from '@/components/shared/omega-tree-logo'
 import { useThemeStore } from '@/stores/theme.store'
 import { publicAssetUrl } from '@/lib/media-url'
+import { cn } from '@/lib/utils'
+import { AppFooter, appFooterMainPaddingClassName } from './app-footer'
 
 const LOGIN_BG_URL = publicAssetUrl('asset/img/home-one-bg.jpg')
 
@@ -28,14 +30,8 @@ export function AuthLayout() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(157,176,104,0.35),transparent_50%)]" />
 
         <div className="relative z-10 flex w-full flex-col justify-between py-10 pl-14 pr-6 xl:pl-20 xl:pr-8">
-          <div className="flex items-center gap-3 self-start">
-            <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary-500/95 backdrop-blur-sm">
-              <TreePine className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-white">OmegaTree</h1>
-              <p className="text-[11px] tracking-wide text-white/75">Kit Takip Sistemi</p>
-            </div>
+          <div className="self-start">
+            <OmegaTreeLogo variant="auth-panel" />
           </div>
 
           <div className="ml-auto w-full max-w-md space-y-6">
@@ -76,10 +72,18 @@ export function AuthLayout() {
       </div>
 
       {/* Right panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-8">
-        <div className="w-full max-w-[400px]">
-          <Outlet />
+      <div className="relative flex min-h-screen flex-1 flex-col">
+        <div
+          className={cn(
+            'flex flex-1 items-center justify-center p-6 sm:p-8',
+            appFooterMainPaddingClassName(),
+          )}
+        >
+          <div className="w-full max-w-[400px]">
+            <Outlet />
+          </div>
         </div>
+        <AppFooter className="bg-[#F9F7F3]/95 supports-[backdrop-filter]:bg-[#F9F7F3]/90" />
       </div>
     </div>
   )

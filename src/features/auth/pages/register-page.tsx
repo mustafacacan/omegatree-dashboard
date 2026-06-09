@@ -7,7 +7,8 @@ import { Button, Input } from '@/components/ui'
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui'
 import { UserRole } from '@/utils/constants'
 import { ROUTES } from '@/utils/routes'
-import { TreePine, Mail, User, Phone } from 'lucide-react'
+import { AuthMobileBrand } from '@/components/shared/omega-tree-logo'
+import { Mail, User, Phone } from 'lucide-react'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { register as apiRegister } from '@/services/auth.service'
@@ -67,15 +68,7 @@ export function RegisterPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center gap-3 mb-8 lg:hidden">
-        <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600">
-          <TreePine className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold text-surface-900">OmegaTree</h1>
-          <p className="text-xs text-surface-400">Kit Takip Sistemi</p>
-        </div>
-      </div>
+      <AuthMobileBrand subtitle="Kit Takip Sistemi" />
 
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-surface-900">Kayıt Olun</h2>

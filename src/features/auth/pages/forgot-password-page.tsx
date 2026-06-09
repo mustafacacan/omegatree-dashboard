@@ -5,7 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button, Input } from '@/components/ui'
 import { ROUTES } from '@/utils/routes'
-import { TreePine, Phone, Lock, Eye, EyeOff, ArrowLeft, Link2, Loader2 } from 'lucide-react'
+import { AuthMobileBrand } from '@/components/shared/omega-tree-logo'
+import { Phone, Lock, Eye, EyeOff, ArrowLeft, Link2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { forgotPassword, resetPassword, validateResetToken } from '@/services/auth.service'
@@ -111,15 +112,7 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center gap-3 mb-8 lg:hidden">
-        <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary-500">
-          <TreePine className="h-4.5 w-4.5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-lg font-semibold text-surface-900">OmegaTree</h1>
-          <p className="text-[11px] text-surface-400">Şifre Sıfırlama</p>
-        </div>
-      </div>
+      <AuthMobileBrand subtitle="Şifre Sıfırlama" />
 
       <div className="mb-8">
         <h2 className="text-2xl font-semibold text-surface-900">

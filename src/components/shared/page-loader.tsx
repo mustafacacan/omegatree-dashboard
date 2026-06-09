@@ -1,24 +1,15 @@
+import { OmegaTreeLogo } from '@/components/shared/omega-tree-logo'
+
 export function PageLoader() {
   return (
     <div className="flex flex-col items-center justify-center py-32 animate-fade-in">
-      {/* Leaf icon with gentle pulse */}
-      <div className="relative mb-6">
-        <div className="absolute inset-0 rounded-full bg-primary-200/40 animate-ping" style={{ animationDuration: '2s' }} />
-        <div className="relative h-16 w-16 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center shadow-sm">
-          <svg
-            viewBox="0 0 24 24"
-            className="h-7 w-7 text-primary-600"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ animation: 'page-loader-sway 3s ease-in-out infinite' }}
-          >
-            <path d="M11 20A7 7 0 0 1 9.8 6.9C15.5 4.9 17 3.5 17 3.5s1 7-4 11.5" />
-            <path d="M11 20v-8" />
-            <path d="M7 15c2-1.5 4-2.5 6-3" />
-          </svg>
+      <div className="relative mb-6 flex items-center justify-center">
+        <div
+          className="absolute inset-0 rounded-full bg-primary-200/40 animate-ping"
+          style={{ animationDuration: '2s' }}
+        />
+        <div className="relative">
+          <OmegaTreeLogo variant="loader" />
         </div>
       </div>
 

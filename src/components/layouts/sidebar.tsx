@@ -12,6 +12,7 @@ import {
   getAdminSidebarBadgeForHref,
 } from '@/lib/admin-sidebar-counts'
 import { Tooltip, TooltipProvider } from '@/components/ui'
+import { OmegaTreeLogo } from '@/components/shared/omega-tree-logo'
 import {
   LayoutDashboard,
   Users,
@@ -25,7 +26,6 @@ import {
   Truck,
   BarChart3,
   ChevronLeft,
-  TreePine,
   TestTubes,
   FileCheck,
   BookOpen,
@@ -200,17 +200,13 @@ export function Sidebar() {
         <div
           className={cn(
             'flex items-center h-16 px-4 border-b border-surface-200',
-            effectiveCollapsed ? 'justify-center' : 'gap-3'
+            effectiveCollapsed ? 'justify-center' : 'justify-start gap-2',
           )}
         >
-          <div className="flex items-center justify-center h-10 w-10 rounded-xl shrink-0 bg-primary-500">
-            <TreePine className="h-5 w-5 text-white" />
-          </div>
-          {!effectiveCollapsed && (
-            <div className="overflow-hidden min-w-0">
-              <h1 className="text-[13px] font-semibold leading-tight truncate text-surface-900">OmegaTree</h1>
-              <p className="text-[8px] leading-tight text-surface-500">Kit Takip</p>
-            </div>
+          {effectiveCollapsed ? (
+            <OmegaTreeLogo variant="sidebar-collapsed" />
+          ) : (
+            <OmegaTreeLogo variant="sidebar" />
           )}
         </div>
 

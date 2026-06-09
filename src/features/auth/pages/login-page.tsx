@@ -6,7 +6,8 @@ import { z } from 'zod'
 import { Button, Input } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth.store'
 import { ROLE_HOME, ROUTES } from '@/utils/routes'
-import { TreePine, Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { AuthMobileBrand } from '@/components/shared/omega-tree-logo'
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { login as apiLogin } from '@/services/auth.service'
@@ -88,16 +89,7 @@ export function LoginPage() {
 
   return (
     <div className="animate-fade-in">
-      {/* Mobile logo */}
-      <div className="flex items-center gap-3 mb-8 lg:hidden">
-        <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary-500">
-          <TreePine className="h-4.5 w-4.5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-lg font-semibold text-surface-900">OmegaTree</h1>
-          <p className="text-[11px] text-surface-400">Kit Takip Sistemi</p>
-        </div>
-      </div>
+      <AuthMobileBrand subtitle="Kit Takip Sistemi" />
 
       <div className="mb-8">
         <h2 className="text-2xl font-semibold text-surface-900">Kullanici Girisi</h2>
