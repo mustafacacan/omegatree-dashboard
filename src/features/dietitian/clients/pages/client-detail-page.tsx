@@ -540,8 +540,8 @@ export function ClientDetailPage() {
                 <div className="flex gap-3">
                   <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-amber-900 mb-1">Atama Onay</p>
-                    <p className="text-xs text-amber-700 leading-relaxed">
+                    <p className="text-sm font-medium text-amber-900 dark:text-amber-200 mb-1">Atama Onay</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
                       <strong>{selectedStockKit}</strong> barkodlu kit, <strong>{client.firstName} {client.lastName}</strong> adli danisana atanacaktir.
                       Kit danisana teslim edildiginde danisan uzerinden izlenebilir hale gelecektir.
                     </p>
@@ -652,31 +652,34 @@ function AnamnesisRow({ icon: Icon, label, value, color }: {
   icon: React.ElementType; label: string; value: string; color: 'amber' | 'blue' | 'rose' | 'surface'
 }) {
   const styles = {
-    amber: 'bg-amber-50 border-amber-100',
-    blue: 'bg-primary-50 border-primary-100',
-    rose: 'bg-rose-50 border-rose-100',
-    surface: 'bg-surface-50 border-surface-100',
+    amber: 'bg-amber-50 border-amber-100 dark:bg-amber-900/20 dark:border-amber-800',
+    blue: 'bg-primary-50 border-primary-100 dark:bg-primary-900/20 dark:border-primary-800',
+    rose: 'bg-rose-50 border-rose-100 dark:bg-rose-900/20 dark:border-rose-800',
+    surface: 'bg-surface-50 border-surface-100 dark:bg-surface-200/40 dark:border-surface-600',
   }
   return (
     <div className={`p-3 rounded-lg border ${styles[color]}`}>
       <div className="flex items-center gap-2 mb-1">
-        <Icon className="h-3.5 w-3.5 text-surface-500" />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">{label}</span>
+        <Icon className="h-3.5 w-3.5 text-surface-500 dark:text-surface-400" />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">{label}</span>
       </div>
-      <p className="text-[13px] text-surface-700 leading-relaxed">{value}</p>
+      <p className="text-[13px] text-text-primary leading-relaxed">{value}</p>
     </div>
   )
 }
 
 function NoteItem({ color, title, text }: { color: 'amber' | 'blue' | 'rose' | 'green'; title: string; text: string }) {
   const map = {
-    amber: 'bg-amber-50 border-amber-100 text-amber-800',
-    blue: 'bg-primary-50 border-primary-100 text-primary-700',
-    rose: 'bg-rose-50 border-rose-100 text-rose-800',
-    green: 'bg-green-50 border-green-100 text-green-800',
+    amber: 'bg-amber-50 border-amber-100 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200',
+    blue: 'bg-primary-50 border-primary-100 text-primary-800 dark:bg-primary-900/20 dark:border-primary-800 dark:text-primary-200',
+    rose: 'bg-rose-50 border-rose-100 text-rose-800 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-200',
+    green: 'bg-green-50 border-green-100 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200',
   }
   const sub = {
-    amber: 'text-amber-600', blue: 'text-primary-600', rose: 'text-rose-600', green: 'text-green-600',
+    amber: 'text-amber-700 dark:text-amber-300',
+    blue: 'text-primary-700 dark:text-primary-300',
+    rose: 'text-rose-700 dark:text-rose-300',
+    green: 'text-green-700 dark:text-green-300',
   }
   return (
     <div className={`p-3 rounded-lg border ${map[color]}`}>

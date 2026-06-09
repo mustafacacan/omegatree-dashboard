@@ -382,12 +382,14 @@ function DietitiansPage() {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Ad"
+                filter="personName"
                 value={form.firstName}
                 onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
                 placeholder="Ad"
               />
               <Input
                 label="Soyad"
+                filter="personName"
                 value={form.lastName}
                 onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
                 placeholder="Soyad"
@@ -403,6 +405,7 @@ function DietitiansPage() {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Telefon *"
+                filter="phone"
                 value={form.phone}
                 onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
                 placeholder="05XX XXX XX XX"
@@ -453,12 +456,14 @@ function DietitiansPage() {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Ad *"
+                filter="personName"
                 value={form.firstName}
                 onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
                 placeholder="Ad"
               />
               <Input
                 label="Soyad *"
+                filter="personName"
                 value={form.lastName}
                 onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
                 placeholder="Soyad"
@@ -473,6 +478,7 @@ function DietitiansPage() {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Telefon *"
+                filter="phone"
                 value={form.phone}
                 onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
                 placeholder="05XX XXX XX XX"

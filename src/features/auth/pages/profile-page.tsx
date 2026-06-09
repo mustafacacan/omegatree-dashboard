@@ -295,11 +295,13 @@ export function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 label="Ad"
+                filter="personName"
                 value={editForm.firstName}
                 onChange={(e) => setEditForm((p) => ({ ...p, firstName: e.target.value }))}
               />
               <Input
                 label="Soyad"
+                filter="personName"
                 value={editForm.lastName}
                 onChange={(e) => setEditForm((p) => ({ ...p, lastName: e.target.value }))}
               />
@@ -316,10 +318,10 @@ export function ProfilePage() {
 
             <Input
               label="Telefon"
+              filter="phone"
               value={editForm.phone}
-              onChange={(e) => setEditForm((p) => ({ ...p, phone: limitDigits(e.target.value, 11) }))}
+              onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value }))}
               placeholder="0555 555 55 55"
-              inputMode="numeric"
               maxLength={11}
               error={phoneError ?? undefined}
             />
@@ -334,11 +336,10 @@ export function ProfilePage() {
 
             <Input
               label="T.C. Kimlik No"
+              filter="nationalId"
               value={editForm.identityNumber}
-              onChange={(e) => setEditForm((p) => ({ ...p, identityNumber: limitDigits(e.target.value, 11) }))}
+              onChange={(e) => setEditForm((p) => ({ ...p, identityNumber: e.target.value }))}
               placeholder="(opsiyonel)"
-              inputMode="numeric"
-              maxLength={11}
               error={identityError ?? undefined}
             />
 

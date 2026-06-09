@@ -90,12 +90,14 @@ export function RegisterPage() {
             label="Ad"
             placeholder="Adınız"
             leftIcon={<User className="h-4 w-4" />}
+            filter="personName"
             error={errors.firstName?.message}
             {...register('firstName')}
           />
           <Input
             label="Soyad"
             placeholder="Soyadınız"
+            filter="personName"
             error={errors.lastName?.message}
             {...register('lastName')}
           />
@@ -112,9 +114,9 @@ export function RegisterPage() {
 
         <Input
           label="Telefon"
-          type="tel"
           placeholder="05XX XXX XX XX"
           leftIcon={<Phone className="h-4 w-4" />}
+          filter="phone"
           error={errors.phone?.message}
           {...register('phone')}
         />

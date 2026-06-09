@@ -311,7 +311,7 @@ export function KitsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Kit</p>
-                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-900">{kit.kitName || '—'}</p>
+                        <p className="text-[13px] font-medium text-text-primary">{kit.kitName || '—'}</p>
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Durum</p>
@@ -319,7 +319,7 @@ export function KitsPage() {
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Diyetisyen</p>
-                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-900">{kit.dieticianName || '—'}</p>
+                        <p className="text-[13px] font-medium text-text-primary">{kit.dieticianName || '—'}</p>
                         {(kit.dieticianPhone || kit.dieticianEmail) && (
                           <p className="text-[11px] text-surface-500 mt-0.5">
                             {kit.dieticianPhone ?? ''}{kit.dieticianPhone && kit.dieticianEmail ? ' · ' : ''}{kit.dieticianEmail ?? ''}
@@ -328,7 +328,7 @@ export function KitsPage() {
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-surface-500">Danisan</p>
-                        <p className="text-[13px] font-medium text-surface-800 dark:text-surface-900">{kit.clientName || '—'}</p>
+                        <p className="text-[13px] font-medium text-text-primary">{kit.clientName || '—'}</p>
                         {(kit.clientPhone || kit.clientEmail) && (
                           <p className="text-[11px] text-surface-500 mt-0.5">
                             {kit.clientPhone ?? ''}{kit.clientPhone && kit.clientEmail ? ' · ' : ''}{kit.clientEmail ?? ''}

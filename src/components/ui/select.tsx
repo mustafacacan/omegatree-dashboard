@@ -19,11 +19,11 @@ const SelectTrigger = React.forwardRef<
       ref={ref}
       className={cn(
         'flex h-9 w-full items-center justify-between rounded-xl border px-3 py-2',
-        'bg-white text-sm text-surface-800',
-        'border-surface-200',
+        'bg-white dark:bg-panel text-sm text-text-primary',
+        'border-surface-200 dark:border-surface-300',
         'transition-all duration-200',
-        'hover:border-surface-300 hover:bg-surface-50/50',
-        'focus:outline-none focus:ring-2 focus:ring-primary-500/25 focus:border-primary-500 focus:bg-white',
+        'hover:border-surface-300 hover:bg-surface-50/50 dark:hover:bg-surface-200/40',
+        'focus:outline-none focus:ring-2 focus:ring-primary-500/25 focus:border-primary-500 focus:bg-white dark:focus:bg-panel',
         'disabled:cursor-not-allowed disabled:opacity-50',
         'placeholder:text-surface-400',
         error && 'border-danger',
@@ -78,7 +78,7 @@ const SelectContent = React.forwardRef<
       ref={ref}
       className={cn(
         'relative z-50 max-h-72 min-w-[8rem] overflow-hidden',
-        'rounded-lg bg-white border border-surface-200 shadow-lg',
+        'rounded-lg bg-white dark:bg-panel border border-surface-200 dark:border-surface-300 shadow-lg',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -114,8 +114,8 @@ const SelectItem = React.forwardRef<
     ref={ref}
     className={cn(
       'relative flex w-full cursor-pointer select-none items-center rounded-md py-1.5 pl-7 pr-2',
-      'text-sm text-surface-700 outline-none',
-      'hover:bg-surface-50 focus:bg-surface-50',
+      'text-sm text-text-primary outline-none',
+      'hover:bg-surface-50 dark:hover:bg-surface-200/60 focus:bg-surface-50 dark:focus:bg-surface-200/60',
       'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}

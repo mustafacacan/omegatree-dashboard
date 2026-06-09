@@ -586,12 +586,14 @@ export function UsersListPage() {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Ad *"
+                filter="personName"
                 value={newUserForm.firstName}
                 onChange={(e) => setNewUserForm((s) => ({ ...s, firstName: e.target.value }))}
                 placeholder="Ad"
               />
               <Input
                 label="Soyad *"
+                filter="personName"
                 value={newUserForm.lastName}
                 onChange={(e) => setNewUserForm((s) => ({ ...s, lastName: e.target.value }))}
                 placeholder="Soyad"
@@ -600,6 +602,7 @@ export function UsersListPage() {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Telefon *"
+                filter="phone"
                 value={newUserForm.phone}
                 onChange={(e) => setNewUserForm((s) => ({ ...s, phone: e.target.value }))}
                 placeholder="05XX XXX XX XX"
@@ -674,12 +677,14 @@ export function UsersListPage() {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Ad *"
+                filter="personName"
                 value={editUserForm.firstName}
                 onChange={(e) => setEditUserForm((s) => ({ ...s, firstName: e.target.value }))}
                 placeholder="Ad"
               />
               <Input
                 label="Soyad *"
+                filter="personName"
                 value={editUserForm.lastName}
                 onChange={(e) => setEditUserForm((s) => ({ ...s, lastName: e.target.value }))}
                 placeholder="Soyad"
@@ -688,6 +693,7 @@ export function UsersListPage() {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Telefon *"
+                filter="phone"
                 value={editUserForm.phone}
                 onChange={(e) => setEditUserForm((s) => ({ ...s, phone: e.target.value }))}
                 placeholder="05XX XXX XX XX"
@@ -702,6 +708,7 @@ export function UsersListPage() {
             </div>
             <Input
               label="T.C. Kimlik No"
+              filter="nationalId"
               value={editUserForm.identityNumber}
               onChange={(e) => setEditUserForm((s) => ({ ...s, identityNumber: e.target.value }))}
               placeholder="Opsiyonel"

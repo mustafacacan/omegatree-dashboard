@@ -11,11 +11,12 @@ import {
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
   Input,
 } from '@/components/ui'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { cn, formatDate, formatDateTime } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import {
-  Plus, MoreHorizontal, Eye, Loader2, PackagePlus, UserPlus, Users, Phone, Mail,
+  Plus, MoreHorizontal, Eye, Loader2, PackagePlus, UserPlus, Users, Phone, Mail, Send, FlaskConical, AlertTriangle,
 } from 'lucide-react'
+import type { DieticianClientKit } from '@/services/dietician-client-kits.service'
 import { toast } from 'sonner'
 import { TablePagination } from '@/components/shared/table-pagination'
 import { getApiErrorMessage } from '@/lib/api-error'
@@ -28,6 +29,31 @@ import { useCurrentUser } from '@/stores/auth.store'
 import { UserRole } from '@/utils/constants'
 
 const DIETITIAN_CLIENTS_QUERY_KEY = ['dieticians', 'get-clients-by-dietician'] as const
+
+type KitFlowStatus = DieticianClientKit['status']
+
+function needsLabSend(status?: KitFlowStatus): boolean {
+  return status === 'in_client'
+}
+
+function kitStatusBadge(status?: KitFlowStatus): { label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'primary' | 'outline' } {
+  switch (status) {
+    case 'in_client':
+      return { label: 'Lab. gönderimi bekliyor', variant: 'warning' }
+    case 'in_laboratory':
+      return { label: 'Laboratuvarda', variant: 'info' }
+    case 'in_expert':
+      return { label: 'Uzmanda', variant: 'info' }
+    case 'delivered':
+      return { label: 'Teslim', variant: 'success' }
+    case 'cancelled':
+      return { label: 'İptal', variant: 'danger' }
+    case 'completed':
+      return { label: 'Tamamlandı', variant: 'success' }
+    default:
+      return { label: '—', variant: 'outline' }
+  }
+}
 
 type ActiveTab = 'clients' | 'kits'
 type AlcoholFrequency = 'never' | 'rarely' | 'sometimes' | 'often' | 'daily'
@@ -131,7 +157,6 @@ export function ClientsListPage() {
     isLoading: kitsLoading,
   } = useQuery({
     queryKey: ['dietician-client-kits', { page: 1 }],
-    enabled: tab === 'kits',
     queryFn: () => getDieticianClientKits(1),
   })
 
@@ -158,6 +183,19 @@ export function ClientsListPage() {
     const end = start + pageSize
     return filteredKitAssignments.slice(start, end)
   }, [filteredKitAssignments, page, pageSize])
+
+  const pendingLabSendCount = useMemo(
+    () => kitAssignments.filter((k) => needsLabSend(k.status)).length,
+    [kitAssignments],
+  )
+
+  const toEditTarget = (k: DieticianClientKit) => ({
+    assignmentId: k.id as number,
+    clientName: k.clientName,
+    kitName: k.kitName,
+    kitBarcode: k.kitBarcode,
+    status: k.status,
+  })
 
   const clientsItems = clientsData?.items ?? []
   const clientsTotalItems = clientsData?.totalItems ?? 0
@@ -220,12 +258,14 @@ export function ClientsListPage() {
       return assignDieticianClientKitToClient(assignClient.id, kitId)
     },
     onSuccess: () => {
-      toast.success('Kit atandi')
+      toast.success('Kit atandı. Sıradaki adım: laboratuvara gönderin.')
       queryClient.invalidateQueries({ queryKey: ['dietician-client-kits'] })
       queryClient.invalidateQueries({ queryKey: ['stocks', 'my-stock'] })
       setAssignOpen(false)
       setAssignClient(null)
       setSelectedKitId('')
+      setTab('kits')
+      setPage(1)
     },
     onError: (err) => {
       const message = err instanceof Error ? err.message : getApiErrorMessage(err, { fallback: 'Kit atamasi yapilamadi' })
@@ -444,8 +484,13 @@ export function ClientsListPage() {
                   <TabsTrigger value="clients" className="rounded-md text-[12px] data-[state=active]:bg-white dark:data-[state=active]:bg-surface-100">
                     Danışanlarım
                   </TabsTrigger>
-                  <TabsTrigger value="kits" className="rounded-md text-[12px] data-[state=active]:bg-white dark:data-[state=active]:bg-surface-100">
+                  <TabsTrigger value="kits" className="rounded-md text-[12px] data-[state=active]:bg-white dark:data-[state=active]:bg-surface-100 gap-1.5">
                     Kit atananlar
+                    {pendingLabSendCount > 0 ? (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+                        {pendingLabSendCount}
+                      </span>
+                    ) : null}
                   </TabsTrigger>
                 </TabsList>
                 <ToolbarSearch
@@ -556,6 +601,22 @@ export function ClientsListPage() {
           </TabsContent>
 
           <TabsContent value="kits" className="mt-0">
+            {pendingLabSendCount > 0 ? (
+              <div className="mx-5 mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-900/20">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                  <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    {pendingLabSendCount} kit laboratuvara gönderilmeyi bekliyor
+                  </p>
+                  <p className="text-[12px] mt-0.5 text-amber-800/90 dark:text-amber-300/90">
+                    Danışana kit atadıktan sonra numune alındığında aşağıdaki satırdan laboratuvara gönderin.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -564,30 +625,37 @@ export function ClientsListPage() {
                     <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Barkod</th>
                     <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Durum</th>
                     <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kit</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Aktif</th>
                     <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Son Atama</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20 text-surface-500" />
+                    <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500 min-w-[220px]">İşlem</th>
                   </tr>
                 </thead>
                 <tbody>
                   {kitsLoading && !kitsData ? (
                     <tr>
-                      <td colSpan={7} className="px-5 py-12 text-center">
+                      <td colSpan={6} className="px-5 py-12 text-center">
                         <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
                         <p className="text-[12px] text-surface-500">Kit atanan danışanlar yükleniyor...</p>
                       </td>
                     </tr>
                   ) : paginatedKitAssignments.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-5 py-12 text-center text-[12px] text-surface-500">
+                      <td colSpan={6} className="px-5 py-12 text-center text-[12px] text-surface-500">
                         Kit atanmış danışan bulunamadı.
                       </td>
                     </tr>
                   ) : (
-                    paginatedKitAssignments.map((k) => (
+                    paginatedKitAssignments.map((k) => {
+                      const awaitingLab = needsLabSend(k.status)
+                      const statusInfo = kitStatusBadge(k.status)
+                      return (
                       <tr
                         key={k.id}
-                        className="border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200 transition-colors"
+                        className={cn(
+                          'border-b border-surface-200 transition-colors',
+                          awaitingLab
+                            ? 'bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-50 dark:hover:bg-amber-900/15 border-l-[3px] border-l-amber-400'
+                            : 'hover:bg-surface-50 dark:hover:bg-surface-200',
+                        )}
                       >
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-2">
@@ -600,33 +668,8 @@ export function ClientsListPage() {
                         </td>
                         <td className="px-5 py-3.5">
                           {k.status ? (
-                            <Badge
-                              variant={
-                                k.status === 'completed' || k.status === 'delivered'
-                                  ? 'success'
-                                  : k.status === 'cancelled'
-                                    ? 'danger'
-                                    : k.status === 'in_laboratory'
-                                      ? 'warning'
-                                      : k.status === 'in_expert'
-                                        ? 'info'
-                                        : 'primary'
-                              }
-                              size="sm"
-                            >
-                              {k.status === 'in_client'
-                                ? 'Danışanda'
-                                : k.status === 'in_laboratory'
-                                  ? 'Laboratuvarda'
-                                  : k.status === 'in_expert'
-                                    ? 'Uzmanda'
-                                    : k.status === 'delivered'
-                                      ? 'Teslim'
-                                      : k.status === 'cancelled'
-                                        ? 'İptal'
-                                        : k.status === 'completed'
-                                          ? 'Tamamlandı'
-                                          : k.status}
+                            <Badge variant={statusInfo.variant} size="sm">
+                              {statusInfo.label}
                             </Badge>
                           ) : (
                             <span className="text-xs text-surface-400">—</span>
@@ -636,44 +679,35 @@ export function ClientsListPage() {
                           <Badge variant="outline">{k.kitName ?? 'Kit'}</Badge>
                         </td>
                         <td className="px-5 py-3.5">
-                          {k.isActive ? (
-                            <Badge variant="success" size="sm">Aktif</Badge>
-                          ) : (
-                            <Badge variant="outline" size="sm">Pasif</Badge>
-                          )}
-                        </td>
-                        <td className="px-5 py-3.5">
                           <span className="text-[12px] text-surface-500">{k.createdAt ? formatDate(k.createdAt) : '—'}</span>
                         </td>
                         <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon-sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openKitDetail(k.id)}>
-                                <Eye className="h-4 w-4 mr-2" /> Görüntüle
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  openEdit({
-                                    assignmentId: k.id,
-                                    clientName: k.clientName,
-                                    kitName: k.kitName,
-                                    kitBarcode: k.kitBarcode,
-                                    status: k.status,
-                                  })
-                                }
+                          <div className="flex items-center justify-end gap-2">
+                            {awaitingLab ? (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                className="h-8 text-[12px] shadow-sm"
+                                onClick={() => openEdit(toEditTarget(k))}
                               >
+                                <Send className="h-3.5 w-3.5" />
                                 Laboratuvara Gönder
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                              </Button>
+                            ) : null}
+                            <Button
+                              variant={awaitingLab ? 'outline' : 'ghost'}
+                              size="sm"
+                              className="h-8 text-[12px]"
+                              onClick={() => openKitDetail(k.id)}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              Detay
+                            </Button>
+                          </div>
                         </td>
                       </tr>
-                    ))
+                      )
+                    })
                   )}
                 </tbody>
               </table>
@@ -740,12 +774,14 @@ export function ClientsListPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Ad *"
+                    filter="personName"
                     value={form.firstName}
                     onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
                     placeholder="Ad"
                   />
                   <Input
                     label="Soyad *"
+                    filter="personName"
                     value={form.lastName}
                     onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
                     placeholder="Soyad"
@@ -754,6 +790,7 @@ export function ClientsListPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Telefon *"
+                    filter="phone"
                     value={form.phone}
                     onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
                     placeholder="05XX XXX XX XX"
@@ -955,7 +992,7 @@ export function ClientsListPage() {
         <ModalContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <ModalHeader>
             <ModalTitle>Danışan Detayı</ModalTitle>
-            <ModalDescription className="text-surface-700 dark:text-surface-700 font-medium">
+            <ModalDescription className="text-text-secondary font-medium">
               {detail?.user ? `${detail.user.firstName ?? ''} ${detail.user.lastName ?? ''}`.trim() || '—' : 'Detay yükleniyor...'}
             </ModalDescription>
           </ModalHeader>
@@ -974,7 +1011,7 @@ export function ClientsListPage() {
                     className="shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-surface-900 dark:text-surface-900">
+                    <p className="font-semibold text-text-primary">
                       {`${detail.user?.firstName ?? ''} ${detail.user?.lastName ?? ''}`.trim() || '—'}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
@@ -991,12 +1028,12 @@ export function ClientsListPage() {
                   <p className="form-section-title mb-2">İletişim</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200">
-                      <p className="text-surface-500 dark:text-surface-500 text-xs font-medium mb-1">Telefon</p>
-                      <p className="text-sm font-medium text-surface-800 dark:text-surface-900">{detail.user?.phone ?? '—'}</p>
+                      <p className="text-text-secondary text-xs font-medium mb-1">Telefon</p>
+                      <p className="text-sm font-medium text-text-primary">{detail.user?.phone ?? '—'}</p>
                     </div>
                     <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200">
-                      <p className="text-surface-500 dark:text-surface-500 text-xs font-medium mb-1">E-posta</p>
-                      <p className="text-sm font-medium text-surface-800 dark:text-surface-900 truncate" title={detail.user?.email}>{detail.user?.email ?? '—'}</p>
+                      <p className="text-text-secondary text-xs font-medium mb-1">E-posta</p>
+                      <p className="text-sm font-medium text-text-primary truncate" title={detail.user?.email}>{detail.user?.email ?? '—'}</p>
                     </div>
                   </div>
                 </div>
@@ -1007,8 +1044,8 @@ export function ClientsListPage() {
                     <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200 flex items-center gap-3">
                       <Avatar name={`${detail.dietician.firstName ?? ''} ${detail.dietician.lastName ?? ''}`.trim()} size="sm" />
                       <div>
-                        <p className="text-sm font-medium text-surface-800 dark:text-surface-900">{`${detail.dietician.firstName ?? ''} ${detail.dietician.lastName ?? ''}`.trim() || '—'}</p>
-                        <p className="text-xs text-surface-500 dark:text-surface-500">{detail.dietician.email ?? ''}</p>
+                        <p className="text-sm font-medium text-text-primary">{`${detail.dietician.firstName ?? ''} ${detail.dietician.lastName ?? ''}`.trim() || '—'}</p>
+                        <p className="text-xs text-text-secondary">{detail.dietician.email ?? ''}</p>
                       </div>
                     </div>
                   </div>
@@ -1140,7 +1177,7 @@ export function ClientsListPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-surface-800">Kit</p>
+                <p className="text-sm font-medium text-text-primary">Kit</p>
                 <Select value={selectedKitId} onValueChange={setSelectedKitId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Kit seçin" />
@@ -1193,7 +1230,7 @@ export function ClientsListPage() {
         <ModalContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <ModalHeader>
             <ModalTitle>Kit Atama Detayı</ModalTitle>
-            <ModalDescription className="text-surface-700 dark:text-surface-700 font-medium">
+            <ModalDescription className="text-text-secondary font-medium">
               {kitDetail ? `${kitDetail.clientName ?? '—'} • ${kitDetail.kitName ?? kitDetail.kitBarcode ?? '—'}` : 'Detay yükleniyor...'}
             </ModalDescription>
           </ModalHeader>
@@ -1205,26 +1242,26 @@ export function ClientsListPage() {
               </div>
             ) : kitDetail ? (
               <div className="space-y-5">
+                {needsLabSend(kitDetail.status) ? (
+                  <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-900/20">
+                    <Send className="h-4 w-4 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Laboratuvara gönderilmedi</p>
+                      <p className="text-[12px] mt-0.5 text-amber-800/90 dark:text-amber-300/90">
+                        Numune alındıysa aşağıdaki butonla laboratuvar sürecini başlatın.
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-50 dark:bg-surface-200 border border-surface-200 dark:border-surface-600">
                   <div className="shrink-0">
-                    {kitDetail.status === 'completed' ? (
-                      <Badge variant="success" size="sm">Tamamlandı</Badge>
-                    ) : kitDetail.status === 'delivered' ? (
-                      <Badge variant="success" size="sm">Teslim</Badge>
-                    ) : kitDetail.status === 'cancelled' ? (
-                      <Badge variant="danger" size="sm">İptal Edildi</Badge>
-                    ) : kitDetail.status === 'in_laboratory' ? (
-                      <Badge variant="warning" size="sm">Laboratuvarda</Badge>
-                    ) : kitDetail.status === 'in_expert' ? (
-                      <Badge variant="info" size="sm">Uzmanda</Badge>
-                    ) : kitDetail.status === 'in_client' ? (
-                      <Badge variant="primary" size="sm">Danışanda</Badge>
-                    ) : (
-                      <Badge variant="outline" size="sm">Durum yok</Badge>
-                    )}
+                    <Badge variant={kitStatusBadge(kitDetail.status).variant} size="sm">
+                      {kitStatusBadge(kitDetail.status).label}
+                    </Badge>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-surface-900 dark:text-surface-900">
+                    <p className="font-semibold text-text-primary">
                       {kitDetail.kitName ?? kitDetail.kitBarcode ?? '—'}
                     </p>
                     <p className="text-xs text-surface-500 dark:text-surface-500 mt-1">
@@ -1255,7 +1292,7 @@ export function ClientsListPage() {
                             const isCurrent = !isCancelled && !isDone && resolvedIndex === idx
                             const dotClass = isCancelled ? 'bg-surface-200' : isCompleted || isCurrent ? 'bg-primary-600' : 'bg-surface-200'
                             const ringClass = isCurrent ? 'ring-2 ring-primary-100' : ''
-                            const textClass = isCancelled ? 'text-surface-400' : isCompleted || isCurrent ? 'text-surface-800' : 'text-surface-400'
+                            const textClass = isCancelled ? 'text-surface-400 dark:text-surface-500' : isCompleted || isCurrent ? 'text-text-primary' : 'text-surface-400 dark:text-surface-500'
                             const lineClass = isCancelled ? 'bg-surface-200' : isCompleted ? 'bg-primary-600' : 'bg-surface-200'
                             return (
                               <div key={s.key} className="flex-1 min-w-0">
@@ -1300,7 +1337,7 @@ export function ClientsListPage() {
                 {kitDetail.description?.trim() ? (
                   <div>
                     <p className="form-section-title mb-2">Açıklama</p>
-                    <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200 text-sm text-surface-800 dark:text-surface-200">{kitDetail.description}</div>
+                    <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200 text-sm text-text-primary">{kitDetail.description}</div>
                   </div>
                 ) : null}
 
@@ -1315,6 +1352,24 @@ export function ClientsListPage() {
 
           <ModalFooter>
             <Button variant="outline" onClick={() => setKitDetailOpen(false)}>Kapat</Button>
+            {kitDetail && needsLabSend(kitDetail.status) ? (
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setKitDetailOpen(false)
+                  openEdit({
+                    assignmentId: kitDetail.id!,
+                    clientName: kitDetail.clientName,
+                    kitName: kitDetail.kitName,
+                    kitBarcode: kitDetail.kitBarcode,
+                    status: kitDetail.status,
+                  })
+                }}
+              >
+                <Send className="h-4 w-4" />
+                Laboratuvara Gönder
+              </Button>
+            ) : null}
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -1326,67 +1381,46 @@ export function ClientsListPage() {
           if (!open) setEditTarget(null)
         }}
       >
-        <ModalContent className="max-w-2xl">
+        <ModalContent className="max-w-lg">
           <ModalHeader>
-            <ModalTitle>Laboratuvara Gönder</ModalTitle>
-            <ModalDescription className="text-surface-700 dark:text-surface-700 font-medium">
-              {editTarget?.clientName ? `${editTarget.clientName} için kit laboratuvara gönderilecek.` : 'Kit laboratuvara gönderilecek.'}
+            <ModalTitle className="flex items-center gap-2">
+              <FlaskConical className="h-5 w-5 text-primary-600" />
+              Laboratuvara Gönder
+            </ModalTitle>
+            <ModalDescription className="text-text-secondary">
+              {editTarget?.clientName
+                ? `${editTarget.clientName} için atanan kit laboratuvar sürecine alınacak.`
+                : 'Kit laboratuvar sürecine alınacak.'}
             </ModalDescription>
           </ModalHeader>
 
           <ModalBody className="space-y-4">
-            <div>
-              <p className="form-section-title mb-2">Kit</p>
-              <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200">
-                <p className="text-sm font-medium text-surface-800 dark:text-surface-900">
+            <div className="rounded-xl border border-surface-200 dark:border-surface-600 bg-surface-50/80 dark:bg-surface-200/40 p-4 space-y-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary mb-1">Kit</p>
+                <p className="text-sm font-semibold text-text-primary">
                   {editTarget?.kitName
                     ? `${editTarget.kitName} • ${editTarget.kitBarcode ?? ''}`.trim()
                     : editTarget?.kitBarcode ?? '—'}
                 </p>
               </div>
+              {editTarget?.clientName ? (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary mb-1">Danışan</p>
+                  <p className="text-sm text-text-primary">{editTarget.clientName}</p>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between gap-3 pt-1 border-t border-surface-200 dark:border-surface-600">
+                <span className="text-xs text-text-secondary">Mevcut durum</span>
+                <Badge variant={kitStatusBadge(editTarget?.status).variant} size="sm">
+                  {kitStatusBadge(editTarget?.status).label}
+                </Badge>
+              </div>
             </div>
 
-            <div>
-              <p className="form-section-title mb-2">İşlem</p>
-              <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200 flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-surface-800">Laboratuvara Gönder</p>
-                {editTarget?.status ? (
-                    <Badge
-                      variant={
-                        editTarget.status === 'completed' || editTarget.status === 'delivered'
-                          ? 'success'
-                          : editTarget.status === 'cancelled'
-                            ? 'danger'
-                            : editTarget.status === 'in_laboratory'
-                              ? 'warning'
-                              : editTarget.status === 'in_expert'
-                                ? 'info'
-                                : 'primary'
-                      }
-                      size="sm"
-                    >
-                      {editTarget.status === 'in_client'
-                        ? 'Danışanda'
-                        : editTarget.status === 'in_laboratory'
-                          ? 'Laboratuvarda'
-                          : editTarget.status === 'in_expert'
-                            ? 'Uzmanda'
-                            : editTarget.status === 'delivered'
-                              ? 'Teslim'
-                              : editTarget.status === 'cancelled'
-                                ? 'İptal'
-                                : editTarget.status === 'completed'
-                                  ? 'Tamamlandı'
-                                  : editTarget.status}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" size="sm">Durum yok</Badge>
-                  )}
-              </div>
-              <p className="text-xs text-surface-500 mt-2">
-                Bu işlem, durumu <span className="font-medium">danışanda</span> olan kiti laboratuvar sürecine taşır.
-              </p>
-            </div>
+            <p className="text-[13px] text-text-secondary leading-relaxed">
+              Numune alındıktan sonra onaylayın. Kit durumu <span className="font-medium text-text-primary">Laboratuvarda</span> olarak güncellenir ve analiz süreci başlar.
+            </p>
           </ModalBody>
 
           <ModalFooter>

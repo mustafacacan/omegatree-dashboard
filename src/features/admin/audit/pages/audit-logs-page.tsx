@@ -11,16 +11,14 @@ import { TablePagination } from '@/components/shared/table-pagination'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { getAuditLogById, getAuditLogsWithPagination, type AuditLogItem } from '@/services/audit-logs.service'
+import {
+  formatAuditAction,
+  formatAuditDataLines,
+  formatAuditDetails,
+  formatAuditEntity,
+  getAuditActionBadgeVariant,
+} from '@/lib/audit-log-labels'
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalTitle } from '@/components/ui'
-
-const actionColors: Record<string, 'success' | 'info' | 'warning' | 'primary'> = {
-  USER_APPROVED: 'success',
-  PRICE_UPDATED: 'warning',
-  KIT_RECEIVED: 'info',
-  SAMPLE_ACCEPTED: 'info',
-  REPORT_SUBMITTED: 'primary',
-  REPORT_APPROVED: 'success',
-}
 
 export function AuditLogsPage() {
   const [search, setSearch] = useState('')
@@ -58,58 +56,10 @@ export function AuditLogsPage() {
     if (log.userName) return log.userName
     const full = [log.user?.firstName, log.user?.lastName].filter(Boolean).join(' ').trim()
     if (full) return full
+    if (log.user?.phone) return log.user.phone
     if (log.user?.email) return log.user.email
-    if (log.userId != null) return String(log.userId)
+    if (log.userId != null) return `Kullanıcı No: ${log.userId}`
     return '—'
-  }
-
-  const formatEntity = (log: AuditLogItem): string => {
-    const entity = log.entity ?? '—'
-    const id = log.entityId != null ? String(log.entityId) : '—'
-    return `${entity}#${id}`
-  }
-
-  const formatDetails = (log: AuditLogItem): string => {
-    if (log.details && String(log.details).trim()) return String(log.details)
-    const data = log.data
-    if (!data || typeof data !== 'object') return '—'
-
-    const entries = Object.entries(data)
-    if (entries.length === 0) return '—'
-
-    const toText = (v: unknown): string => {
-      if (v === null) return 'null'
-      if (v === undefined) return '—'
-      if (typeof v === 'string') return v
-      if (typeof v === 'number' || typeof v === 'boolean') return String(v)
-      try {
-        return JSON.stringify(v)
-      } catch {
-        return String(v)
-      }
-    }
-
-    const parts = entries.slice(0, 3).map(([key, val]) => {
-      if (val && typeof val === 'object' && !Array.isArray(val) && ('oldValue' in (val as Record<string, unknown>) || 'newValue' in (val as Record<string, unknown>))) {
-        const vv = val as Record<string, unknown>
-        return `${key}: ${toText(vv.oldValue)} → ${toText(vv.newValue)}`
-      }
-      return `${key}: ${toText(val)}`
-    })
-
-    const suffix = entries.length > 3 ? ` (+${entries.length - 3})` : ''
-    return parts.join(' · ') + suffix
-  }
-
-  const formatJson = (value: unknown): string => {
-    if (value === null) return 'null'
-    if (value === undefined) return ''
-    if (typeof value === 'string') return value
-    try {
-      return JSON.stringify(value, null, 2)
-    } catch {
-      return String(value)
-    }
   }
 
   return (
@@ -120,7 +70,7 @@ export function AuditLogsPage() {
         <div className="p-5 pb-4 flex flex-wrap items-center justify-between gap-3 border-b border-surface-100">
           <h3 className="text-[15px] font-semibold text-surface-900 flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary-500" />
-            Aktivite Loglari
+            Aktivite Logları
           </h3>
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <Input
@@ -141,56 +91,52 @@ export function AuditLogsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Tarih</TableHead>
-                <TableHead>Kullanici</TableHead>
-                <TableHead>Islem</TableHead>
-                <TableHead>Varlik</TableHead>
+                <TableHead>Kullanıcı</TableHead>
+                <TableHead>İşlem</TableHead>
+                <TableHead>Varlık</TableHead>
                 <TableHead>Detay</TableHead>
                 <TableHead>IP</TableHead>
-                <TableHead className="text-right">Islemler</TableHead>
+                <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {auditQuery.isLoading && (
                 <TableRow>
                   <TableCell colSpan={7} className="py-10 text-center text-sm text-surface-500">
-                    Yukleniyor...
+                    Yükleniyor...
                   </TableCell>
                 </TableRow>
               )}
               {auditQuery.isError && (
                 <TableRow>
                   <TableCell colSpan={7} className="py-10 text-center text-sm text-surface-500">
-                    {getApiErrorMessage(auditQuery.error, { fallback: 'Loglar yuklenemedi' })}
+                    {getApiErrorMessage(auditQuery.error, { fallback: 'Loglar yüklenemedi' })}
                   </TableCell>
                 </TableRow>
               )}
               {!auditQuery.isLoading && !auditQuery.isError && paginatedLogs.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="py-10 text-center text-sm text-surface-500">
-                    Filtreye uygun log bulunamadi.
+                    Filtreye uygun log bulunamadı.
                   </TableCell>
                 </TableRow>
               )}
-              {!auditQuery.isLoading && !auditQuery.isError && paginatedLogs.map((log) => {
-                const action = log.action ?? '—'
-                return (
+              {!auditQuery.isLoading && !auditQuery.isError && paginatedLogs.map((log) => (
                 <TableRow key={log.id}>
                   <TableCell className="text-xs text-surface-500 whitespace-nowrap">
                     {formatDateTime(log.timestamp ?? log.createdAt ?? '')}
                   </TableCell>
                   <TableCell className="font-medium text-sm">{formatUser(log)}</TableCell>
                   <TableCell>
-                    <Badge variant={actionColors[action] || 'default'}>
-                      {action}
+                    <Badge variant={getAuditActionBadgeVariant(log.action)}>
+                      {formatAuditAction(log.action)}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <code className="text-xs bg-surface-50 px-2 py-0.5 rounded">
-                      {formatEntity(log)}
-                    </code>
+                  <TableCell className="text-sm text-surface-700">
+                    {formatAuditEntity(log.entity, log.entityId)}
                   </TableCell>
                   <TableCell className="text-sm text-surface-600 max-w-xs truncate">
-                    {formatDetails(log)}
+                    {formatAuditDetails(log.data, log.details)}
                   </TableCell>
                   <TableCell className="text-xs font-mono text-surface-400">{log.ipAddress ?? '—'}</TableCell>
                   <TableCell className="text-right">
@@ -200,12 +146,11 @@ export function AuditLogsPage() {
                       className="h-8 px-3 text-[12px]"
                       onClick={() => setDetailLogId(log.id)}
                     >
-                      Goruntule
+                      Görüntüle
                     </Button>
                   </TableCell>
                 </TableRow>
-                )
-              })}
+              ))}
             </TableBody>
           </Table>
           <TablePagination
@@ -225,21 +170,21 @@ export function AuditLogsPage() {
         <ModalContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <ModalHeader>
             <ModalTitle>
-              Log {detailLogId != null ? `#${detailLogId}` : ''}
+              İşlem Kaydı {detailLogId != null ? `(No: ${detailLogId})` : ''}
             </ModalTitle>
           </ModalHeader>
           <ModalBody className="flex-1 min-h-0 overflow-y-auto space-y-4">
             {detailQuery.isLoading && (
-              <div className="py-10 text-center text-sm text-surface-500">Yukleniyor...</div>
+              <div className="py-10 text-center text-sm text-surface-500">Yükleniyor...</div>
             )}
             {detailQuery.isError && (
               <div className="py-10 text-center text-sm text-surface-500">
-                {getApiErrorMessage(detailQuery.error, { fallback: 'Log detayi yuklenemedi' })}
+                {getApiErrorMessage(detailQuery.error, { fallback: 'Log detayı yüklenemedi' })}
               </div>
             )}
             {!detailQuery.isLoading && !detailQuery.isError && detailQuery.data && (() => {
               const log = detailQuery.data
-              const action = log.action ?? '—'
+              const detailLines = formatAuditDataLines(log.data)
               return (
                 <div className="space-y-4">
                   <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
@@ -249,19 +194,19 @@ export function AuditLogsPage() {
                         <div className="text-sm text-surface-800 mt-1">{formatDateTime(log.timestamp ?? log.createdAt ?? '')}</div>
                       </div>
                       <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Kullanici</div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Kullanıcı</div>
                         <div className="text-sm text-surface-800 mt-1">{formatUser(log)}</div>
                       </div>
                       <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Islem</div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">İşlem</div>
                         <div className="mt-1">
-                          <Badge variant={actionColors[action] || 'default'}>{action}</Badge>
+                          <Badge variant={getAuditActionBadgeVariant(log.action)}>{formatAuditAction(log.action)}</Badge>
                         </div>
                       </div>
                       <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Varlik</div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Varlık</div>
                         <div className="text-sm text-surface-800 mt-1">
-                          <code className="text-xs bg-white px-2 py-0.5 rounded border border-surface-200">{formatEntity(log)}</code>
+                          {formatAuditEntity(log.entity, log.entityId)}
                         </div>
                       </div>
                       <div>
@@ -269,18 +214,24 @@ export function AuditLogsPage() {
                         <div className="text-sm font-mono text-surface-700 mt-1">{log.ipAddress ?? '—'}</div>
                       </div>
                       <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">User Agent</div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Tarayıcı</div>
                         <div className="text-xs text-surface-700 mt-1 break-words whitespace-pre-wrap">{log.userAgent ?? '—'}</div>
                       </div>
                     </div>
                   </div>
 
                   <div className="rounded-xl border border-surface-200 bg-white p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Data</div>
-                    {log.data ? (
-                      <pre className="mt-2 text-xs leading-relaxed text-surface-800 whitespace-pre-wrap break-words">{formatJson(log.data)}</pre>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-surface-500">Değişiklikler</div>
+                    {detailLines.length > 0 ? (
+                      <ul className="mt-2 space-y-2">
+                        {detailLines.map((line) => (
+                          <li key={line} className="text-sm text-surface-800 leading-relaxed">
+                            {line}
+                          </li>
+                        ))}
+                      </ul>
                     ) : (
-                      <div className="mt-2 text-sm text-surface-500">—</div>
+                      <div className="mt-2 text-sm text-surface-500">Ek detay yok</div>
                     )}
                   </div>
                 </div>

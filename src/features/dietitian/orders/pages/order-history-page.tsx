@@ -314,8 +314,8 @@ export function DietitianOrderHistoryPage() {
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${
                           orderDetail.paymenStatus === 'paid'
-                            ? 'bg-primary-100 text-primary-700'
-                            : 'bg-amber-100 text-amber-800'
+                            ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
                         }`}
                       >
                         {orderDetail.paymenStatus === 'paid' ? 'Ödendi' : 'Ödeme bekleniyor'}
@@ -328,10 +328,10 @@ export function DietitianOrderHistoryPage() {
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${
                           orderDetail.status === 'completed'
-                            ? 'bg-primary-100 text-primary-700'
+                            ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'
                             : orderDetail.status === 'cancelled'
-                              ? 'bg-surface-200 text-surface-600'
-                              : 'bg-surface-200 text-surface-700'
+                              ? 'bg-surface-200 text-surface-600 dark:bg-surface-300/40 dark:text-surface-700'
+                              : 'bg-surface-200 text-surface-700 dark:bg-surface-300/40 dark:text-surface-700'
                         }`}
                       >
                         {orderDetail.status === 'completed'
@@ -344,9 +344,9 @@ export function DietitianOrderHistoryPage() {
                   </div>
                 </div>
                 {orderDetail.address && (
-                  <div className="rounded-xl border border-surface-200 bg-surface-50/50 p-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-surface-500 mb-1">Teslimat adresi</p>
-                    <p className="text-sm text-surface-800">
+                  <div className="rounded-xl border border-surface-200 dark:border-surface-600 bg-surface-50/50 dark:bg-surface-200/40 p-3">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-text-secondary mb-1">Teslimat adresi</p>
+                    <p className="text-sm text-text-primary">
                       {orderDetail.address.fullAddress ||
                         [orderDetail.address.city, orderDetail.address.district].filter(Boolean).join(', ') ||
                         '—'}

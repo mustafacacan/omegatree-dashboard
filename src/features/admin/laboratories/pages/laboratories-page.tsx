@@ -1230,12 +1230,14 @@ export function LaboratoriesPage() {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Ad"
+                filter="personName"
                 value={newLabForm.firstName}
                 onChange={(e) => setNewLabForm((s) => ({ ...s, firstName: e.target.value }))}
                 placeholder="Lab sorumlusu adı"
               />
               <Input
                 label="Soyad"
+                filter="personName"
                 value={newLabForm.lastName}
                 onChange={(e) => setNewLabForm((s) => ({ ...s, lastName: e.target.value }))}
                 placeholder="Lab sorumlusu soyadı"
@@ -1244,6 +1246,7 @@ export function LaboratoriesPage() {
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Telefon"
+                filter="phone"
                 value={newLabForm.phone}
                 onChange={(e) => setNewLabForm((s) => ({ ...s, phone: e.target.value }))}
                 placeholder="05XX XXX XX XX"
@@ -1417,12 +1420,14 @@ export function LaboratoriesPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Ad"
+                    filter="personName"
                     value={newLabForm.firstName}
                     onChange={(e) => setNewLabForm((s) => ({ ...s, firstName: e.target.value }))}
                     placeholder="Yetkili adı"
                   />
                   <Input
                     label="Soyad"
+                    filter="personName"
                     value={newLabForm.lastName}
                     onChange={(e) => setNewLabForm((s) => ({ ...s, lastName: e.target.value }))}
                     placeholder="Yetkili soyadı"
@@ -1431,6 +1436,7 @@ export function LaboratoriesPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Telefon *"
+                    filter="phone"
                     value={newLabForm.phone}
                     onChange={(e) => setNewLabForm((s) => ({ ...s, phone: e.target.value }))}
                     placeholder="05XX XXX XX XX"

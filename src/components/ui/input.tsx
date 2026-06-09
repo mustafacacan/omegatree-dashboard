@@ -1,5 +1,10 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
+import {
+  applyInputFilter,
+  getInputFilterDefaults,
+  type InputFilterKind,
+} from '@/lib/input-filters'
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
@@ -8,10 +13,52 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   leftIcon?: React.ReactNode
   rightIcon?: React.ReactNode
   wrapperClassName?: string
+  /** Yazarken değeri kısıtlar: personName, phone, nationalId, digits */
+  filter?: InputFilterKind
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, hint, leftIcon, rightIcon, wrapperClassName, type, ...props }, ref) => {
+  (
+    {
+      className,
+      label,
+      error,
+      hint,
+      leftIcon,
+      rightIcon,
+      wrapperClassName,
+      type,
+      filter,
+      inputMode,
+      maxLength,
+      autoComplete,
+      onChange,
+      ...props
+    },
+    ref,
+  ) => {
+    const filterDefaults = filter ? getInputFilterDefaults(filter) : {}
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!onChange) return
+      if (!filter) {
+        onChange(e)
+        return
+      }
+
+      const filtered = applyInputFilter(filter, e.target.value)
+      if (filtered === e.target.value) {
+        onChange(e)
+        return
+      }
+
+      onChange({
+        ...e,
+        target: { ...e.target, value: filtered },
+        currentTarget: { ...e.currentTarget, value: filtered },
+      })
+    }
+
     return (
       <div className={cn('space-y-1.5', wrapperClassName)}>
         {label && (
@@ -26,11 +73,16 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
           <input
-            type={type}
+            type={type ?? filterDefaults.type}
+            inputMode={inputMode ?? filterDefaults.inputMode}
+            maxLength={maxLength ?? filterDefaults.maxLength}
+            autoComplete={autoComplete ?? filterDefaults.autoComplete}
             ref={ref}
+            onChange={handleChange}
             className={cn(
               'flex h-10 w-full rounded-xl border bg-white px-3.5 py-2',
-              'text-sm text-surface-800 placeholder:text-surface-400',
+              'text-sm text-text-primary placeholder:text-surface-400 dark:placeholder:text-surface-500',
+              'dark:bg-panel dark:border-surface-300',
               'transition-[border-color,box-shadow,background-color] duration-250 ease-out',
               'border-surface-200',
               'hover:border-surface-300 hover:bg-surface-50/30',
@@ -39,7 +91,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               leftIcon && 'pl-10',
               rightIcon && 'pr-10',
               error && 'border-danger border-l-2 focus:ring-danger/15 focus:border-danger',
-              className
+              className,
             )}
             {...props}
           />
@@ -60,7 +112,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
       </div>
     )
-  }
+  },
 )
 Input.displayName = 'Input'
 

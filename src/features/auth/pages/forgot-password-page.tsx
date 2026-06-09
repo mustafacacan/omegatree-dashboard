@@ -89,9 +89,9 @@ export function ForgotPasswordPage() {
         <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-4">
           <Input
             label="Telefon"
-            type="tel"
             placeholder="05XX XXX XX XX"
             leftIcon={<Phone className="h-4 w-4" />}
+            filter="phone"
             error={phoneForm.formState.errors.phone?.message}
             {...phoneForm.register('phone')}
           />
@@ -105,9 +105,10 @@ export function ForgotPasswordPage() {
         <form onSubmit={resetForm.handleSubmit(onResetSubmit)} className="space-y-4">
           <Input
             label="SMS Kodu"
-            type="text"
             placeholder="Örn: 123456"
             leftIcon={<Mail className="h-4 w-4" />}
+            filter="digits"
+            maxLength={6}
             error={resetForm.formState.errors.code?.message}
             {...resetForm.register('code')}
           />

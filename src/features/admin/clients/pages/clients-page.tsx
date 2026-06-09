@@ -537,12 +537,14 @@ export function ClientsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Ad *"
+                    filter="personName"
                     value={form.firstName}
                     onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
                     placeholder="Ad"
                   />
                   <Input
                     label="Soyad *"
+                    filter="personName"
                     value={form.lastName}
                     onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
                     placeholder="Soyad"
@@ -551,6 +553,7 @@ export function ClientsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Telefon *"
+                    filter="phone"
                     value={form.phone}
                     onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
                     placeholder="05XX XXX XX XX"
@@ -751,12 +754,14 @@ export function ClientsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Ad"
+                    filter="personName"
                     value={editUserForm.firstName}
                     onChange={(e) => setEditUserForm((s) => ({ ...s, firstName: e.target.value }))}
                     placeholder={editDetailData?.user?.firstName ?? 'Ad'}
                   />
                   <Input
                     label="Soyad"
+                    filter="personName"
                     value={editUserForm.lastName}
                     onChange={(e) => setEditUserForm((s) => ({ ...s, lastName: e.target.value }))}
                     placeholder={editDetailData?.user?.lastName ?? 'Soyad'}
@@ -765,6 +770,7 @@ export function ClientsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Telefon"
+                    filter="phone"
                     value={editUserForm.phone}
                     onChange={(e) => setEditUserForm((s) => ({ ...s, phone: e.target.value }))}
                     placeholder={editDetailData?.user?.phone ?? '05XX XXX XX XX'}
@@ -948,7 +954,7 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
           className="shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-surface-900 dark:text-surface-900">
+          <p className="font-semibold text-text-primary">
             {`${detail.user?.firstName ?? ''} ${detail.user?.lastName ?? ''}`.trim() || '—'}
           </p>
           <div className="flex items-center gap-2 mt-2">
@@ -964,13 +970,13 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
       <div>
         <p className="form-section-title mb-2">İletişim</p>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50">
-            <p className="text-surface-500 dark:text-surface-500 text-xs font-medium mb-1">Telefon</p>
-            <p className="text-sm font-medium text-surface-800 dark:text-surface-900">{detail.user?.phone ?? '—'}</p>
+          <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200/40">
+            <p className="text-text-secondary text-xs font-medium mb-1">Telefon</p>
+            <p className="text-sm font-medium text-text-primary">{detail.user?.phone ?? '—'}</p>
           </div>
-          <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50">
-            <p className="text-surface-500 dark:text-surface-500 text-xs font-medium mb-1">E-posta</p>
-            <p className="text-sm font-medium text-surface-800 dark:text-surface-900 truncate" title={detail.user?.email}>{detail.user?.email ?? '—'}</p>
+          <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200/40">
+            <p className="text-text-secondary text-xs font-medium mb-1">E-posta</p>
+            <p className="text-sm font-medium text-text-primary truncate" title={detail.user?.email}>{detail.user?.email ?? '—'}</p>
           </div>
         </div>
       </div>
@@ -978,11 +984,11 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
       {detail.dietician && (
         <div>
           <p className="form-section-title mb-2">Diyetisyen</p>
-          <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50 flex items-center gap-3">
+          <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200/40 flex items-center gap-3">
             <Avatar name={`${detail.dietician.firstName ?? ''} ${detail.dietician.lastName ?? ''}`.trim()} size="sm" />
             <div>
-              <p className="text-sm font-medium text-surface-800 dark:text-surface-900">{`${detail.dietician.firstName ?? ''} ${detail.dietician.lastName ?? ''}`.trim() || '—'}</p>
-              <p className="text-xs text-surface-500 dark:text-surface-500">{detail.dietician.email ?? ''}</p>
+              <p className="text-sm font-medium text-text-primary">{`${detail.dietician.firstName ?? ''} ${detail.dietician.lastName ?? ''}`.trim() || '—'}</p>
+              <p className="text-xs text-text-secondary">{detail.dietician.email ?? ''}</p>
             </div>
           </div>
         </div>
@@ -991,7 +997,7 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
       {detail.anamnezForm && (
         <div>
           <p className="form-section-title mb-2">Anamnez</p>
-          <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50 space-y-2 text-sm">
+          <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200/40 space-y-2 text-sm text-text-primary">
             <div className="grid grid-cols-2 gap-2">
               <div><span className="text-surface-500">Kronik:</span> {detail.anamnezForm.chronicIllness ?? '—'}</div>
               <div><span className="text-surface-500">İlaç:</span> {detail.anamnezForm.medicationUsed ?? '—'}</div>
@@ -1010,7 +1016,7 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
       {detail.foodConsumptionRecord && (
         <div>
           <p className="form-section-title mb-2">Beslenme Kaydı</p>
-          <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50 space-y-2 text-sm">
+          <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200/40 space-y-2 text-sm text-text-primary">
             <div className="grid grid-cols-2 gap-2">
               <div><span className="text-surface-500">Öğün/gün:</span> {detail.foodConsumptionRecord.mealsPerDay ?? '—'}</div>
               <div><span className="text-surface-500">Fastfood öğün:</span> {detail.foodConsumptionRecord.fastFoodMealsPerDay ?? '—'}</div>
@@ -1041,7 +1047,7 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
         return (
           <div>
             <p className="form-section-title mb-2">Uyku Kaydı</p>
-            <div className="rounded-lg border border-surface-200 p-3 bg-surface-50/50 space-y-2 text-sm">
+            <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200/40 space-y-2 text-sm text-text-primary">
               <div className="grid grid-cols-2 gap-2">
                 <div><span className="text-surface-500">Tarih:</span> {latest.recordDate ? formatDate(latest.recordDate) : '—'}</div>
                 <div><span className="text-surface-500">Uyku (saat):</span> {latest.sleepHours ?? '—'}</div>
