@@ -472,7 +472,8 @@ export async function createLaboratory(payload: {
 
 /**
  * PUT /laboratories/{id}
- * Body: { cargofirm?, cargoNumber? }
+ * Body: { cargofirm?, cargoNumber?, address? }
+ * address yoksa oluşturulur; varsa güncellenir (rol değişimi sonrası adres ekleme).
  */
 export async function updateLaboratory(
   id: string,

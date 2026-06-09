@@ -39,7 +39,6 @@ import {
 import { getDieticians } from '@/services/kits.service'
 import { getProvinces, getDistricts } from '@/services/turkey-addresses.service'
 import { updateUser } from '@/services/users.service'
-import { updateAddress } from '@/services/addresses.service'
 import { UserRole } from '@/utils/constants'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
@@ -355,28 +354,26 @@ export function LaboratoriesPage() {
         })
       }
 
-      if (selectedLab.addressId != null) {
-        const titleRaw = newLabForm.addressTitle || 'work'
-        const title =
-          titleRaw === 'home' || titleRaw === 'work' || titleRaw === 'other' ? titleRaw : 'work'
-        await updateAddress(selectedLab.addressId, {
-          title,
-          country: countryVal,
-          city: cityVal,
-          district: districtVal,
-          street: streetVal,
-          neighborhood: neighborhoodVal,
-          no: noVal || undefined,
-          fullAddress: autoFull || undefined,
-          postalCode: newLabForm.postalCode.trim() || '00000',
-        })
-      }
+      const titleRaw = newLabForm.addressTitle || 'work'
+      const title =
+        titleRaw === 'home' || titleRaw === 'work' || titleRaw === 'other' ? titleRaw : 'work'
 
       /** Kargo: liste `id` yanlış olabildiği için gerçek PK sunucudan çözülür (userId öncelikli). */
       const laboratoryPk = await ensureLaboratoryPrimaryKey(selectedLab)
       await updateLaboratory(laboratoryPk, {
         cargofirm: cargoFirm,
         cargoNumber: cargoNum,
+        address: {
+          title,
+          country: countryVal,
+          city: cityVal,
+          district: districtVal,
+          street: streetVal,
+          neighborhood: neighborhoodVal,
+          no: noVal || '-',
+          fullAddress: autoFull || undefined,
+          postalCode: newLabForm.postalCode.trim() || '00000',
+        },
       })
     },
     onSuccess: () => {
@@ -1572,7 +1569,7 @@ export function LaboratoriesPage() {
                 )}
                 {selectedLab?.addressId == null && (
                   <p className="text-[11px] text-amber-700 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg px-3 py-2">
-                    Adres kaydı bulunamadı; adres güncellemesi atlanacak.
+                    Bu laboratuvarın henüz kayıtlı adresi yok (ör. başka rolden geçiş). Kaydettiğinizde adres otomatik oluşturulur.
                   </p>
                 )}
           </ModalBody>
