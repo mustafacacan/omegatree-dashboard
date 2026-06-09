@@ -177,7 +177,14 @@ export async function getDieticiansPaginated(
   })
 
   const { rows, totalItems: rawTotal } = parseDieticiansListPayload(data)
-  const items = rows.map(mapApiRowToAdmin).filter((x): x is AdminDietitianRow => x != null)
+  const mapped = rows.map(mapApiRowToAdmin).filter((x): x is AdminDietitianRow => x != null)
+
+  const seenUserIds = new Set<string>()
+  const items = mapped.filter((row) => {
+    if (seenUserIds.has(row.id)) return false
+    seenUserIds.add(row.id)
+    return true
+  })
 
   const totalItems =
     Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length

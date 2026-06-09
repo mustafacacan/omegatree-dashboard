@@ -567,7 +567,7 @@ function DietitiansTable({
             ) : (
               dietitians.map((u) => (
                 <tr
-                  key={u.id}
+                  key={`${u.dieticianId}-${u.id}`}
                   className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
                 >
                   <td className="px-5 py-3.5">
