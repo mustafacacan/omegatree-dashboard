@@ -10,6 +10,7 @@ type ApiCreateClientLoose = Omit<ApiCreateClient, 'dieticianId'> & { dieticianId
 
 export interface AppClient {
   id: number
+  userId?: number
   firstName: string
   lastName: string
   phone: string
@@ -79,8 +80,11 @@ function mapApiClientToApp(item: ApiClientResponse): AppClient {
     toNumber(dieticianFromRelation?.id) ??
     toNumber(dietician?.id)
 
+  const userId = toNumber(user?.id) ?? toNumber(rec.userId)
+
   return {
     id,
+    userId,
     firstName: (user?.firstName as string | undefined) ?? '',
     lastName: (user?.lastName as string | undefined) ?? '',
     phone: (user?.phone as string | undefined) ?? '',
@@ -353,13 +357,24 @@ export async function getClients(params?: GetClientsParams): Promise<GetClientsR
   const top = data && typeof data === 'object' ? (data as Record<string, unknown>) : null
   const payload = top && 'data' in top ? top.data : data
 
+  const dedupeClients = (rows: AppClient[]) => {
+    const seenUserIds = new Set<number>()
+    return rows.filter((row) => {
+      const key = row.userId ?? row.id
+      if (seenUserIds.has(key)) return false
+      seenUserIds.add(key)
+      return true
+    })
+  }
+
   // Common pagination shape: { totalItems, totalPages, currentPage, items: [...] }
   if (payload && typeof payload === 'object' && 'items' in (payload as Record<string, unknown>)) {
     const obj = payload as Record<string, unknown>
     const list = Array.isArray(obj.items) ? (obj.items as ApiClientResponse[]) : []
+    const clients = dedupeClients(list.map(mapApiClientToApp))
     return {
-      clients: list.map(mapApiClientToApp),
-      total: list.length,
+      clients,
+      total: clients.length,
       totalItems: asNumber(obj.totalItems),
       totalPages: asNumber(obj.totalPages),
       currentPage: asNumber(obj.currentPage),
@@ -368,11 +383,13 @@ export async function getClients(params?: GetClientsParams): Promise<GetClientsR
 
   if (payload && typeof payload === 'object' && 'clients' in (payload as Record<string, unknown>)) {
     const list = ((payload as Record<string, unknown>).clients as ApiClientResponse[]) ?? []
-    return { clients: list.map(mapApiClientToApp), total: list.length }
+    const clients = dedupeClients(list.map(mapApiClientToApp))
+    return { clients, total: clients.length }
   }
 
   const list: ApiClientResponse[] = Array.isArray(payload) ? payload : []
-  return { clients: list.map(mapApiClientToApp), total: list.length }
+  const clients = dedupeClients(list.map(mapApiClientToApp))
+  return { clients, total: clients.length }
 }
 
 /** GET /clients/{clientId} */

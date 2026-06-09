@@ -111,7 +111,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
       ]
     case UserRole.DANISAN:
       return [
-        { title: '', items: [{ label: 'Panelim', href: ROUTES.DANISAN, icon: LayoutDashboard }] },
+        { title: '', items: [{ label: 'Ana Sayfa', href: ROUTES.DANISAN, icon: LayoutDashboard }] },
         { title: 'Takip', items: [
           { label: 'Kit Durumum', href: ROUTES.DANISAN_KIT, icon: Package },
           { label: 'Sonuclar', href: ROUTES.DANISAN_RAPORLAR, icon: FileCheck },

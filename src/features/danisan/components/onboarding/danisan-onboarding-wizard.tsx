@@ -53,7 +53,7 @@ export function DanisanOnboardingWizard({ missingSteps }: { missingSteps: Danisa
         </p>
       </div>
 
-      <Card className="border-surface-200">
+      <Card className="border-surface-200" interactive={false}>
         <CardContent className="p-6 space-y-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>

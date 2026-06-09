@@ -68,7 +68,7 @@ export function DanisanPrereqGate() {
   if (hasError) {
     const err = anamnezQuery.error ?? foodQuery.error ?? sleepQuery.error
     return (
-      <Card className="border-surface-200">
+      <Card className="border-surface-200" interactive={false}>
         <CardContent className="p-6">
           <p className="text-sm font-medium text-surface-700">Gerekli bilgiler kontrol edilemedi</p>
           <p className="text-xs text-surface-500 mt-1">{getApiErrorMessage(err, { fallback: 'Lütfen tekrar deneyin.' })}</p>

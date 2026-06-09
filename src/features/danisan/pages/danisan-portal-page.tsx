@@ -207,14 +207,12 @@ export function DanisanPortalPage() {
         <h1 className="text-[22px] font-bold text-surface-900">
           {greeting}, {user?.firstName ?? 'Danisan'}! <span className="inline-block">&#x1F44B;</span>
         </h1>
-        <p className="text-[13px] mt-0.5 text-surface-500">
-          Omega-3 Index kit ve raporlariniza buradan ulasabilirsiniz
-        </p>
+       
       </motion.div>
 
       {/* ═══ PROGRESS SUMMARY ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
-        <Card>
+        <Card interactive={false}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -312,7 +310,7 @@ export function DanisanPortalPage() {
 
         {/* Kit Timeline Detail */}
         <motion.div className="col-span-12 lg:col-span-5" {...fadeUp} transition={{ duration: 0.35, delay: 0.1 }}>
-          <Card className="h-full">
+          <Card className="h-full" interactive={false}>
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[15px] font-semibold text-surface-900">Detayli Surec</h3>
@@ -334,7 +332,7 @@ export function DanisanPortalPage() {
               className="cursor-pointer"
               onClick={() => navigate(ROUTES.DANISAN_KIT)}
             >
-              <Card className="h-full">
+              <Card className="h-full" interactive={false}>
                 <CardContent className="p-5">
                   <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3 bg-warning/10">
                     <FlaskConical className="h-5 w-5 text-warning" />
@@ -353,7 +351,7 @@ export function DanisanPortalPage() {
               className="cursor-pointer"
               onClick={() => navigate(ROUTES.DANISAN_RAPORLAR)}
             >
-              <Card className="h-full">
+              <Card className="h-full" interactive={false}>
                 <CardContent className="p-5">
                   <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3 bg-primary-50">
                     <FileCheck className="h-5 w-5 text-primary-600" />
@@ -373,7 +371,7 @@ export function DanisanPortalPage() {
             </div>
 
             {/* Dietitian Info */}
-            <Card className="h-full">
+            <Card className="h-full" interactive={false}>
               <CardContent className="p-5">
                 <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3 bg-success/10">
                   <Calendar className="h-5 w-5 text-success" />
@@ -385,7 +383,7 @@ export function DanisanPortalPage() {
             </Card>
 
             {/* Kit Info */}
-            <Card className="h-full">
+            <Card className="h-full" interactive={false}>
               <CardContent className="p-5">
                 <div className="h-11 w-11 rounded-xl flex items-center justify-center mb-3 bg-surface-100">
                   <Package className="h-5 w-5 text-surface-600" />
@@ -401,7 +399,7 @@ export function DanisanPortalPage() {
 
       {/* ═══ INFO CARD ═══ */}
       <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.2 }}>
-        <Card>
+        <Card interactive={false}>
           <CardContent className="p-5">
             <div className="flex items-start gap-4">
               <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 bg-success/10">

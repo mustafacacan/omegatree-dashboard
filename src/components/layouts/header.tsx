@@ -68,6 +68,8 @@ function getPageTitle(pathname: string): string {
   if (pathname === ROUTES.DANISAN) return 'Danisan Paneli'
   if (pathname.startsWith(ROUTES.DANISAN_KIT)) return 'Kit Durumum'
   if (pathname.startsWith(ROUTES.DANISAN_RAPORLAR)) return 'Raporlarim'
+  if (pathname.startsWith(ROUTES.DANISAN_BILGILERIM)) return 'Bilgilerim'
+  if (pathname.startsWith(ROUTES.DANISAN_AYARLAR)) return 'Ayarlar'
   if (pathname.startsWith(ROUTES.DANISAN_BILDIRIMLER)) return 'Bildirimler'
 
   return 'Panel'
