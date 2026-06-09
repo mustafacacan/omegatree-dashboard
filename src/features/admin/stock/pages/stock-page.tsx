@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getStocks, type Stock, type StockStatus } from '@/services/stocks.service'
-import { getDieticians, assignKitsToDietician, type DieticianOption } from '@/services/kits.service'
+import { getDieticians, assignKitsToDietician, getDieticianFilterUserId, type DieticianOption } from '@/services/kits.service'
 
 const STOCK_STATUS_LABELS: Record<StockStatus, string> = {
   available: 'Stokta',
@@ -217,7 +217,7 @@ export function StockPage() {
               <h3 className="text-[15px] font-semibold text-surface-900">Kit Envanter</h3>
               <p className="text-[12px] mt-0.5 text-surface-500">
                 {filterUserId != null
-                  ? `${dietitiansForFilter.find((d) => (d.userId ?? d.id) === filterUserId)?.label ?? 'Diyetisyen'} – bu diyetisyene zimmetli kitler (${totalItems} kit)`
+                  ? `${dietitiansForFilter.find((d) => getDieticianFilterUserId(d) === filterUserId)?.label ?? 'Diyetisyen'} – bu diyetisyene zimmetli kitler (${totalItems} kit)`
                   : `Sizin stokunuzdaki tüm kitler (${totalItems} kit)`}
               </p>
             </div>
@@ -242,9 +242,9 @@ export function StockPage() {
                 <SelectContent>
                   <SelectItem value="all">Benim stokum (tüm kitler)</SelectItem>
                   {filteredDietitiansForFilter.map((d) => {
-                    const valueId = d.userId ?? d.id
+                    const filterValue = String(getDieticianFilterUserId(d))
                     return (
-                      <SelectItem key={d.id} value={String(valueId)}>
+                      <SelectItem key={filterValue} value={filterValue}>
                         {d.label}
                       </SelectItem>
                     )

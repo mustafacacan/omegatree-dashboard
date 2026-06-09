@@ -132,6 +132,36 @@ function filterDieticianOptions(options: DieticianOption[], onlyVerified: boolea
   return withId.filter((d) => d.isVerified === true)
 }
 
+/** Aynı kullanıcı (userId) için birden fazla Dieticians satırı varsa tek kayıt bırakır. */
+function dedupeDieticianOptions(options: DieticianOption[]): DieticianOption[] {
+  const byUserKey = new Map<string, DieticianOption>()
+
+  for (const opt of options) {
+    const userKey =
+      opt.userId != null && opt.userId > 0 ? `u:${opt.userId}` : `d:${opt.id}`
+    const existing = byUserKey.get(userKey)
+    if (!existing || opt.id < existing.id) {
+      byUserKey.set(userKey, opt)
+    }
+  }
+
+  return Array.from(byUserKey.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, 'tr')
+  )
+}
+
+function finalizeDieticianOptions(
+  options: DieticianOption[],
+  onlyVerified: boolean,
+): DieticianOption[] {
+  return dedupeDieticianOptions(filterDieticianOptions(options, onlyVerified))
+}
+
+/** Stok filtresi / select value — kullanıcı (user) id */
+export function getDieticianFilterUserId(option: DieticianOption): number {
+  return option.userId != null && option.userId > 0 ? option.userId : option.id
+}
+
 /** GET /dieticians — diyetisyen listesi (assign dropdown için) */
 export async function getDieticians(params?: GetDieticiansParams): Promise<DieticianOption[]> {
   const onlyVerified = params?.onlyVerified === true
@@ -167,7 +197,7 @@ export async function getDieticians(params?: GetDieticiansParams): Promise<Dieti
   // 1) OpenAPI: data = DieticianWithClientsResponse[] — dietician.id = user id
   if (Array.isArray(raw)) {
     const list = raw as DieticianItem[]
-    return filterDieticianOptions(
+    return finalizeDieticianOptions(
       list.map((d) => {
         const firstName = d.dietician?.firstName
         const lastName = d.dietician?.lastName
@@ -189,14 +219,14 @@ export async function getDieticians(params?: GetDieticiansParams): Promise<Dieti
           isVerified: verified,
         }
       }),
-      onlyVerified
+      onlyVerified,
     )
   }
 
   // 2) Backend: data = { items: [{ id, user: { id, firstName, lastName, email } }] }
   if (raw && typeof raw === 'object' && 'items' in raw) {
     const items = (raw as { items?: NonNullable<DieticiansPaginatedResponse['data']>['items'] }).items ?? []
-    return filterDieticianOptions(
+    return finalizeDieticianOptions(
       (items ?? []).map((d) => {
         const firstName = d?.user?.firstName
         const lastName = d?.user?.lastName
@@ -214,7 +244,7 @@ export async function getDieticians(params?: GetDieticiansParams): Promise<Dieti
           isVerified: readUserVerifiedTrue(d?.user as Record<string, unknown> | undefined),
         }
       }),
-      onlyVerified
+      onlyVerified,
     )
   }
 
@@ -223,7 +253,7 @@ export async function getDieticians(params?: GetDieticiansParams): Promise<Dieti
     ? (raw as { items?: DieticianItem[] }).items
     : []) ?? [])
 
-  return filterDieticianOptions(
+  return finalizeDieticianOptions(
     (list ?? []).map((d) => {
       const firstName = d.dietician?.firstName
       const lastName = d.dietician?.lastName
@@ -245,6 +275,6 @@ export async function getDieticians(params?: GetDieticiansParams): Promise<Dieti
         isVerified: verified,
       }
     }),
-    onlyVerified
+    onlyVerified,
   )
 }
