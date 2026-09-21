@@ -6,7 +6,6 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
-  Checkbox,
   Tabs, TabsList, TabsTrigger, TabsContent,
 } from '@/components/ui'
 import { formatDate, formatDateTime } from '@/lib/utils'
@@ -26,6 +25,37 @@ import { UserRole } from '@/utils/constants'
 import { getDieticians, type DieticianOption } from '@/services/kits.service'
 import { addDieticianToClient, updateDieticianClient } from '@/services/dietician-clients.service'
 import { updateUser } from '@/services/users.service'
+import {
+  PhoneInput,
+  splitPhoneForInput,
+  validateNationalPhone,
+} from '@/components/shared/phone-input'
+import { anamnezDisplayFields, foodDisplayFields } from '@/features/shared/client-health-display'
+import { BeslenmeAnamneziFormFields } from '@/features/shared/beslenme-anamnezi-form-fields'
+import {
+  BESLENME_REQUIRED_ERROR,
+  buildBeslenmeAnamneziPayload,
+  EMPTY_BESLENME_ANAMNEZI_FORM,
+} from '@/features/shared/beslenme-anamnezi-form.utils'
+import { FREQUENCY_OPTIONS, type FrequencyValue } from '@/lib/frequency-labels'
+import { IpaqFormFields } from '@/features/shared/ipaq-form-fields'
+import { FoodFrequencyFormFields } from '@/features/shared/food-frequency-form-fields'
+import {
+  buildIpaqPayload,
+  EMPTY_IPAQ_FORM,
+  ipaqFormHasInput,
+  validateIpaqForm,
+  type IpaqFormState,
+} from '@/features/shared/ipaq-form.utils'
+import {
+  buildEmptyFfqItems,
+  countFilledFfqItems,
+  ffqFormHasInput,
+  validateFfqForm,
+  type FoodFrequencyFormState,
+} from '@/features/shared/food-frequency-form.utils'
+import { upsertIpaqRecord } from '@/services/ipaq.service'
+import { upsertFoodFrequencyRecord } from '@/services/food-frequency.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -40,7 +70,11 @@ export function ClientsPage() {
   const [newOpen, setNewOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
   const [viewClientId, setViewClientId] = useState<number | null>(null)
-  const [tab, setTab] = useState<'personal' | 'anamnez' | 'nutrition'>('personal')
+  const [tab, setTab] = useState<'personal' | 'anamnez' | 'nutrition' | 'ipaq' | 'ffq'>('personal')
+  const [ipaqForm, setIpaqForm] = useState<IpaqFormState>(EMPTY_IPAQ_FORM)
+  const [ffqItems, setFfqItems] = useState<FoodFrequencyFormState>(() => buildEmptyFfqItems())
+  const [ffqNotes, setFfqNotes] = useState('')
+  const ffqFilledCount = useMemo(() => countFilledFfqItems(ffqItems), [ffqItems])
 
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignClient, setAssignClient] = useState<AppClient | null>(null)
@@ -55,44 +89,33 @@ export function ClientsPage() {
     firstName: '',
     lastName: '',
     phone: '',
+    countryDialCode: '90',
     email: '',
   })
-
-  type AlcoholFrequency = 'never' | 'rarely' | 'sometimes' | 'often' | 'daily'
-  type SmokingFrequency = AlcoholFrequency
-  type BowelIssue = 'none' | 'diarrhea' | 'constipation' | 'both'
 
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
+    countryDialCode: '90',
     gender: 'male' as 'male' | 'female',
     dieticianId: '',
+    age: '',
     chronicIllness: '',
+    familyChronicIllness: '',
     medicationUsed: '',
-    foodAllergy: '',
     bodyHeight: '',
     bodyWeight: '',
     waistCircumference: '',
     hipCircumference: '',
+    neckCircumference: '',
+    smokingFrequency: '' as '' | FrequencyValue,
+    alcoholFrequency: '' as '' | FrequencyValue,
+    alcoholType: '',
     profession: '',
     education: '',
-
-    // Nutrition form (foodConsumptionRecord) — optional: sent only if any field is filled.
-    mealsPerDay: '',
-    fastFoodMealsPerDay: '',
-    dailyWaterLiters: '',
-    defecationFrequency: '',
-    alcoholFrequency: '' as '' | AlcoholFrequency,
-    smokingFrequency: '' as '' | SmokingFrequency,
-    avoidedFoods: '',
-    discomfortFoods: '',
-    bowelIssue: '' as '' | BowelIssue,
-    gastrointestinalDisease: '',
-    nightEatingHabit: false,
-    eatingDisorderBehaviors: false,
-    nutritionNotes: '',
+    ...EMPTY_BESLENME_ANAMNEZI_FORM,
   })
 
   const DIETICIAN_NONE_VALUE = '__none__'
@@ -194,7 +217,18 @@ export function ClientsPage() {
       if (firstName && firstName !== (detail.user.firstName ?? '')) patch.firstName = firstName
       if (lastName && lastName !== (detail.user.lastName ?? '')) patch.lastName = lastName
       if (email && email !== (detail.user.email ?? '')) patch.email = email
-      if (phoneDigits && phoneDigits !== (detail.user.phone ?? '')) patch.phone = phoneDigits
+      if (phoneDigits) {
+        const phoneErr = validateNationalPhone(editUserForm.phone, editUserForm.countryDialCode)
+        if (phoneErr) throw new Error(phoneErr)
+        const storedSplit = splitPhoneForInput(detail.user.phone)
+        if (
+          phoneDigits !== storedSplit.national ||
+          (editUserForm.countryDialCode || '90') !== storedSplit.dial
+        ) {
+          patch.phone = phoneDigits
+          patch.countryDialCode = editUserForm.countryDialCode || '90'
+        }
+      }
 
       if (Object.keys(patch).length > 0) {
         await updateUser(String(detail.user.id), patch)
@@ -214,7 +248,7 @@ export function ClientsPage() {
       setEditOpen(false)
       setEditClientId(null)
       setEditDieticianId('')
-      setEditUserForm({ firstName: '', lastName: '', phone: '', email: '' })
+      setEditUserForm({ firstName: '', lastName: '', phone: '', countryDialCode: '90', email: '' })
       await queryClient.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY })
     },
     onError: (err: unknown) => {
@@ -228,32 +262,28 @@ export function ClientsPage() {
       lastName: '',
       email: '',
       phone: '',
+      countryDialCode: '90',
       gender: 'male',
       dieticianId: '',
+      age: '',
       chronicIllness: '',
+      familyChronicIllness: '',
       medicationUsed: '',
-      foodAllergy: '',
       bodyHeight: '',
       bodyWeight: '',
       waistCircumference: '',
       hipCircumference: '',
+      neckCircumference: '',
+      smokingFrequency: '',
+      alcoholFrequency: '',
+      alcoholType: '',
       profession: '',
       education: '',
-
-      mealsPerDay: '',
-      fastFoodMealsPerDay: '',
-      dailyWaterLiters: '',
-      defecationFrequency: '',
-      alcoholFrequency: '',
-      smokingFrequency: '',
-      avoidedFoods: '',
-      discomfortFoods: '',
-      bowelIssue: '',
-      gastrointestinalDisease: '',
-      nightEatingHabit: false,
-      eatingDisorderBehaviors: false,
-      nutritionNotes: '',
+      ...EMPTY_BESLENME_ANAMNEZI_FORM,
     })
+    setIpaqForm(EMPTY_IPAQ_FORM)
+    setFfqItems(buildEmptyFfqItems())
+    setFfqNotes('')
     setTab('personal')
   }
 
@@ -285,10 +315,12 @@ export function ClientsPage() {
 
   const openEdit = (c: AppClient) => {
     setEditClientId(c.id)
+    const split = splitPhoneForInput(c.phone)
     setEditUserForm({
       firstName: c.firstName ?? '',
       lastName: c.lastName ?? '',
-      phone: c.phone ?? '',
+      phone: split.national,
+      countryDialCode: split.dial,
       email: c.email ?? '',
     })
     setEditDieticianId(c.dieticianId ? String(c.dieticianId) : DIETICIAN_NONE_VALUE)
@@ -306,10 +338,12 @@ export function ClientsPage() {
         prev.phone === '' &&
         prev.email === ''
       if (!untouched) return prev
+      const split = splitPhoneForInput(user.phone)
       return {
         firstName: user.firstName ?? '',
         lastName: user.lastName ?? '',
-        phone: user.phone ?? '',
+        phone: split.national,
+        countryDialCode: split.dial,
         email: user.email ?? '',
       }
     })
@@ -322,6 +356,11 @@ export function ClientsPage() {
   const submitNew = () => {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim()) {
       toast.error('Ad, soyad ve telefon zorunludur')
+      return
+    }
+    const phoneErr = validateNationalPhone(form.phone, form.countryDialCode)
+    if (phoneErr) {
+      toast.error(phoneErr)
       return
     }
     const dieticianId = (() => {
@@ -342,110 +381,101 @@ export function ClientsPage() {
       const w = form.bodyWeight.trim() ? Number(form.bodyWeight) : undefined
       const waist = form.waistCircumference.trim() ? Number(form.waistCircumference) : undefined
       const hip = form.hipCircumference.trim() ? Number(form.hipCircumference) : undefined
+      const neck = form.neckCircumference.trim() ? Number(form.neckCircumference) : undefined
+      const age = form.age.trim() ? Number(form.age) : undefined
       const partial: {
+        age?: number
         chronicIllness?: string
+        familyChronicIllness?: string
         medicationUsed?: string
-        foodAllergy?: string
         bodyHeight?: number
         bodyWeight?: number
         waistCircumference?: number
         hipCircumference?: number
+        neckCircumference?: number
+        smokingFrequency?: string
+        alcoholFrequency?: string
+        alcoholType?: string
         profession?: string
         education?: string
       } = {}
       if (form.chronicIllness.trim()) partial.chronicIllness = form.chronicIllness.trim()
+      if (form.familyChronicIllness.trim()) partial.familyChronicIllness = form.familyChronicIllness.trim()
       if (form.medicationUsed.trim()) partial.medicationUsed = form.medicationUsed.trim()
-      if (form.foodAllergy.trim()) partial.foodAllergy = form.foodAllergy.trim()
       if (form.profession.trim()) partial.profession = form.profession.trim()
       if (form.education.trim()) partial.education = form.education.trim()
+      if (age !== undefined && !Number.isNaN(age)) partial.age = age
       if (h !== undefined && !Number.isNaN(h)) partial.bodyHeight = h
       if (w !== undefined && !Number.isNaN(w)) partial.bodyWeight = w
       if (waist !== undefined && !Number.isNaN(waist)) partial.waistCircumference = waist
       if (hip !== undefined && !Number.isNaN(hip)) partial.hipCircumference = hip
+      if (neck !== undefined && !Number.isNaN(neck)) partial.neckCircumference = neck
+      if (form.smokingFrequency) partial.smokingFrequency = form.smokingFrequency
+      if (form.alcoholFrequency) partial.alcoholFrequency = form.alcoholFrequency
+      if (form.alcoholType.trim()) partial.alcoholType = form.alcoholType.trim()
       return Object.keys(partial).length ? partial : undefined
     })()
 
-    const foodConsumptionRecord = (() => {
-      const mealsPerDay = form.mealsPerDay.trim() ? Number(form.mealsPerDay) : NaN
-      const dailyWaterLiters = form.dailyWaterLiters.trim() ? Number(form.dailyWaterLiters) : NaN
-      const fastFoodMealsPerDay = form.fastFoodMealsPerDay.trim() ? Number(form.fastFoodMealsPerDay) : NaN
-      const defecationFrequency = form.defecationFrequency.trim()
+    const foodConsumptionRecord = buildBeslenmeAnamneziPayload(form)
+    if (foodConsumptionRecord === 'error') {
+      toast.error(BESLENME_REQUIRED_ERROR)
+      return
+    }
 
-      const alcoholFrequency = form.alcoholFrequency
-      const smokingFrequency = form.smokingFrequency
-
-      const avoidedFoods = form.avoidedFoods.trim() || 'none'
-      const discomfortFoods = form.discomfortFoods.trim() || 'none'
-      const bowelIssue = form.bowelIssue || 'none'
-      const gastrointestinalDisease = form.gastrointestinalDisease.trim() || 'none'
-
-      const hasAnyInput =
-        form.mealsPerDay.trim() !== '' ||
-        form.fastFoodMealsPerDay.trim() !== '' ||
-        form.dailyWaterLiters.trim() !== '' ||
-        form.defecationFrequency.trim() !== '' ||
-        form.alcoholFrequency !== '' ||
-        form.smokingFrequency !== '' ||
-        form.avoidedFoods.trim() !== '' ||
-        form.discomfortFoods.trim() !== '' ||
-        form.bowelIssue !== '' ||
-        form.gastrointestinalDisease.trim() !== '' ||
-        form.nutritionNotes.trim() !== '' ||
-        form.nightEatingHabit === true ||
-        form.eatingDisorderBehaviors === true
-
-      // If user didn't touch nutrition form at all, don't send anything.
-      if (!hasAnyInput) return undefined
-
-      if (
-        !Number.isFinite(mealsPerDay) ||
-        !Number.isFinite(dailyWaterLiters) ||
-        !Number.isFinite(fastFoodMealsPerDay) ||
-        !defecationFrequency ||
-        !alcoholFrequency ||
-        !smokingFrequency
-      ) {
-        toast.error(
-          'Beslenme formu için zorunlu alanlar: Öğün/gün, Fastfood/gün, Su (L), Dışkılama, Alkol, Sigara'
-        )
-        return undefined
+    let ipaqPayload: ReturnType<typeof buildIpaqPayload> | undefined
+    if (ipaqFormHasInput(ipaqForm)) {
+      const ipaqErr = validateIpaqForm(ipaqForm)
+      if (ipaqErr) {
+        toast.error(ipaqErr)
+        return
       }
+      ipaqPayload = buildIpaqPayload(ipaqForm)
+    }
 
-      return {
-        mealsPerDay,
-        alcoholFrequency,
-        smokingFrequency,
-        avoidedFoods,
-        dailyWaterLiters,
-        fastFoodMealsPerDay,
-        defecationFrequency,
-        discomfortFoods,
-        bowelIssue,
-        gastrointestinalDisease,
-        nightEatingHabit: !!form.nightEatingHabit,
-        eatingDisorderBehaviors: !!form.eatingDisorderBehaviors,
-        ...(form.nutritionNotes.trim() ? { notes: form.nutritionNotes.trim() } : {}),
+    let ffqPayload: { items: FoodFrequencyFormState; notes: string | null } | undefined
+    if (ffqFormHasInput(ffqItems, ffqNotes)) {
+      const ffqErr = validateFfqForm(ffqItems, 1)
+      if (ffqErr) {
+        toast.error(ffqErr)
+        return
       }
-    })()
+      ffqPayload = { items: ffqItems, notes: ffqNotes.trim() || null }
+    }
 
     createMutation.mutate({
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       phone: form.phone.trim(),
+      countryDialCode: form.countryDialCode || '90',
       email: form.email.trim() || undefined,
       gender: form.gender,
       ...(dieticianId ? { dieticianId } : {}),
       ...(anamnezForm ? { anamnezForm } : {}),
     }, {
       onSuccess: async (created) => {
-        if (!foodConsumptionRecord) return
-        try {
-          await upsertFoodConsumptionRecord({
-            clientId: created.id,
-            ...foodConsumptionRecord,
-          })
-        } catch (err: unknown) {
-          toast.error(getApiErrorMessage(err, { fallback: 'Beslenme formu kaydedilemedi' }))
+        if (foodConsumptionRecord) {
+          try {
+            await upsertFoodConsumptionRecord({
+              clientId: created.id,
+              ...foodConsumptionRecord,
+            })
+          } catch (err: unknown) {
+            toast.error(getApiErrorMessage(err, { fallback: 'Beslenme formu kaydedilemedi' }))
+          }
+        }
+        if (ipaqPayload) {
+          try {
+            await upsertIpaqRecord({ ...ipaqPayload, clientId: created.id })
+          } catch (err: unknown) {
+            toast.error(getApiErrorMessage(err, { fallback: 'IPAQ kaydedilemedi' }))
+          }
+        }
+        if (ffqPayload) {
+          try {
+            await upsertFoodFrequencyRecord({ ...ffqPayload, clientId: created.id })
+          } catch (err: unknown) {
+            toast.error(getApiErrorMessage(err, { fallback: 'Besin tüketim sıklığı kaydedilemedi' }))
+          }
         }
       },
     })
@@ -526,10 +556,12 @@ export function ClientsPage() {
           </ModalHeader>
           <ModalBody className="space-y-4">
             <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5">
                 <TabsTrigger value="personal">Kişisel</TabsTrigger>
                 <TabsTrigger value="anamnez">Anamnez</TabsTrigger>
                 <TabsTrigger value="nutrition">Beslenme</TabsTrigger>
+                <TabsTrigger value="ipaq">IPAQ</TabsTrigger>
+                <TabsTrigger value="ffq">Besin Sıklığı</TabsTrigger>
               </TabsList>
 
               <TabsContent value="personal" className="mt-4">
@@ -550,22 +582,20 @@ export function ClientsPage() {
                     placeholder="Soyad"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Telefon *"
-                    filter="phone"
-                    value={form.phone}
-                    onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-                    placeholder="05XX XXX XX XX"
-                  />
-                  <Input
-                    label="E-posta"
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                    placeholder="ornek@email.com"
-                  />
-                </div>
+                <PhoneInput
+                  label="Telefon *"
+                  value={form.phone}
+                  countryDialCode={form.countryDialCode}
+                  onValueChange={(phone) => setForm((s) => ({ ...s, phone }))}
+                  onCountryChange={(countryDialCode) => setForm((s) => ({ ...s, countryDialCode }))}
+                />
+                <Input
+                  label="E-posta"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+                  placeholder="ornek@email.com"
+                />
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
@@ -602,84 +632,68 @@ export function ClientsPage() {
               </TabsContent>
 
               <TabsContent value="anamnez" className="mt-4 space-y-3">
-                <p className="form-section-title">Anamnez (Opsiyonel)</p>
+                <p className="form-section-title">Anamnez Bilgileri (Opsiyonel)</p>
                 <div className="grid grid-cols-2 gap-3">
+                  <Input label="Yaş" type="number" value={form.age} onChange={(e) => setForm((s) => ({ ...s, age: e.target.value }))} placeholder="35" />
                   <Input label="Boy (cm)" type="number" value={form.bodyHeight} onChange={(e) => setForm((s) => ({ ...s, bodyHeight: e.target.value }))} placeholder="178" />
                   <Input label="Kilo (kg)" type="number" value={form.bodyWeight} onChange={(e) => setForm((s) => ({ ...s, bodyWeight: e.target.value }))} placeholder="82" />
                   <Input label="Bel (cm)" type="number" value={form.waistCircumference} onChange={(e) => setForm((s) => ({ ...s, waistCircumference: e.target.value }))} placeholder="85" />
                   <Input label="Kalça (cm)" type="number" value={form.hipCircumference} onChange={(e) => setForm((s) => ({ ...s, hipCircumference: e.target.value }))} placeholder="95" />
+                  <Input label="Boyun (cm)" type="number" value={form.neckCircumference} onChange={(e) => setForm((s) => ({ ...s, neckCircumference: e.target.value }))} placeholder="38" />
                   <Input label="Meslek" value={form.profession} onChange={(e) => setForm((s) => ({ ...s, profession: e.target.value }))} placeholder="Örn: Yazılım geliştirici" />
                   <Input label="Eğitim" value={form.education} onChange={(e) => setForm((s) => ({ ...s, education: e.target.value }))} placeholder="Örn: Lisans" />
                 </div>
-                <Input label="Kronik hastalıklar" value={form.chronicIllness} onChange={(e) => setForm((s) => ({ ...s, chronicIllness: e.target.value }))} placeholder="Bilinen kronik hastalıklar..." />
-                <Input label="Kullanılan ilaçlar" value={form.medicationUsed} onChange={(e) => setForm((s) => ({ ...s, medicationUsed: e.target.value }))} placeholder="Düzenli kullanılan ilaçlar..." />
-                <Input label="Alerjiler" value={form.foodAllergy} onChange={(e) => setForm((s) => ({ ...s, foodAllergy: e.target.value }))} placeholder="Bilinen alerjiler (örn: Gluten, Fındık...)" />
+                <Input label="Kronik hastalıklar" value={form.chronicIllness} onChange={(e) => setForm((s) => ({ ...s, chronicIllness: e.target.value }))} placeholder="Yoksa 'Yok' yazın" />
+                <Input label="Ailede kronik hastalık" value={form.familyChronicIllness} onChange={(e) => setForm((s) => ({ ...s, familyChronicIllness: e.target.value }))} placeholder="Yoksa 'Yok' yazın" />
+                <Input label="Kullanılan ilaçlar" value={form.medicationUsed} onChange={(e) => setForm((s) => ({ ...s, medicationUsed: e.target.value }))} placeholder="Yoksa 'Yok' yazın" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-[13px] font-medium text-surface-700">Sigara</label>
+                    <Select value={form.smokingFrequency || undefined} onValueChange={(v) => setForm((s) => ({ ...s, smokingFrequency: v as FrequencyValue }))}>
+                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
+                      <SelectContent>
+                        {FREQUENCY_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[13px] font-medium text-surface-700">Alkol</label>
+                    <Select value={form.alcoholFrequency || undefined} onValueChange={(v) => setForm((s) => ({ ...s, alcoholFrequency: v as FrequencyValue }))}>
+                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
+                      <SelectContent>
+                        {FREQUENCY_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Input label="Alkol türü" value={form.alcoholType} onChange={(e) => setForm((s) => ({ ...s, alcoholType: e.target.value }))} placeholder="Opsiyonel" />
+                </div>
               </TabsContent>
 
               <TabsContent value="nutrition" className="mt-4 space-y-3">
-                <p className="form-section-title">Beslenme Formu (Opsiyonel)</p>
+                <p className="form-section-title">Beslenme Anamnezi (Opsiyonel)</p>
                 <p className="text-[12px] text-surface-500">
                   Bu formu boş bırakabilirsiniz. Herhangi bir alan doldurulursa kaydedilir; eksik zorunlu alan varsa uyarı verilir.
                 </p>
+                <BeslenmeAnamneziFormFields
+                  form={form}
+                  onChange={(patch) => setForm((s) => ({ ...s, ...patch }))}
+                />
+              </TabsContent>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Input label="Öğün / gün *" type="number" value={form.mealsPerDay} onChange={(e) => setForm((s) => ({ ...s, mealsPerDay: e.target.value }))} placeholder="3" />
-                  <Input label="Fastfood / gün *" type="number" value={form.fastFoodMealsPerDay} onChange={(e) => setForm((s) => ({ ...s, fastFoodMealsPerDay: e.target.value }))} placeholder="0" />
-                  <Input label="Su (L) *" type="number" value={form.dailyWaterLiters} onChange={(e) => setForm((s) => ({ ...s, dailyWaterLiters: e.target.value }))} placeholder="2.5" />
-                  <Input label="Dışkılama *" value={form.defecationFrequency} onChange={(e) => setForm((s) => ({ ...s, defecationFrequency: e.target.value }))} placeholder="Örn: daily" />
-                </div>
+              <TabsContent value="ipaq" className="mt-4 space-y-3">
+                <p className="form-section-title">IPAQ — Fiziksel Aktivite (Opsiyonel)</p>
+                <IpaqFormFields form={ipaqForm} onChange={setIpaqForm} />
+              </TabsContent>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="block text-[13px] font-medium text-surface-700">Alkol *</label>
-                    <Select value={form.alcoholFrequency} onValueChange={(v) => setForm((s) => ({ ...s, alcoholFrequency: v as AlcoholFrequency }))}>
-                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
-                      <SelectContent>
-                        {['never', 'rarely', 'sometimes', 'often', 'daily'].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[13px] font-medium text-surface-700">Sigara *</label>
-                    <Select value={form.smokingFrequency} onValueChange={(v) => setForm((s) => ({ ...s, smokingFrequency: v as SmokingFrequency }))}>
-                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
-                      <SelectContent>
-                        {['never', 'rarely', 'sometimes', 'often', 'daily'].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <Input label="Kaçınılan gıdalar *" value={form.avoidedFoods} onChange={(e) => setForm((s) => ({ ...s, avoidedFoods: e.target.value }))} placeholder="Örn: none" />
-                  <Input label="Rahatsız eden gıdalar *" value={form.discomfortFoods} onChange={(e) => setForm((s) => ({ ...s, discomfortFoods: e.target.value }))} placeholder="Örn: none" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="block text-[13px] font-medium text-surface-700">Bağırsak sorunu *</label>
-                    <Select value={form.bowelIssue} onValueChange={(v) => setForm((s) => ({ ...s, bowelIssue: v as BowelIssue }))}>
-                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
-                      <SelectContent>
-                        {['none', 'diarrhea', 'constipation', 'both'].map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Input label="GIS hastalığı *" value={form.gastrointestinalDisease} onChange={(e) => setForm((s) => ({ ...s, gastrointestinalDisease: e.target.value }))} placeholder="Örn: none" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="flex items-center gap-2 text-[12px] text-surface-700">
-                    <Checkbox checked={form.nightEatingHabit} onCheckedChange={(v) => setForm((s) => ({ ...s, nightEatingHabit: Boolean(v) }))} />
-                    Gece yeme alışkanlığı *
-                  </label>
-                  <label className="flex items-center gap-2 text-[12px] text-surface-700">
-                    <Checkbox checked={form.eatingDisorderBehaviors} onCheckedChange={(v) => setForm((s) => ({ ...s, eatingDisorderBehaviors: Boolean(v) }))} />
-                    Yeme bozukluğu davranışı *
-                  </label>
-                </div>
-
-                <Input label="Not" value={form.nutritionNotes} onChange={(e) => setForm((s) => ({ ...s, nutritionNotes: e.target.value }))} placeholder="Opsiyonel" />
+              <TabsContent value="ffq" className="mt-4 space-y-3">
+                <p className="form-section-title">Besin Tüketim Sıklığı (Opsiyonel)</p>
+                <FoodFrequencyFormFields
+                  items={ffqItems}
+                  notes={ffqNotes}
+                  onItemsChange={setFfqItems}
+                  onNotesChange={setFfqNotes}
+                  filledCount={ffqFilledCount}
+                />
               </TabsContent>
             </Tabs>
           </ModalBody>
@@ -733,7 +747,7 @@ export function ClientsPage() {
           if (!o) {
             setEditClientId(null)
             setEditDieticianId('')
-            setEditUserForm({ firstName: '', lastName: '', phone: '', email: '' })
+            setEditUserForm({ firstName: '', lastName: '', phone: '', countryDialCode: '90', email: '' })
           }
         }}
       >
@@ -767,22 +781,20 @@ export function ClientsPage() {
                     placeholder={editDetailData?.user?.lastName ?? 'Soyad'}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Telefon"
-                    filter="phone"
-                    value={editUserForm.phone}
-                    onChange={(e) => setEditUserForm((s) => ({ ...s, phone: e.target.value }))}
-                    placeholder={editDetailData?.user?.phone ?? '05XX XXX XX XX'}
-                  />
-                  <Input
-                    label="E-posta"
-                    type="email"
-                    value={editUserForm.email}
-                    onChange={(e) => setEditUserForm((s) => ({ ...s, email: e.target.value }))}
-                    placeholder={editDetailData?.user?.email ?? 'ornek@email.com'}
-                  />
-                </div>
+                <PhoneInput
+                  label="Telefon"
+                  value={editUserForm.phone}
+                  countryDialCode={editUserForm.countryDialCode}
+                  onValueChange={(phone) => setEditUserForm((s) => ({ ...s, phone }))}
+                  onCountryChange={(countryDialCode) => setEditUserForm((s) => ({ ...s, countryDialCode }))}
+                />
+                <Input
+                  label="E-posta"
+                  type="email"
+                  value={editUserForm.email}
+                  onChange={(e) => setEditUserForm((s) => ({ ...s, email: e.target.value }))}
+                  placeholder={editDetailData?.user?.email ?? 'ornek@email.com'}
+                />
 
                 <div className="space-y-1.5">
                   <label className="block text-[13px] font-medium text-surface-700">Diyetisyen</label>
@@ -999,15 +1011,9 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
           <p className="form-section-title mb-2">Anamnez</p>
           <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200/40 space-y-2 text-sm text-text-primary">
             <div className="grid grid-cols-2 gap-2">
-              <div><span className="text-surface-500">Kronik:</span> {detail.anamnezForm.chronicIllness ?? '—'}</div>
-              <div><span className="text-surface-500">İlaç:</span> {detail.anamnezForm.medicationUsed ?? '—'}</div>
-              <div><span className="text-surface-500">Alerji:</span> {detail.anamnezForm.foodAllergy ?? '—'}</div>
-              <div><span className="text-surface-500">Meslek:</span> {detail.anamnezForm.profession ?? '—'}</div>
-              <div><span className="text-surface-500">Eğitim:</span> {detail.anamnezForm.education ?? '—'}</div>
-              <div><span className="text-surface-500">Boy:</span> {detail.anamnezForm.bodyHeight ?? '—'}</div>
-              <div><span className="text-surface-500">Kilo:</span> {detail.anamnezForm.bodyWeight ?? '—'}</div>
-              <div><span className="text-surface-500">Bel:</span> {detail.anamnezForm.waistCircumference ?? '—'}</div>
-              <div><span className="text-surface-500">Kalça:</span> {detail.anamnezForm.hipCircumference ?? '—'}</div>
+              {anamnezDisplayFields(detail.anamnezForm).map((f) => (
+                <div key={f.label}><span className="text-surface-500">{f.label}:</span> {f.value}</div>
+              ))}
             </div>
           </div>
         </div>
@@ -1015,21 +1021,14 @@ function ViewDetailContent({ detail }: { detail: ClientDetail }) {
 
       {detail.foodConsumptionRecord && (
         <div>
-          <p className="form-section-title mb-2">Beslenme Kaydı</p>
+          <p className="form-section-title mb-2">Beslenme Anamnezi</p>
           <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3 bg-surface-50/50 dark:bg-surface-200/40 space-y-2 text-sm text-text-primary">
             <div className="grid grid-cols-2 gap-2">
-              <div><span className="text-surface-500">Öğün/gün:</span> {detail.foodConsumptionRecord.mealsPerDay ?? '—'}</div>
-              <div><span className="text-surface-500">Fastfood öğün:</span> {detail.foodConsumptionRecord.fastFoodMealsPerDay ?? '—'}</div>
-              <div><span className="text-surface-500">Su (L):</span> {detail.foodConsumptionRecord.dailyWaterLiters ?? '—'}</div>
-              <div><span className="text-surface-500">Dışkılama:</span> {detail.foodConsumptionRecord.defecationFrequency ?? '—'}</div>
-              <div><span className="text-surface-500">Alkol:</span> {detail.foodConsumptionRecord.alcoholFrequency ?? '—'}</div>
-              <div><span className="text-surface-500">Sigara:</span> {detail.foodConsumptionRecord.smokingFrequency ?? '—'}</div>
-              <div><span className="text-surface-500">Bağırsak:</span> {detail.foodConsumptionRecord.bowelIssue ?? '—'}</div>
-              <div><span className="text-surface-500">GIS:</span> {detail.foodConsumptionRecord.gastrointestinalDisease ?? '—'}</div>
-              <div className="col-span-2"><span className="text-surface-500">Kaçınılanlar:</span> {detail.foodConsumptionRecord.avoidedFoods ?? '—'}</div>
-              <div className="col-span-2"><span className="text-surface-500">Rahatsız edenler:</span> {detail.foodConsumptionRecord.discomfortFoods ?? '—'}</div>
-              <div><span className="text-surface-500">Gece yeme:</span> {detail.foodConsumptionRecord.nightEatingHabit == null ? '—' : detail.foodConsumptionRecord.nightEatingHabit ? 'Evet' : 'Hayır'}</div>
-              <div><span className="text-surface-500">Yeme bozukluğu:</span> {detail.foodConsumptionRecord.eatingDisorderBehaviors == null ? '—' : detail.foodConsumptionRecord.eatingDisorderBehaviors ? 'Evet' : 'Hayır'}</div>
+              {foodDisplayFields(detail.foodConsumptionRecord).map((f) => (
+                <div key={f.label} className={f.label === 'Notlar' || f.label === 'Kaçınılan besinler' ? 'col-span-2' : undefined}>
+                  <span className="text-surface-500">{f.label}:</span> {f.value}
+                </div>
+              ))}
             </div>
           </div>
         </div>

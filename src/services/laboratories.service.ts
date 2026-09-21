@@ -415,6 +415,7 @@ export async function createLaboratory(payload: {
   firstName?: string
   lastName?: string
   phone: string
+  countryDialCode?: string
   gender: 'male' | 'female'
   email?: string
   identityNumber?: string
@@ -437,6 +438,7 @@ export async function createLaboratory(payload: {
     user: {
       companyName: payload.companyName,
       phone: payload.phone,
+      countryDialCode: payload.countryDialCode || '90',
       gender: payload.gender,
       ...(payload.email ? { email: payload.email } : {}),
       ...(payload.identityNumber ? { identityNumber: payload.identityNumber } : {}),

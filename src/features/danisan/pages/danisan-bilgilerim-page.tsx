@@ -7,15 +7,13 @@ import { ROUTES } from '@/utils/routes'
 import { getAnamnezForms, type AnamnezForm } from '@/services/anamnez.service'
 import { getMyFoodConsumptionRecord, type FoodConsumptionRecord } from '@/services/food-consumption-records.service'
 import { getMyLatestSleepQualityRecord, type SleepQualityRecord } from '@/services/sleep-quality-records.service'
+import {
+  anamnezDisplayFields,
+  foodDisplayFields,
+} from '@/features/shared/client-health-display'
+import { IpaqPanel } from '@/features/dietitian/clients/components/ipaq-panel'
+import { FoodFrequencyPanel } from '@/features/dietitian/clients/components/food-frequency-panel'
 import { Info, Loader2 } from 'lucide-react'
-
-function valueOrDash(v: unknown): string {
-  if (v === null || v === undefined) return '—'
-  if (typeof v === 'string') return v.trim() ? v : '—'
-  if (typeof v === 'number') return Number.isFinite(v) ? String(v) : '—'
-  if (typeof v === 'boolean') return v ? 'Evet' : 'Hayır'
-  return String(v)
-}
 
 function pickLatestAnamnez(list: AnamnezForm[] | undefined): AnamnezForm | null {
   if (!list || list.length === 0) return null
@@ -69,13 +67,13 @@ function SectionCard({
   )
 }
 
-function FieldGrid({ fields }: { fields: Array<{ label: string; value: unknown }> }) {
+function FieldGrid({ fields }: { fields: Array<{ label: string; value: string }> }) {
   return (
     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {fields.map((f) => (
         <div key={f.label} className="rounded-xl border border-surface-200 bg-panel p-3">
           <dt className="text-xs font-medium text-surface-500">{f.label}</dt>
-          <dd className="text-sm text-surface-900 mt-1 break-words">{valueOrDash(f.value)}</dd>
+          <dd className="text-sm text-surface-900 mt-1 break-words">{f.value}</dd>
         </div>
       ))}
     </dl>
@@ -105,7 +103,6 @@ export function DanisanBilgilerimPage() {
   })
 
   const latestAnamnez = useMemo(() => pickLatestAnamnez(anamnezQuery.data), [anamnezQuery.data])
-
   const food = foodQuery.data
   const sleep = sleepQuery.data
 
@@ -113,7 +110,7 @@ export function DanisanBilgilerimPage() {
     <div className="space-y-8 animate-fade-in">
       <PageHeader
         title="Bilgilerim"
-        description="Anamnez, beslenme ve uyku kayitlarinizi buradan gorebilirsiniz."
+        description="Anamnez, beslenme, IPAQ ve besin sıklığı kayıtlarınızı buradan görebilirsiniz."
         breadcrumbs={[
           { label: 'Panelim', href: ROUTES.DANISAN },
           { label: 'Bilgilerim' },
@@ -122,7 +119,7 @@ export function DanisanBilgilerimPage() {
 
       <SectionCard
         title="Anamnez"
-        description="Kayitli anamnez bilgileriniz"
+        description="Kayıtlı anamnez bilgileriniz"
         loading={anamnezQuery.isLoading}
         error={anamnezQuery.isError}
       >
@@ -135,26 +132,14 @@ export function DanisanBilgilerimPage() {
             <div className="text-xs text-surface-500">
               Son guncelleme: {latestAnamnez.updatedAt || latestAnamnez.createdAt ? formatDateTime(latestAnamnez.updatedAt || latestAnamnez.createdAt) : '—'}
             </div>
-            <FieldGrid
-              fields={[
-                { label: 'Kronik hastalik', value: latestAnamnez.chronicIllness },
-                { label: 'Kullanilan ilaclar', value: latestAnamnez.medicationUsed },
-                { label: 'Besin alerjisi', value: latestAnamnez.foodAllergy },
-                { label: 'Kilo (kg)', value: latestAnamnez.bodyWeight },
-                { label: 'Boy (cm)', value: latestAnamnez.bodyHeight },
-                { label: 'Bel cevresi (cm)', value: latestAnamnez.waistCircumference },
-                { label: 'Kalca cevresi (cm)', value: latestAnamnez.hipCircumference },
-                { label: 'Meslek', value: latestAnamnez.profession },
-                { label: 'Egitim', value: latestAnamnez.education },
-              ]}
-            />
+            <FieldGrid fields={anamnezDisplayFields(latestAnamnez)} />
           </div>
         )}
       </SectionCard>
 
       <SectionCard
-        title="Besin Tuketim Kaydi"
-        description="Kayitli beslenme aliskanliklariniz"
+        title="Beslenme Anamnezi"
+        description="Kayıtlı beslenme alışkanlıklarınız"
         loading={foodQuery.isLoading}
         error={foodQuery.isError}
       >
@@ -167,24 +152,27 @@ export function DanisanBilgilerimPage() {
             <div className="text-xs text-surface-500">
               Tarih: {formatDate((food as FoodConsumptionRecord).updatedAt ?? (food as FoodConsumptionRecord).createdAt)}
             </div>
-            <FieldGrid
-              fields={[
-                { label: 'Gunluk ogun sayisi', value: (food as FoodConsumptionRecord).mealsPerDay },
-                { label: 'Alkol sikligi', value: (food as FoodConsumptionRecord).alcoholFrequency },
-                { label: 'Sigara sikligi', value: (food as FoodConsumptionRecord).smokingFrequency },
-                { label: 'Kacinilan besinler', value: (food as FoodConsumptionRecord).avoidedFoods },
-                { label: 'Gunluk su (L)', value: (food as FoodConsumptionRecord).dailyWaterLiters },
-                { label: 'Fastfood/disari ogun', value: (food as FoodConsumptionRecord).fastFoodMealsPerDay },
-                { label: 'Defekasyon sikligi', value: (food as FoodConsumptionRecord).defecationFrequency },
-                { label: 'Rahatsiz eden besinler', value: (food as FoodConsumptionRecord).discomfortFoods },
-                { label: 'Diyare/konstipasyon', value: (food as FoodConsumptionRecord).bowelIssue },
-                { label: 'GIS hastaligi', value: (food as FoodConsumptionRecord).gastrointestinalDisease },
-                { label: 'Gece yeme aliskanligi', value: (food as FoodConsumptionRecord).nightEatingHabit },
-                { label: 'Yeme bozuklugu davranisi', value: (food as FoodConsumptionRecord).eatingDisorderBehaviors },
-              ]}
-            />
+            <FieldGrid fields={foodDisplayFields(food as FoodConsumptionRecord)} />
           </div>
         )}
+      </SectionCard>
+
+      <SectionCard
+        title="IPAQ (Fiziksel Aktivite)"
+        description="IPAQ kısa form yanıtlarınızı görüntüleyin ve güncelleyin"
+        loading={false}
+        error={false}
+      >
+        <IpaqPanel clientId="me" />
+      </SectionCard>
+
+      <SectionCard
+        title="Besin Tüketim Sıklığı"
+        description="Besin tüketim sıklığı formunuzu doldurun veya güncelleyin"
+        loading={false}
+        error={false}
+      >
+        <FoodFrequencyPanel clientId="me" />
       </SectionCard>
 
       <SectionCard
@@ -204,24 +192,11 @@ export function DanisanBilgilerimPage() {
             </div>
             <FieldGrid
               fields={[
-                { label: 'Yatis saati', value: (sleep as SleepQualityRecord).usualBedTime },
-                { label: 'Kalkis saati', value: (sleep as SleepQualityRecord).usualWakeTime },
-                { label: 'Uykuya dalma (dk)', value: (sleep as SleepQualityRecord).sleepLatencyMinutes },
-                { label: 'Uyku suresi (saat)', value: (sleep as SleepQualityRecord).sleepHours },
-                { label: '30 dk icinde uyuyamama (0-3)', value: (sleep as SleepQualityRecord).cannotFallAsleepWithin30 },
-                { label: 'Tuvalet icin uyanma (0-3)', value: (sleep as SleepQualityRecord).wakeToUseBathroom },
-                { label: 'Rahat nefes alamama (0-3)', value: (sleep as SleepQualityRecord).cannotBreatheComfortably },
-                { label: 'Oksurme/horlama (0-3)', value: (sleep as SleepQualityRecord).coughOrSnoreLoudly },
-                { label: 'Usume (0-3)', value: (sleep as SleepQualityRecord).feelTooCold },
-                { label: 'Sicaklik/terleme (0-3)', value: (sleep as SleepQualityRecord).feelTooHot },
-                { label: 'Kotu ruya (0-3)', value: (sleep as SleepQualityRecord).badDreams },
-                { label: 'Agri (0-3)', value: (sleep as SleepQualityRecord).pain },
-                { label: 'Oznel uyku kalitesi (0-3)', value: (sleep as SleepQualityRecord).subjectiveSleepQuality },
-                { label: 'Uyku ilaci (0-3)', value: (sleep as SleepQualityRecord).sleepMedicationFrequency },
-                { label: 'Gunduz uykululuk (0-3)', value: (sleep as SleepQualityRecord).daytimeSleepinessFrequency },
-                { label: 'Istek/enerji problemi (0-3)', value: (sleep as SleepQualityRecord).lackOfEnthusiasmProblem },
-                { label: 'Es/oda arkadasi (0-3)', value: (sleep as SleepQualityRecord).bedPartnerSituation },
-                { label: 'Notlar', value: (sleep as SleepQualityRecord).notes },
+                { label: 'Yatis saati', value: String((sleep as SleepQualityRecord).usualBedTime ?? '—') },
+                { label: 'Kalkis saati', value: String((sleep as SleepQualityRecord).usualWakeTime ?? '—') },
+                { label: 'Uykuya dalma (dk)', value: String((sleep as SleepQualityRecord).sleepLatencyMinutes ?? '—') },
+                { label: 'Uyku suresi (saat)', value: String((sleep as SleepQualityRecord).sleepHours ?? '—') },
+                { label: 'Notlar', value: String((sleep as SleepQualityRecord).notes ?? '—') },
               ]}
             />
           </div>

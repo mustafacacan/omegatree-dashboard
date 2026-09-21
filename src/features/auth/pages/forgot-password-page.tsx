@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button, Input } from '@/components/ui'
 import { ROUTES } from '@/utils/routes'
 import { AuthMobileBrand } from '@/components/shared/omega-tree-logo'
-import { Phone, Lock, Eye, EyeOff, ArrowLeft, Link2, Loader2 } from 'lucide-react'
+import { Lock, Eye, EyeOff, ArrowLeft, Link2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { forgotPassword, resetPassword, validateResetToken } from '@/services/auth.service'
+import { PhoneInput } from '@/components/shared/phone-input'
 
 const phoneSchema = z.object({
   phone: z.string().min(10, 'Geçerli bir telefon numarası girin'),
+  countryDialCode: z.string().min(1).default('90'),
 })
 
 const resetSchema = z.object({
@@ -36,7 +38,10 @@ export function ForgotPasswordPage() {
   const [validatingToken, setValidatingToken] = useState(Boolean(tokenFromUrl))
   const [showPassword, setShowPassword] = useState(false)
 
-  const phoneForm = useForm<PhoneForm>({ resolver: zodResolver(phoneSchema) })
+  const phoneForm = useForm<PhoneForm>({
+    resolver: zodResolver(phoneSchema),
+    defaultValues: { phone: '', countryDialCode: '90' },
+  })
   const resetForm = useForm<ResetForm>({ resolver: zodResolver(resetSchema) })
 
   useEffect(() => {
@@ -73,7 +78,7 @@ export function ForgotPasswordPage() {
   const onPhoneSubmit = async (data: PhoneForm) => {
     setLoading(true)
     try {
-      await forgotPassword(data.phone)
+      await forgotPassword(data.phone, data.countryDialCode || '90')
       setStep('sent')
       toast.success('Şifre sıfırlama bağlantısı SMS ile gönderildi.')
     } catch (err: unknown) {
@@ -131,13 +136,25 @@ export function ForgotPasswordPage() {
 
       {step === 'phone' && (
         <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-4">
-          <Input
-            label="Telefon"
-            placeholder="05XX XXX XX XX"
-            leftIcon={<Phone className="h-4 w-4" />}
-            filter="phone"
-            error={phoneForm.formState.errors.phone?.message}
-            {...phoneForm.register('phone')}
+          <Controller
+            name="phone"
+            control={phoneForm.control}
+            render={({ field }) => (
+              <Controller
+                name="countryDialCode"
+                control={phoneForm.control}
+                render={({ field: countryField }) => (
+                  <PhoneInput
+                    label="Telefon"
+                    value={field.value}
+                    countryDialCode={countryField.value || '90'}
+                    onValueChange={field.onChange}
+                    onCountryChange={countryField.onChange}
+                    error={phoneForm.formState.errors.phone?.message}
+                  />
+                )}
+              />
+            )}
           />
           <Button type="submit" variant="primary" size="lg" className="w-full" loading={loading}>
             Sıfırlama Bağlantısı Gönder

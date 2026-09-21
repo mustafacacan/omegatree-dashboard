@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button, Input } from '@/components/ui'
@@ -8,23 +8,24 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { UserRole } from '@/utils/constants'
 import { ROUTES } from '@/utils/routes'
 import { AuthMobileBrand } from '@/components/shared/omega-tree-logo'
-import { Mail, User, Phone } from 'lucide-react'
+import { Mail, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { register as apiRegister } from '@/services/auth.service'
+import { PhoneInput } from '@/components/shared/phone-input'
 
 const registerSchema = z.object({
   firstName: z.string().min(2, 'Ad en az 2 karakter olmalı'),
   lastName: z.string().min(2, 'Soyad en az 2 karakter olmalı'),
   email: z.string().email('Geçerli bir e-posta girin'),
   phone: z.string().min(10, 'Geçerli bir telefon numarası girin'),
+  countryDialCode: z.string().min(1).default('90'),
   role: z.enum([UserRole.DIETITIAN, UserRole.DANISAN]),
   gender: z.enum(['male', 'female']),
 })
 
 type RegisterForm = z.infer<typeof registerSchema>
 
-/** Uygulama rolünü API register rolüne çevirir (API: dietician | client) */
 function toApiRole(role: RegisterForm['role']): 'dietician' | 'client' {
   return role === UserRole.DANISAN ? 'client' : 'dietician'
 }
@@ -37,30 +38,41 @@ export function RegisterPage() {
     register,
     handleSubmit,
     setValue,
+    control,
     formState: { errors },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       role: UserRole.DIETITIAN,
       gender: 'male',
+      countryDialCode: '90',
+      phone: '',
     },
   })
 
   const onSubmit = async (data: RegisterForm) => {
+    if (loading) return
     setLoading(true)
     try {
       await apiRegister({
         firstName: data.firstName,
         lastName: data.lastName,
-        email: data.email,
+        email: data.email.trim().toLowerCase(),
         phone: data.phone,
+        countryDialCode: data.countryDialCode || '90',
         role: toApiRole(data.role),
         gender: data.gender,
       })
-      toast.success('Hesabınız admin onayına gönderildi. Onaylandığında hesabınız aktif olacak ve telefona gelen SMS şifresi ile giriş yapabilirsiniz.')
+      toast.success(
+        'Hesabınız admin onayına gönderildi. Onaylandığında hesabınız aktif olacak ve telefona gelen SMS şifresi ile giriş yapabilirsiniz.',
+      )
       navigate(ROUTES.GIRIS)
     } catch (err: unknown) {
-      toast.error(getApiErrorMessage(err, { fallback: 'Kayıt yapılamadı. Lütfen tekrar deneyin.' }))
+      toast.error(
+        getApiErrorMessage(err, {
+          fallback: 'Kayıt yapılamadı. Lütfen tekrar deneyin.',
+        }),
+      )
     } finally {
       setLoading(false)
     }
@@ -72,9 +84,7 @@ export function RegisterPage() {
 
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-surface-900">Kayıt Olun</h2>
-        <p className="text-surface-500 mt-2">
-          Sisteme erişim için hesap oluşturun
-        </p>
+        <p className="text-surface-500 mt-2">Sisteme erişim için hesap oluşturun</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -105,13 +115,25 @@ export function RegisterPage() {
           {...register('email')}
         />
 
-        <Input
-          label="Telefon"
-          placeholder="05XX XXX XX XX"
-          leftIcon={<Phone className="h-4 w-4" />}
-          filter="phone"
-          error={errors.phone?.message}
-          {...register('phone')}
+        <Controller
+          name="phone"
+          control={control}
+          render={({ field }) => (
+            <Controller
+              name="countryDialCode"
+              control={control}
+              render={({ field: countryField }) => (
+                <PhoneInput
+                  label="Telefon"
+                  value={field.value}
+                  countryDialCode={countryField.value || '90'}
+                  onValueChange={field.onChange}
+                  onCountryChange={countryField.onChange}
+                  error={errors.phone?.message}
+                />
+              )}
+            />
+          )}
         />
 
         <div className="space-y-1.5">

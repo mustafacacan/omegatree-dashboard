@@ -4,11 +4,15 @@ import { Card, CardContent } from '@/components/ui'
 import type { DanisanOnboardingStep } from '../danisan-prereq-gate'
 import { AnamnezStep } from './steps/anamnez-step'
 import { FoodConsumptionStep } from './steps/food-consumption-step'
+import { IpaqStep } from './steps/ipaq-step'
+import { FoodFrequencyStep } from './steps/food-frequency-step'
 import { SleepQualityStep } from './steps/sleep-quality-step'
 
 const steps: Array<{ key: DanisanOnboardingStep; title: string; subtitle: string }> = [
   { key: 'anamnez', title: 'Sağlık Bilgileri', subtitle: 'Anamnez formunu doldurun' },
-  { key: 'food', title: 'Beslenme Alışkanlıkları', subtitle: 'Beslenme kaydını doldurun' },
+  { key: 'food', title: 'Beslenme Anamnezi', subtitle: 'Beslenme alışkanlıklarınızı girin' },
+  { key: 'ipaq', title: 'Fiziksel Aktivite (IPAQ)', subtitle: 'Son 7 gündeki aktivitelerinizi belirtin' },
+  { key: 'ffq', title: 'Besin Tüketim Sıklığı', subtitle: 'Besinleri ne sıklıkla tükettiğinizi işaretleyin' },
   { key: 'sleep', title: 'Uyku Kalitesi', subtitle: 'Son uyku kaydınızı girin' },
 ]
 
@@ -16,7 +20,7 @@ export function DanisanOnboardingWizard({ missingSteps }: { missingSteps: Danisa
   const queryClient = useQueryClient()
   const sequence = useMemo(
     () => steps.filter((s) => missingSteps.includes(s.key)),
-    [missingSteps]
+    [missingSteps],
   )
 
   const [overrideStep, setOverrideStep] = useState<DanisanOnboardingStep | null>(null)
@@ -30,12 +34,20 @@ export function DanisanOnboardingWizard({ missingSteps }: { missingSteps: Danisa
     return idx >= 0 ? idx : 0
   }, [activeStep, sequence])
 
-  const header = sequence[activeIndex] ?? sequence[0]
+  /** Tam akıştaki konum (1–5); kalan adım sayısına göre değil. */
+  const activeStepNumber = useMemo(() => {
+    const idx = steps.findIndex((s) => s.key === activeStep)
+    return idx >= 0 ? idx + 1 : 1
+  }, [activeStep])
+
+  const header = steps.find((s) => s.key === activeStep) ?? sequence[activeIndex] ?? steps[0]
 
   const onSaved = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['anamnez', 'me'] }),
       queryClient.invalidateQueries({ queryKey: ['food-consumption-records', 'me'] }),
+      queryClient.invalidateQueries({ queryKey: ['ipaq-records', 'me'] }),
+      queryClient.invalidateQueries({ queryKey: ['food-frequency-records', 'me'] }),
       queryClient.invalidateQueries({ queryKey: ['sleep-quality-records', 'me', 'latest'] }),
     ])
 
@@ -57,7 +69,9 @@ export function DanisanOnboardingWizard({ missingSteps }: { missingSteps: Danisa
         <CardContent className="p-6 space-y-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <p className="text-xs text-surface-500">Adım {activeIndex + 1}/{sequence.length}</p>
+              <p className="text-xs text-surface-500">
+                Adım {activeStepNumber}/{steps.length}
+              </p>
               <h2 className="text-base font-semibold text-surface-900">{header?.title}</h2>
               <p className="text-xs text-surface-500 mt-0.5">{header?.subtitle}</p>
             </div>
@@ -67,6 +81,10 @@ export function DanisanOnboardingWizard({ missingSteps }: { missingSteps: Danisa
             <AnamnezStep onSaved={onSaved} />
           ) : activeStep === 'food' ? (
             <FoodConsumptionStep onSaved={onSaved} />
+          ) : activeStep === 'ipaq' ? (
+            <IpaqStep onSaved={onSaved} />
+          ) : activeStep === 'ffq' ? (
+            <FoodFrequencyStep onSaved={onSaved} />
           ) : (
             <SleepQualityStep onSaved={onSaved} />
           )}

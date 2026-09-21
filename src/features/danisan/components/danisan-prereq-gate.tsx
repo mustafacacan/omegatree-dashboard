@@ -6,9 +6,11 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { getAnamnezForms } from '@/services/anamnez.service'
 import { getMyFoodConsumptionRecord } from '@/services/food-consumption-records.service'
 import { getMyLatestSleepQualityRecord } from '@/services/sleep-quality-records.service'
+import { getMyIpaqRecord } from '@/services/ipaq.service'
+import { getMyFoodFrequencyRecord } from '@/services/food-frequency.service'
 import { DanisanOnboardingWizard } from './onboarding/danisan-onboarding-wizard'
 
-export type DanisanOnboardingStep = 'anamnez' | 'food' | 'sleep'
+export type DanisanOnboardingStep = 'anamnez' | 'food' | 'ipaq' | 'ffq' | 'sleep'
 
 function getHttpStatus(err: unknown): number | undefined {
   const e = err as { response?: { status?: unknown } }
@@ -40,6 +42,22 @@ export function DanisanPrereqGate() {
     placeholderData: keepPreviousData,
   })
 
+  const ipaqQuery = useQuery({
+    queryKey: ['ipaq-records', 'me'],
+    queryFn: () => getMyIpaqRecord(),
+    staleTime: 30_000,
+    retry: 1,
+    placeholderData: keepPreviousData,
+  })
+
+  const ffqQuery = useQuery({
+    queryKey: ['food-frequency-records', 'me'],
+    queryFn: () => getMyFoodFrequencyRecord(),
+    staleTime: 30_000,
+    retry: 1,
+    placeholderData: keepPreviousData,
+  })
+
   const sleepQuery = useQuery({
     queryKey: ['sleep-quality-records', 'me', 'latest'],
     queryFn: () => getMyLatestSleepQualityRecord(),
@@ -51,10 +69,15 @@ export function DanisanPrereqGate() {
   const isLoading =
     anamnezQuery.isLoading ||
     foodQuery.isLoading ||
+    ipaqQuery.isLoading ||
+    ffqQuery.isLoading ||
     sleepQuery.isLoading ||
     anamnezQuery.isFetching ||
     foodQuery.isFetching ||
+    ipaqQuery.isFetching ||
+    ffqQuery.isFetching ||
     sleepQuery.isFetching
+
   if (isLoading) {
     return (
       <div className="py-14 text-center">
@@ -64,14 +87,27 @@ export function DanisanPrereqGate() {
     )
   }
 
-  const hasError = anamnezQuery.isError || foodQuery.isError || sleepQuery.isError
+  const hasError =
+    anamnezQuery.isError ||
+    foodQuery.isError ||
+    ipaqQuery.isError ||
+    ffqQuery.isError ||
+    sleepQuery.isError
+
   if (hasError) {
-    const err = anamnezQuery.error ?? foodQuery.error ?? sleepQuery.error
+    const err =
+      anamnezQuery.error ??
+      foodQuery.error ??
+      ipaqQuery.error ??
+      ffqQuery.error ??
+      sleepQuery.error
     return (
       <Card className="border-surface-200" interactive={false}>
         <CardContent className="p-6">
           <p className="text-sm font-medium text-surface-700">Gerekli bilgiler kontrol edilemedi</p>
-          <p className="text-xs text-surface-500 mt-1">{getApiErrorMessage(err, { fallback: 'Lütfen tekrar deneyin.' })}</p>
+          <p className="text-xs text-surface-500 mt-1">
+            {getApiErrorMessage(err, { fallback: 'Lütfen tekrar deneyin.' })}
+          </p>
           <div className="mt-4">
             <Button
               variant="outline"
@@ -79,6 +115,8 @@ export function DanisanPrereqGate() {
               onClick={() => {
                 anamnezQuery.refetch()
                 foodQuery.refetch()
+                ipaqQuery.refetch()
+                ffqQuery.refetch()
                 sleepQuery.refetch()
               }}
             >
@@ -92,11 +130,15 @@ export function DanisanPrereqGate() {
 
   const hasAnamnez = (anamnezQuery.data ?? []).length > 0
   const hasFood = foodQuery.data != null
+  const hasIpaq = ipaqQuery.data != null
+  const hasFfq = ffqQuery.data != null
   const hasSleep = sleepQuery.data != null
 
   const missingSteps: DanisanOnboardingStep[] = [
     ...(hasAnamnez ? [] : (['anamnez'] as const)),
     ...(hasFood ? [] : (['food'] as const)),
+    ...(hasIpaq ? [] : (['ipaq'] as const)),
+    ...(hasFfq ? [] : (['ffq'] as const)),
     ...(hasSleep ? [] : (['sleep'] as const)),
   ]
 

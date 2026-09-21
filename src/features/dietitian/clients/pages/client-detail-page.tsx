@@ -24,6 +24,9 @@ import { useWorkflowStore } from '@/stores/workflow.store'
 import { useCurrentUser } from '@/stores/auth.store'
 import { getDieticianClientKits, type DieticianClientKit } from '@/services/dietician-client-kits.service'
 import { getAnamnezForms, type AnamnezForm } from '@/services/anamnez.service'
+import { IpaqPanel } from '../components/ipaq-panel'
+import { FoodFrequencyPanel } from '../components/food-frequency-panel'
+import { labelFrequency } from '@/lib/frequency-labels'
 
 const defaultProfile = {
   address: '—',
@@ -89,9 +92,15 @@ export function ClientDetailPage() {
     ? {
         height: anamnezData.bodyHeight ? String(anamnezData.bodyHeight) : '—',
         weight: anamnezData.bodyWeight ? String(anamnezData.bodyWeight) : '—',
-        allergies: anamnezData.foodAllergy ?? '—',
+        allergies: '—',
         medications: anamnezData.medicationUsed ?? '—',
         chronicDiseases: anamnezData.chronicIllness ?? '—',
+        ageDisplay: anamnezData.age != null ? String(anamnezData.age) : '—',
+        familyChronic: anamnezData.familyChronicIllness ?? '—',
+        neckCircumference: anamnezData.neckCircumference != null ? String(anamnezData.neckCircumference) : '—',
+        smoking: labelFrequency(anamnezData.smokingFrequency),
+        alcohol: labelFrequency(anamnezData.alcoholFrequency),
+        alcoholType: anamnezData.alcoholType ?? '—',
       }
     : {}
 
@@ -205,6 +214,8 @@ export function ClientDetailPage() {
           <TabsTrigger value="kits">Kit & Numune Takibi</TabsTrigger>
           <TabsTrigger value="reports">Raporlar</TabsTrigger>
           <TabsTrigger value="activity">Aktivite</TabsTrigger>
+          <TabsTrigger value="ipaq">IPAQ</TabsTrigger>
+          <TabsTrigger value="ffq">Besin Sıklığı</TabsTrigger>
         </TabsList>
 
         {/* ═══ OVERVIEW ═══ */}
@@ -247,7 +258,14 @@ export function ClientDetailPage() {
                     </div>
                   </div>
 
-                  <AnamnesisRow icon={AlertTriangle} label="Alerjiler" value={client.allergies} color="amber" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <InfoRow icon={User} label="Yas" value={'ageDisplay' in client ? String((client as { ageDisplay?: string }).ageDisplay) : '—'} />
+                    <InfoRow icon={Heart} label="Ailede kronik hastalik" value={'familyChronic' in client ? String((client as { familyChronic?: string }).familyChronic) : '—'} />
+                    <InfoRow icon={Ruler} label="Boyun cevresi" value={'neckCircumference' in client ? `${(client as { neckCircumference?: string }).neckCircumference} cm` : '—'} />
+                    <InfoRow icon={Activity} label="Sigara" value={'smoking' in client ? String((client as { smoking?: string }).smoking) : '—'} />
+                    <InfoRow icon={Activity} label="Alkol" value={'alcohol' in client ? String((client as { alcohol?: string }).alcohol) : '—'} />
+                    <InfoRow icon={StickyNote} label="Alkol turu" value={'alcoholType' in client ? String((client as { alcoholType?: string }).alcoholType) : '—'} />
+                  </div>
                   <AnamnesisRow icon={Pill} label="Kullanilan Ilaclar" value={client.medications} color="blue" />
                   <AnamnesisRow icon={Heart} label="Kronik Hastaliklar" value={client.chronicDiseases} color="rose" />
                   <AnamnesisRow icon={StickyNote} label="Notlar" value={client.notes} color="surface" />
@@ -303,10 +321,7 @@ export function ClientDetailPage() {
               <Card>
                 <CardHeader><CardTitle className="text-[14px]">Uyarilar</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
-                  {client.allergies && (
-                    <NoteItem color="amber" title="Alerji kaydi mevcut" text={client.allergies} />
-                  )}
-                  {client.chronicDiseases && (
+                  {client.chronicDiseases && client.chronicDiseases !== '—' && (
                     <NoteItem color="rose" title="Kronik hastalik" text={client.chronicDiseases} />
                   )}
                   {activeApiKit && (
@@ -461,6 +476,14 @@ export function ClientDetailPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="ipaq">
+          {clientId ? <IpaqPanel clientId={clientId} /> : null}
+        </TabsContent>
+
+        <TabsContent value="ffq">
+          {clientId ? <FoodFrequencyPanel clientId={clientId} /> : null}
         </TabsContent>
       </Tabs>
 

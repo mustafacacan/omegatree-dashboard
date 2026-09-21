@@ -24,10 +24,16 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  restoreUser,
   verifyUser,
   getUsersWithPagination,
 } from '@/services/users.service'
 import { invalidateAdminSidebarCounts } from '@/lib/admin-sidebar-counts'
+import {
+  PhoneInput,
+  splitPhoneForInput,
+  validateNationalPhone,
+} from '@/components/shared/phone-input'
 
 const statusLabels: Record<UserStatus, string> = {
   [UserStatus.ACTIVE]: 'Aktif',
@@ -46,6 +52,7 @@ export function UsersListPage() {
   const currentUser = useCurrentUser()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [userTab, setUserTab] = useState<'all' | 'active' | 'pending' | 'inactive'>('all')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -63,6 +70,7 @@ export function UsersListPage() {
     companyName: '',
     email: '',
     phone: '',
+    countryDialCode: '90',
     role: UserRole.ADMIN as UserRole,
     gender: 'male' as 'male' | 'female',
   })
@@ -75,20 +83,31 @@ export function UsersListPage() {
     firstName: '',
     lastName: '',
     phone: '',
+    countryDialCode: '90',
     email: '',
     identityNumber: '',
   })
 
   const trimmedSearch = useMemo(() => search.trim(), [search])
   const usersQuery = useQuery({
-    queryKey: [...USERS_QUERY_KEY, { page, pageSize, role: roleFilter, search: trimmedSearch }],
-    queryFn: () =>
-      getUsersWithPagination({
+    queryKey: [...USERS_QUERY_KEY, { page, pageSize, role: roleFilter, search: trimmedSearch, userTab }],
+    queryFn: () => {
+      const params = {
         page,
         limit: pageSize,
         role: roleFilter !== 'all' ? (roleFilter as UserRole) : undefined,
         search: trimmedSearch || undefined,
-      }),
+        ...(userTab === 'all'
+          ? { status: 'all' as const }
+          : userTab === 'inactive'
+            ? { status: 'inactive' as const }
+            : {
+                status: 'active' as const,
+                ...(userTab === 'pending' ? { isVerified: false } : {}),
+              }),
+      }
+      return getUsersWithPagination(params)
+    },
     placeholderData: keepPreviousData,
   })
   const users: User[] = useMemo(() => usersQuery.data?.items ?? [], [usersQuery.data?.items])
@@ -122,10 +141,22 @@ export function UsersListPage() {
       setSelectedUser(null)
       setDeleteConfirmOpen(false)
       setUserToDelete(null)
-      toast.success('Kullanıcı silindi')
+      toast.success('Kullanıcı pasife alındı')
     },
     onError: (err: unknown) => {
       toast.error(getApiErrorMessage(err, { fallback: 'Kullanıcı silinemedi' }))
+    },
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: restoreUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+      invalidateAdminSidebarCounts(queryClient)
+      toast.success('Kullanıcı yeniden aktifleştirildi')
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, { fallback: 'Kullanıcı aktifleştirilemedi' }))
     },
   })
 
@@ -163,6 +194,7 @@ export function UsersListPage() {
       firstName: string
       lastName: string
       phone: string
+      countryDialCode?: string
       email?: string
       identityNumber?: string
     }) =>
@@ -170,6 +202,7 @@ export function UsersListPage() {
         firstName: args.firstName,
         lastName: args.lastName,
         phone: args.phone,
+        countryDialCode: args.countryDialCode || '90',
         email: args.email,
         identityNumber: args.identityNumber,
       }),
@@ -190,6 +223,16 @@ export function UsersListPage() {
     [users]
   )
 
+  const displayedUsers = useMemo(() => {
+    if (userTab === 'active') {
+      return users.filter((u) => u.status === UserStatus.ACTIVE && u.isVerified !== false)
+    }
+    if (userTab === 'pending') {
+      return users.filter((u) => u.status === UserStatus.PENDING || u.isVerified === false)
+    }
+    return users
+  }, [users, userTab])
+
   const handleApprove = (user: User) => {
     setSelectedUser(user)
     setApprovalOpen(true)
@@ -202,6 +245,7 @@ export function UsersListPage() {
       companyName: '',
       email: '',
       phone: '',
+      countryDialCode: '90',
       role: UserRole.ADMIN,
       gender: 'male',
     })
@@ -212,6 +256,11 @@ export function UsersListPage() {
       toast.error('Ad, soyad ve telefon zorunludur')
       return
     }
+    const phoneErr = validateNationalPhone(newUserForm.phone, newUserForm.countryDialCode)
+    if (phoneErr) {
+      toast.error(phoneErr)
+      return
+    }
     const companyName = roleUsesCompanyName(newUserForm.role)
       ? newUserForm.companyName.trim() || undefined
       : undefined
@@ -220,6 +269,7 @@ export function UsersListPage() {
       lastName: newUserForm.lastName.trim(),
       email: newUserForm.email.trim() || undefined,
       phone: newUserForm.phone.trim(),
+      countryDialCode: newUserForm.countryDialCode || '90',
       role: newUserForm.role,
       gender: newUserForm.gender,
       companyName,
@@ -239,10 +289,12 @@ export function UsersListPage() {
 
   const openEditUser = (user: User) => {
     setUserBeingEdited(user)
+    const split = splitPhoneForInput(user.phone)
     setEditUserForm({
       firstName: user.firstName ?? '',
       lastName: user.lastName ?? '',
-      phone: user.phone ?? '',
+      phone: split.national,
+      countryDialCode: split.dial,
       email: user.email ?? '',
       identityNumber: user.identityNumber ?? '',
     })
@@ -255,12 +307,18 @@ export function UsersListPage() {
       toast.error('Ad, soyad ve telefon zorunludur')
       return
     }
+    const phoneErr = validateNationalPhone(editUserForm.phone, editUserForm.countryDialCode)
+    if (phoneErr) {
+      toast.error(phoneErr)
+      return
+    }
     const idTrim = editUserForm.identityNumber.trim()
     updateUserDetailsMutation.mutate({
       id: userBeingEdited.id,
       firstName: editUserForm.firstName.trim(),
       lastName: editUserForm.lastName.trim(),
       phone: editUserForm.phone.trim(),
+      countryDialCode: editUserForm.countryDialCode || '90',
       email: editUserForm.email.trim() || undefined,
       ...(idTrim ? { identityNumber: idTrim } : {}),
     })
@@ -297,8 +355,8 @@ export function UsersListPage() {
     deleteMutation.mutate(userToDelete.id)
   }
 
-  const handleActivate = () => {
-    toast.error('Hesap tekrar aktif etme API tarafında henüz desteklenmiyor')
+  const handleActivate = (user: User) => {
+    restoreMutation.mutate(user.id)
   }
 
   return (
@@ -325,7 +383,7 @@ export function UsersListPage() {
         </div>
       )}
 
-      <Tabs defaultValue="all">
+      <Tabs value={userTab} onValueChange={(v) => { setUserTab(v as typeof userTab); setPage(1) }}>
         <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
           <div className="panel">
             <div className="p-4 sm:p-5 border-b border-surface-200">
@@ -346,6 +404,9 @@ export function UsersListPage() {
                   </TabsTrigger>
                   <TabsTrigger value="pending" className="flex-1 px-2 text-[12px] sm:text-[13px]">
                     Bekleyen ({pendingUsers.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="inactive" className="flex-1 px-2 text-[12px] sm:text-[13px]">
+                    Pasif
                   </TabsTrigger>
                 </TabsList>
 
@@ -397,7 +458,7 @@ export function UsersListPage() {
             </div>
             <TabsContent value="all" className="mt-0">
               <UserTable
-                users={users}
+                users={displayedUsers}
                 totalItems={totalItems}
                 page={effectivePage}
                 pageSize={pageSize}
@@ -414,11 +475,13 @@ export function UsersListPage() {
                 onEditUser={openEditUser}
                 onViewProfile={openProfile}
                 isLoading={usersQuery.isLoading}
+                isRestoring={restoreMutation.isPending}
+                showDeletedAt={userTab === 'inactive' || userTab === 'all'}
               />
             </TabsContent>
             <TabsContent value="active" className="mt-0">
               <UserTable
-                users={users.filter(u => u.status === UserStatus.ACTIVE)}
+                users={displayedUsers}
                 totalItems={totalItems}
                 page={effectivePage}
                 pageSize={pageSize}
@@ -435,11 +498,12 @@ export function UsersListPage() {
                 onEditUser={openEditUser}
                 onViewProfile={openProfile}
                 isLoading={usersQuery.isLoading}
+                isRestoring={restoreMutation.isPending}
               />
             </TabsContent>
             <TabsContent value="pending" className="mt-0">
               <UserTable
-                users={users.filter(u => u.status === UserStatus.PENDING)}
+                users={displayedUsers}
                 totalItems={totalItems}
                 page={effectivePage}
                 pageSize={pageSize}
@@ -456,6 +520,30 @@ export function UsersListPage() {
                 onEditUser={openEditUser}
                 onViewProfile={openProfile}
                 isLoading={usersQuery.isLoading}
+                isRestoring={restoreMutation.isPending}
+              />
+            </TabsContent>
+            <TabsContent value="inactive" className="mt-0">
+              <UserTable
+                users={displayedUsers}
+                totalItems={totalItems}
+                page={effectivePage}
+                pageSize={pageSize}
+                onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
+                onPageSizeChange={(next) => {
+                  setPageSize(next)
+                  setPage(1)
+                }}
+                currentUserId={currentUser?.id}
+                onApprove={handleApprove}
+                onDelete={handleDeleteOpen}
+                onActivate={handleActivate}
+                onEditRole={openRoleEditor}
+                onEditUser={openEditUser}
+                onViewProfile={openProfile}
+                isLoading={usersQuery.isLoading}
+                isRestoring={restoreMutation.isPending}
+                showDeletedAt
               />
             </TabsContent>
           </div>
@@ -552,10 +640,10 @@ export function UsersListPage() {
       <Modal open={deleteConfirmOpen} onOpenChange={(open) => { setDeleteConfirmOpen(open); if (!open) setUserToDelete(null) }}>
         <ModalContent className="max-w-md">
           <ModalHeader>
-            <ModalTitle>Kullanıcıyı Sil</ModalTitle>
+            <ModalTitle>Kullanıcıyı Pasife Al</ModalTitle>
             <ModalDescription>
               {userToDelete
-                ? `${userToDelete.firstName} ${userToDelete.lastName} (${userToDelete.email}) kullanıcısını silmek istediğinize emin misiniz? Kullanıcının tüm verileri kalıcı olarak silinecektir. Bu işlem geri alınamaz.`
+                ? `${userToDelete.firstName} ${userToDelete.lastName} (${userToDelete.email}) kullanıcısını pasife almak istediğinize emin misiniz? Kullanıcı giriş yapamaz; geçmiş kayıtlar ve işlem logları korunur.`
                 : ''}
             </ModalDescription>
           </ModalHeader>
@@ -565,7 +653,7 @@ export function UsersListPage() {
             </Button>
             <Button variant="destructive" onClick={handleDeleteConfirm} disabled={!userToDelete || deleteMutation.isPending} loading={deleteMutation.isPending}>
               <Trash2 className="h-4 w-4" />
-              Sil
+              Pasife Al
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -596,23 +684,21 @@ export function UsersListPage() {
                 placeholder="Soyad"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Telefon *"
-                filter="phone"
-                value={newUserForm.phone}
-                onChange={(e) => setNewUserForm((s) => ({ ...s, phone: e.target.value }))}
-                placeholder="05XX XXX XX XX"
-              />
-              <Input
-                label="E-posta"
-                type="email"
-                value={newUserForm.email}
-                onChange={(e) => setNewUserForm((s) => ({ ...s, email: e.target.value }))}
-                placeholder="ornek@email.com"
-                hint="Boş bırakılabilir."
-              />
-            </div>
+            <PhoneInput
+              label="Telefon *"
+              value={newUserForm.phone}
+              countryDialCode={newUserForm.countryDialCode}
+              onValueChange={(phone) => setNewUserForm((s) => ({ ...s, phone }))}
+              onCountryChange={(countryDialCode) => setNewUserForm((s) => ({ ...s, countryDialCode }))}
+            />
+            <Input
+              label="E-posta"
+              type="email"
+              value={newUserForm.email}
+              onChange={(e) => setNewUserForm((s) => ({ ...s, email: e.target.value }))}
+              placeholder="ornek@email.com"
+              hint="Boş bırakılabilir."
+            />
             {roleUsesCompanyName(newUserForm.role) && (
               <Input
                 label="Kurum Adı"
@@ -687,22 +773,20 @@ export function UsersListPage() {
                 placeholder="Soyad"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Telefon *"
-                filter="phone"
-                value={editUserForm.phone}
-                onChange={(e) => setEditUserForm((s) => ({ ...s, phone: e.target.value }))}
-                placeholder="05XX XXX XX XX"
-              />
-              <Input
-                label="E-posta"
-                type="email"
-                value={editUserForm.email}
-                onChange={(e) => setEditUserForm((s) => ({ ...s, email: e.target.value }))}
-                placeholder="ornek@email.com"
-              />
-            </div>
+            <PhoneInput
+              label="Telefon *"
+              value={editUserForm.phone}
+              countryDialCode={editUserForm.countryDialCode}
+              onValueChange={(phone) => setEditUserForm((s) => ({ ...s, phone }))}
+              onCountryChange={(countryDialCode) => setEditUserForm((s) => ({ ...s, countryDialCode }))}
+            />
+            <Input
+              label="E-posta"
+              type="email"
+              value={editUserForm.email}
+              onChange={(e) => setEditUserForm((s) => ({ ...s, email: e.target.value }))}
+              placeholder="ornek@email.com"
+            />
             <Input
               label="T.C. Kimlik No"
               filter="nationalId"
@@ -890,7 +974,12 @@ export function UsersListPage() {
                   <p className="text-surface-500 text-[11px] mb-1">Güncellenme</p>
                   <p className="font-medium text-surface-800">{formatDate(profileUser.updatedAt)}</p>
                 </div>
-              
+                {profileUser.deletedAt && (
+                  <div className="rounded-lg border border-surface-200 p-3 sm:col-span-2">
+                    <p className="text-surface-500 text-[11px] mb-1">Pasife Alınma</p>
+                    <p className="font-medium text-surface-800">{formatDate(profileUser.deletedAt)}</p>
+                  </div>
+                )}
               </div>
             </ModalBody>
           )}
@@ -918,6 +1007,8 @@ function UserTable({
   onEditUser,
   onViewProfile,
   isLoading,
+  isRestoring,
+  showDeletedAt,
 }: {
   users: User[]
   totalItems: number
@@ -928,12 +1019,15 @@ function UserTable({
   currentUserId?: string
   onApprove: (u: User) => void
   onDelete: (u: User) => void
-  onActivate: (id: string) => void
+  onActivate: (u: User) => void
   onEditRole: (u: User) => void
   onEditUser: (u: User) => void
   onViewProfile: (u: User) => void
   isLoading?: boolean
+  isRestoring?: boolean
+  showDeletedAt?: boolean
 }) {
+  const colSpan = showDeletedAt ? 8 : 7
   return (
     <>
       <div className="overflow-x-auto">
@@ -946,20 +1040,23 @@ function UserTable({
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Rol</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Onay</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kayıt Tarihi</th>
+              {showDeletedAt && (
+                <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Pasife Alınma</th>
+              )}
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 w-20 text-surface-500" />
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="px-5 py-12 text-center">
+                <td colSpan={colSpan} className="px-5 py-12 text-center">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary-500" />
                   <p className="text-[12px] text-surface-500">Kullanıcı listesi yükleniyor...</p>
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-5 py-12 text-center text-[12px] text-surface-500">
+                <td colSpan={colSpan} className="px-5 py-12 text-center text-[12px] text-surface-500">
                   Filtreye uygun kullanıcı bulunamadı.
                 </td>
               </tr>
@@ -1002,6 +1099,13 @@ function UserTable({
                   <td className="px-5 py-3.5">
                     <span className="text-[12px] text-surface-500">{formatDate(user.createdAt)}</span>
                   </td>
+                  {showDeletedAt && (
+                    <td className="px-5 py-3.5">
+                      <span className="text-[12px] text-surface-500">
+                        {user.deletedAt ? formatDate(user.deletedAt) : '—'}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-5 py-3.5">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -1041,15 +1145,13 @@ function UserTable({
                               onDelete(user)
                             }}
                           >
-                            <Trash2 className="h-4 w-4 mr-2" /> Sil
+                            <Trash2 className="h-4 w-4 mr-2" /> Pasife Al
                           </DropdownMenuItem>
                         )}
-                        {user.status === UserStatus.SUSPENDED && (
+                        {(user.status === UserStatus.SUSPENDED || user.deletedAt) && (
                           <DropdownMenuItem
-                            onClick={() => {
-                              onActivate(user.id)
-                              toast.success(`${user.firstName} ${user.lastName} yeniden aktif edildi`)
-                            }}
+                            disabled={isRestoring}
+                            onClick={() => onActivate(user)}
                           >
                             <UserCheck className="h-4 w-4 mr-2" /> Aktif Et
                           </DropdownMenuItem>

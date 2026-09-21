@@ -39,7 +39,9 @@ function mapAppRoleToApiRole(role: UserRole): CreateUserBody['role'] {
 /** API UserResponse (+ isVerified, deletedAt backend) → User */
 function mapApiUserToAppUser(apiUser: ApiUser & { isVerified?: boolean; deletedAt?: string | null }): User {
   const isVerified = apiUser.isVerified
-  const status = isVerified === false ? UserStatus.PENDING : UserStatus.ACTIVE
+  const deletedAt = (apiUser as ApiUser & { deletedAt?: string | null }).deletedAt
+  let status = isVerified === false ? UserStatus.PENDING : UserStatus.ACTIVE
+  if (deletedAt) status = UserStatus.SUSPENDED
   return {
     id: String(apiUser.id ?? ''),
     email: apiUser.email ?? '',
@@ -53,7 +55,30 @@ function mapApiUserToAppUser(apiUser: ApiUser & { isVerified?: boolean; deletedA
     updatedAt: apiUser.updatedAt ?? new Date().toISOString(),
     gender: (apiUser as ApiUser & { gender?: string }).gender as 'male' | 'female' | undefined,
     isVerified,
-    deletedAt: (apiUser as ApiUser & { deletedAt?: string | null }).deletedAt,
+    deletedAt,
+  }
+}
+
+function buildUsersQueryParams(params?: GetUsersParams) {
+  if (params == null) return undefined
+
+  return {
+    page: params.page ?? 1,
+    limit: params.limit ?? 50,
+    ...(params.search != null && String(params.search).trim()
+      ? { search: String(params.search).trim() }
+      : {}),
+    ...(params.isVerified === true || params.isVerified === false
+      ? { isVerified: params.isVerified ? 'true' : 'false' }
+      : {}),
+    ...(params.status != null ? { status: params.status } : {}),
+    ...(params.role != null
+      ? {
+          role: isAppUserRole(params.role)
+            ? mapAppRoleToApiRole(params.role)
+            : params.role,
+        }
+      : {}),
   }
 }
 
@@ -65,6 +90,8 @@ export interface GetUsersParams {
   search?: string
   /** Backend: GET /users?isVerified=true|false */
   isVerified?: boolean
+  /** Backend: GET /users?status=active|inactive|all */
+  status?: 'active' | 'inactive' | 'all'
 }
 
 export interface GetUsersResponse {
@@ -85,26 +112,7 @@ function isAppUserRole(role: string): role is UserRole {
 
 /** GET /users — backend: { success, message, data: { items, totalItems, totalPages, currentPage } } */
 export async function getUsers(params?: GetUsersParams): Promise<GetUsersResponse> {
-  const queryParams =
-    params != null
-      ? {
-        page: params.page ?? 1,
-        limit: params.limit ?? 50,
-        ...(params.search != null && String(params.search).trim()
-          ? { search: String(params.search).trim() }
-          : {}),
-        ...(params.isVerified === true || params.isVerified === false
-          ? { isVerified: params.isVerified ? 'true' : 'false' }
-          : {}),
-        ...(params.role != null
-          ? {
-            role: isAppUserRole(params.role)
-              ? mapAppRoleToApiRole(params.role)
-              : params.role,
-          }
-          : {}),
-      }
-      : undefined
+  const queryParams = buildUsersQueryParams(params)
 
   const { data } = await api.get<{
     success?: boolean
@@ -129,26 +137,8 @@ export async function getUsers(params?: GetUsersParams): Promise<GetUsersRespons
 export async function getUsersWithPagination(params?: GetUsersParams): Promise<GetUsersWithPaginationResult> {
   const page = params?.page ?? 1
   const limit = params?.limit ?? 50
-  const search = params?.search != null && String(params.search).trim() ? String(params.search).trim() : undefined
 
-  const queryParams =
-    params != null
-      ? {
-        page,
-        limit,
-        ...(search ? { search } : {}),
-        ...(params.isVerified === true || params.isVerified === false
-          ? { isVerified: params.isVerified ? 'true' : 'false' }
-          : {}),
-        ...(params.role != null
-          ? {
-            role: isAppUserRole(params.role)
-              ? mapAppRoleToApiRole(params.role)
-              : params.role,
-          }
-          : {}),
-      }
-      : { page, limit }
+  const queryParams = buildUsersQueryParams(params) ?? { page, limit }
 
   const { data } = await api.get<{
     success?: boolean
@@ -187,6 +177,7 @@ export async function createUser(payload: {
   firstName?: string
   lastName?: string
   phone: string
+  countryDialCode?: string
   email?: string
   companyName?: string
   role: UserRole
@@ -195,15 +186,14 @@ export async function createUser(payload: {
 }): Promise<User> {
   const body: Record<string, unknown> = {
     phone: payload.phone,
-    email: payload.email,
+    countryDialCode: payload.countryDialCode || '90',
     role: mapAppRoleToApiRole(payload.role),
     gender: payload.gender,
-    identityNumber: payload.identityNumber,
   }
   const firstName = normalizeOptionalText(payload.firstName)
   const lastName = normalizeOptionalText(payload.lastName)
   const companyName = normalizeOptionalText(payload.companyName)
-  const email = normalizeOptionalText(payload.email)
+  const email = normalizeOptionalText(payload.email)?.toLowerCase()
   const identityNumber = normalizeOptionalText(payload.identityNumber)
 
   if (firstName) body.firstName = firstName
@@ -212,8 +202,17 @@ export async function createUser(payload: {
   if (email) body.email = email
   if (identityNumber) body.identityNumber = identityNumber
 
-  const { data } = await api.post<ApiUser & { isVerified?: boolean }>('/users', body)
-  return mapApiUserToAppUser(data)
+  const { data } = await api.post<{
+    success?: boolean
+    data?: ApiUser & { isVerified?: boolean }
+  } & (ApiUser & { isVerified?: boolean })>('/users', body)
+
+  const userPayload =
+    data && typeof data === 'object' && 'data' in data && data.data
+      ? data.data
+      : (data as ApiUser & { isVerified?: boolean })
+
+  return mapApiUserToAppUser(userPayload)
 }
 
 /** PUT /users/{id} — kullanıcı güncelle */
@@ -224,34 +223,62 @@ export async function updateUser(
     lastName?: string
     companyName?: string
     phone?: string
+    countryDialCode?: string
     email?: string
     role?: UserRole
     identityNumber?: string
   }
 ): Promise<User> {
-  const body: UpdateUserBody = {}
+  const body: Record<string, unknown> = {}
   const firstName = normalizeOptionalText(payload.firstName)
   const lastName = normalizeOptionalText(payload.lastName)
   const companyName = normalizeOptionalText(payload.companyName)
   const phone = normalizeOptionalText(payload.phone)
-  const email = normalizeOptionalText(payload.email)
+  const email = normalizeOptionalText(payload.email)?.toLowerCase()
   const identityNumber = normalizeOptionalText(payload.identityNumber)
 
   if (firstName) body.firstName = firstName
   if (lastName) body.lastName = lastName
   if (companyName) body.companyName = companyName
-  if (phone) body.phone = phone
+  if (phone) {
+    body.phone = phone
+    body.countryDialCode = payload.countryDialCode || '90'
+  }
   if (email) body.email = email
   if (payload.role != null) body.role = mapAppRoleToApiRole(payload.role)
   if (identityNumber) body.identityNumber = identityNumber
 
-  const { data } = await api.put<ApiUser & { isVerified?: boolean }>(`/users/${id}`, body)
-  return mapApiUserToAppUser(data)
+  const { data } = await api.put<{
+    success?: boolean
+    data?: ApiUser & { isVerified?: boolean }
+  } & (ApiUser & { isVerified?: boolean })>(`/users/${id}`, body)
+
+  const userPayload =
+    data && typeof data === 'object' && 'data' in data && data.data
+      ? data.data
+      : (data as ApiUser & { isVerified?: boolean })
+
+  return mapApiUserToAppUser(userPayload)
 }
 
-/** DELETE /users/{id} — kullanıcı sil */
+/** DELETE /users/{id} — kullanıcıyı pasife al (soft delete) */
 export async function deleteUser(id: string): Promise<void> {
   await api.delete(`/users/${id}`)
+}
+
+/** POST /users/{id}/restore — pasif kullanıcıyı yeniden aktifleştir */
+export async function restoreUser(id: string): Promise<User> {
+  const { data } = await api.post<{
+    success?: boolean
+    data?: ApiUser & { isVerified?: boolean }
+  } & (ApiUser & { isVerified?: boolean })>(`/users/${id}/restore`)
+
+  const userPayload =
+    data && typeof data === 'object' && 'data' in data && data.data
+      ? data.data
+      : (data as ApiUser & { isVerified?: boolean })
+
+  return mapApiUserToAppUser(userPayload)
 }
 
 /** POST /auth/verify/{userId} — kayıt onayı (admin) */

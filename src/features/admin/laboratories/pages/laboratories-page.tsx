@@ -38,6 +38,11 @@ import {
 } from '@/services/laboratories.service'
 import { getDieticians } from '@/services/kits.service'
 import { getProvinces, getDistricts } from '@/services/turkey-addresses.service'
+import {
+  PhoneInput,
+  splitPhoneForInput,
+  validateNationalPhone,
+} from '@/components/shared/phone-input'
 import { updateUser } from '@/services/users.service'
 import { UserRole } from '@/utils/constants'
 
@@ -123,6 +128,7 @@ export function LaboratoriesPage() {
     firstName: '',
     lastName: '',
     phone: '',
+    countryDialCode: '90',
     email: '',
     gender: 'male' as 'male' | 'female',
     cargofirm: '',
@@ -349,6 +355,7 @@ export function LaboratoriesPage() {
           firstName: newLabForm.firstName.trim() || undefined,
           lastName: newLabForm.lastName.trim() || undefined,
           phone: phoneDigits,
+          countryDialCode: newLabForm.countryDialCode || '90',
           email: newLabForm.email.trim() || undefined,
           role: UserRole.LAB,
         })
@@ -438,6 +445,7 @@ export function LaboratoriesPage() {
       firstName: '',
       lastName: '',
       phone: '',
+      countryDialCode: '90',
       email: '',
       gender: 'male',
       cargofirm: '',
@@ -464,8 +472,9 @@ export function LaboratoriesPage() {
       toast.error('Telefon numarası zorunludur')
       return
     }
-    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
-      toast.error('Telefon numarası 10 veya 11 haneli olmalıdır (örn: 05551234567)')
+    const phoneErr = validateNationalPhone(newLabForm.phone, newLabForm.countryDialCode)
+    if (phoneErr) {
+      toast.error(phoneErr)
       return
     }
     if (!newLabForm.city.trim() || !newLabForm.district.trim()) {
@@ -493,6 +502,7 @@ export function LaboratoriesPage() {
       firstName: newLabForm.firstName.trim() || undefined,
       lastName: newLabForm.lastName.trim() || undefined,
       phone: phoneDigits,
+      countryDialCode: newLabForm.countryDialCode || '90',
       gender: newLabForm.gender,
       email: newLabForm.email.trim() || undefined,
       cargofirm: newLabForm.cargofirm.trim(),
@@ -516,11 +526,13 @@ export function LaboratoriesPage() {
     setSelectedProvinceId(null)
     setEditLabOpen(true)
     setSelectedLab(lab)
+    const split = splitPhoneForInput(lab.phone)
     setNewLabForm({
       companyName: lab.companyName ?? '',
       firstName: lab.firstName ?? '',
       lastName: lab.lastName ?? '',
-      phone: lab.phone ?? '',
+      phone: split.national,
+      countryDialCode: split.dial,
       email: lab.email ?? '',
       gender: lab.gender === 'female' ? 'female' : 'male',
       cargofirm: lab.cargofirm ?? '',
@@ -559,8 +571,13 @@ export function LaboratoriesPage() {
       return
     }
     const phoneDigits = newLabForm.phone.replace(/\D/g, '')
-    if (!phoneDigits || phoneDigits.length < 10 || phoneDigits.length > 11) {
-      toast.error('Telefon numarası 10 veya 11 haneli olmalıdır')
+    if (!phoneDigits) {
+      toast.error('Telefon numarası zorunludur')
+      return
+    }
+    const phoneErr = validateNationalPhone(newLabForm.phone, newLabForm.countryDialCode)
+    if (phoneErr) {
+      toast.error(phoneErr)
       return
     }
     if (!newLabForm.city.trim() || !newLabForm.district.trim()) {
@@ -1240,22 +1257,20 @@ export function LaboratoriesPage() {
                 placeholder="Lab sorumlusu soyadı"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Telefon"
-                filter="phone"
-                value={newLabForm.phone}
-                onChange={(e) => setNewLabForm((s) => ({ ...s, phone: e.target.value }))}
-                placeholder="05XX XXX XX XX"
-              />
-              <Input
-                label="E-posta"
-                type="email"
-                value={newLabForm.email}
-                onChange={(e) => setNewLabForm((s) => ({ ...s, email: e.target.value }))}
-                placeholder="lab@ornek.com"
-              />
-            </div>
+            <PhoneInput
+              label="Telefon"
+              value={newLabForm.phone}
+              countryDialCode={newLabForm.countryDialCode}
+              onValueChange={(phone) => setNewLabForm((s) => ({ ...s, phone }))}
+              onCountryChange={(countryDialCode) => setNewLabForm((s) => ({ ...s, countryDialCode }))}
+            />
+            <Input
+              label="E-posta"
+              type="email"
+              value={newLabForm.email}
+              onChange={(e) => setNewLabForm((s) => ({ ...s, email: e.target.value }))}
+              placeholder="lab@ornek.com"
+            />
             <div className="space-y-1.5">
               <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
               <Select value={newLabForm.gender} onValueChange={(v) => setNewLabForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
@@ -1430,22 +1445,20 @@ export function LaboratoriesPage() {
                     placeholder="Yetkili soyadı"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Telefon *"
-                    filter="phone"
-                    value={newLabForm.phone}
-                    onChange={(e) => setNewLabForm((s) => ({ ...s, phone: e.target.value }))}
-                    placeholder="05XX XXX XX XX"
-                  />
-                  <Input
-                    label="E-posta"
-                    type="email"
-                    value={newLabForm.email}
-                    onChange={(e) => setNewLabForm((s) => ({ ...s, email: e.target.value }))}
-                    placeholder="lab@ornek.com"
-                  />
-                </div>
+                <PhoneInput
+                  label="Telefon *"
+                  value={newLabForm.phone}
+                  countryDialCode={newLabForm.countryDialCode}
+                  onValueChange={(phone) => setNewLabForm((s) => ({ ...s, phone }))}
+                  onCountryChange={(countryDialCode) => setNewLabForm((s) => ({ ...s, countryDialCode }))}
+                />
+                <Input
+                  label="E-posta"
+                  type="email"
+                  value={newLabForm.email}
+                  onChange={(e) => setNewLabForm((s) => ({ ...s, email: e.target.value }))}
+                  placeholder="lab@ornek.com"
+                />
                 <div className="space-y-1.5">
                   <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
                   <Select value={newLabForm.gender} onValueChange={(v) => setNewLabForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>

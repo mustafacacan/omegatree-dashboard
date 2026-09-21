@@ -22,6 +22,12 @@ import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
 import type { components } from '@/types/openapi'
+import { getApiErrorMessage } from '@/lib/api-error'
+import {
+  PhoneInput,
+  splitPhoneForInput,
+  validateNationalPhone,
+} from '@/components/shared/phone-input'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -50,6 +56,7 @@ export function ProfilePage() {
     lastName: '',
     companyName: '',
     phone: '',
+    countryDialCode: '90',
     email: '',
     identityNumber: '',
   })
@@ -76,12 +83,17 @@ export function ProfilePage() {
       setEditModalOpen(false)
     },
     onError: (err) => {
-      const msg = err instanceof Error ? err.message : 'Profil guncellenemedi'
-      toast.error(msg)
+      toast.error(getApiErrorMessage(err, { fallback: 'Profil guncellenemedi' }))
     },
   })
 
-  const phoneError = useMemo(() => validate11Digits(editForm.phone), [editForm.phone])
+  const phoneError = useMemo(
+    () =>
+      editForm.phone.trim()
+        ? validateNationalPhone(editForm.phone, editForm.countryDialCode)
+        : null,
+    [editForm.phone, editForm.countryDialCode],
+  )
   const identityError = useMemo(() => validate11Digits(editForm.identityNumber), [editForm.identityNumber])
 
   if (!user) return null
@@ -92,11 +104,13 @@ export function ProfilePage() {
     user.role === USER_ROLE.SPECIALIST
 
   const openEditModal = () => {
+    const split = splitPhoneForInput(user.phone)
     setEditForm({
       firstName: user.firstName ?? '',
       lastName: user.lastName ?? '',
       companyName: user.companyName ?? '',
-      phone: limitDigits(user.phone ?? '', 11),
+      phone: split.national,
+      countryDialCode: split.dial,
       email: user.email ?? '',
       identityNumber: limitDigits(user.identityNumber ?? '', 11),
     })
@@ -116,14 +130,15 @@ export function ProfilePage() {
       return
     }
 
-    const payload: components['schemas']['UpdateUser'] = {
+    const payload = {
       firstName: editForm.firstName.trim(),
       lastName: editForm.lastName.trim(),
       ...(shouldShowCompanyName ? { companyName: editForm.companyName.trim() || undefined } : {}),
       phone: editForm.phone.trim() || undefined,
+      countryDialCode: editForm.countryDialCode || '90',
       email: editForm.email.trim() || undefined,
       identityNumber: editForm.identityNumber.trim() || undefined,
-    }
+    } as components['schemas']['UpdateUser'] & { countryDialCode?: string }
 
     updateProfileMutation.mutate({ payload, role: user.role })
   }
@@ -316,13 +331,12 @@ export function ProfilePage() {
               />
             ) : null}
 
-            <Input
+            <PhoneInput
               label="Telefon"
-              filter="phone"
               value={editForm.phone}
-              onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value }))}
-              placeholder="0555 555 55 55"
-              maxLength={11}
+              countryDialCode={editForm.countryDialCode}
+              onValueChange={(phone) => setEditForm((p) => ({ ...p, phone }))}
+              onCountryChange={(countryDialCode) => setEditForm((p) => ({ ...p, countryDialCode }))}
               error={phoneError ?? undefined}
             />
 

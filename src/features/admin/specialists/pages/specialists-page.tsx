@@ -25,6 +25,11 @@ import {
 } from '@/services/users.service'
 import { getExpertProfilesWithPagination } from '@/services/experts.service'
 import { getExpertProfileById, type Expert, type ExpertProfileListItem } from '@/services/experts.service'
+import {
+  PhoneInput,
+  splitPhoneForInput,
+  validateNationalPhone,
+} from '@/components/shared/phone-input'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -79,6 +84,7 @@ function SpecialistsPage() {
     companyName: '',
     email: '',
     phone: '',
+    countryDialCode: '90',
     gender: 'male' as 'male' | 'female',
   })
 
@@ -89,6 +95,7 @@ function SpecialistsPage() {
       companyName: '',
       email: '',
       phone: '',
+      countryDialCode: '90',
       gender: 'male',
     })
   }
@@ -143,12 +150,14 @@ function SpecialistsPage() {
   }
   const openEdit = (row: ExpertProfileListItem) => {
     setSelectedRow(row)
+    const split = splitPhoneForInput(row.user.phone)
     setForm({
       firstName: row.user.firstName ?? '',
       lastName: row.user.lastName ?? '',
       companyName: row.user.companyName ?? '',
       email: row.user.email ?? '',
-      phone: row.user.phone ?? '',
+      phone: split.national,
+      countryDialCode: split.dial,
       gender: (row.user.gender as 'male' | 'female') ?? 'male',
     })
     setEditOpen(true)
@@ -170,12 +179,18 @@ function SpecialistsPage() {
       toast.error('Telefon zorunludur')
       return
     }
+    const phoneErr = validateNationalPhone(form.phone, form.countryDialCode)
+    if (phoneErr) {
+      toast.error(phoneErr)
+      return
+    }
     createMutation.mutate({
       firstName: form.firstName.trim() || undefined,
       lastName: form.lastName.trim() || undefined,
       companyName: form.companyName.trim() || undefined,
       email: form.email.trim() || undefined,
       phone: form.phone.trim(),
+      countryDialCode: form.countryDialCode || '90',
       role: UserRole.SPECIALIST,
       gender: form.gender,
     })
@@ -183,6 +198,11 @@ function SpecialistsPage() {
 
   const submitEdit = () => {
     if (!selectedRow) return
+    const phoneErr = validateNationalPhone(form.phone, form.countryDialCode)
+    if (phoneErr) {
+      toast.error(phoneErr)
+      return
+    }
     updateMutation.mutate({
       id: selectedRow.user.id,
       payload: {
@@ -190,6 +210,7 @@ function SpecialistsPage() {
         lastName: form.lastName.trim(),
         email: form.email.trim() || undefined,
         phone: form.phone.trim(),
+        countryDialCode: form.countryDialCode || '90',
         companyName: form.companyName.trim() || undefined,
       },
     })
@@ -397,23 +418,21 @@ function SpecialistsPage() {
               placeholder="Kurum adı"
               hint="Opsiyonel"
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Telefon *"
-                filter="phone"
-                value={form.phone}
-                onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-                placeholder="05XX XXX XX XX"
-              />
-              <Input
-                label="E-posta"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                placeholder="ornek@email.com"
-                hint="Boş bırakabilirsiniz."
-              />
-            </div>
+            <PhoneInput
+              label="Telefon *"
+              value={form.phone}
+              countryDialCode={form.countryDialCode}
+              onValueChange={(phone) => setForm((s) => ({ ...s, phone }))}
+              onCountryChange={(countryDialCode) => setForm((s) => ({ ...s, countryDialCode }))}
+            />
+            <Input
+              label="E-posta"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+              placeholder="ornek@email.com"
+              hint="Boş bırakabilirsiniz."
+            />
             <div className="space-y-1.5">
               <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
               <Select value={form.gender} onValueChange={(v) => setForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
@@ -470,23 +489,21 @@ function SpecialistsPage() {
               onChange={(e) => setForm((s) => ({ ...s, companyName: e.target.value }))}
               placeholder="Kurum adı"
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Telefon *"
-                filter="phone"
-                value={form.phone}
-                onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-                placeholder="05XX XXX XX XX"
-              />
-              <Input
-                label="E-posta"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                placeholder="ornek@email.com"
-                hint="Boş bırakabilirsiniz."
-              />
-            </div>
+            <PhoneInput
+              label="Telefon *"
+              value={form.phone}
+              countryDialCode={form.countryDialCode}
+              onValueChange={(phone) => setForm((s) => ({ ...s, phone }))}
+              onCountryChange={(countryDialCode) => setForm((s) => ({ ...s, countryDialCode }))}
+            />
+            <Input
+              label="E-posta"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+              placeholder="ornek@email.com"
+              hint="Boş bırakabilirsiniz."
+            />
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" onClick={() => { setEditOpen(false); setSelectedRow(null) }} disabled={updateMutation.isPending}>

@@ -53,6 +53,11 @@ function DieticianClientsList({ dieticianId }: { dieticianId: number }) {
   )
 }
 import { updateUser, deleteUser } from '@/services/users.service'
+import {
+  PhoneInput,
+  splitPhoneForInput,
+  validateNationalPhone,
+} from '@/components/shared/phone-input'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -81,6 +86,7 @@ function DietitiansPage() {
     companyName: '',
     email: '',
     phone: '',
+    countryDialCode: '90',
     gender: 'male' as 'male' | 'female',
   })
 
@@ -163,12 +169,14 @@ function DietitiansPage() {
   useEffect(() => {
     const row = editDetailQuery.data
     if (!row || !editOpen) return
+    const split = splitPhoneForInput(row.phone)
     setForm({
       firstName: row.firstName ?? '',
       lastName: row.lastName ?? '',
       companyName: row.companyName ?? '',
       email: row.email ?? '',
-      phone: row.phone ?? '',
+      phone: split.national,
+      countryDialCode: split.dial,
       gender: (row.gender as 'male' | 'female') ?? 'male',
     })
   }, [editDetailQuery.data, editOpen])
@@ -180,6 +188,7 @@ function DietitiansPage() {
       companyName: '',
       email: '',
       phone: '',
+      countryDialCode: '90',
       gender: 'male',
     })
   }
@@ -190,12 +199,14 @@ function DietitiansPage() {
   }
   const openEdit = (row: AdminDietitianRow) => {
     setSelected(row)
+    const split = splitPhoneForInput(row.phone)
     setForm({
       firstName: row.firstName ?? '',
       lastName: row.lastName ?? '',
       companyName: row.companyName ?? '',
       email: row.email ?? '',
-      phone: row.phone ?? '',
+      phone: split.national,
+      countryDialCode: split.dial,
       gender: (row.gender as 'male' | 'female') ?? 'male',
     })
     setEditOpen(true)
@@ -210,18 +221,29 @@ function DietitiansPage() {
       toast.error('Telefon zorunludur')
       return
     }
+    const phoneErr = validateNationalPhone(form.phone, form.countryDialCode)
+    if (phoneErr) {
+      toast.error(phoneErr)
+      return
+    }
     createMutation.mutate({
       firstName: form.firstName.trim() || undefined,
       lastName: form.lastName.trim() || undefined,
       companyName: form.companyName.trim() || undefined,
       email: form.email.trim() || undefined,
       phone: form.phone.trim(),
+      countryDialCode: form.countryDialCode || '90',
       gender: form.gender,
     })
   }
 
   const submitEdit = () => {
     if (!selected) return
+    const phoneErr = validateNationalPhone(form.phone, form.countryDialCode)
+    if (phoneErr) {
+      toast.error(phoneErr)
+      return
+    }
     updateMutation.mutate({
       id: selected.id,
       payload: {
@@ -230,6 +252,7 @@ function DietitiansPage() {
         companyName: form.companyName.trim() || undefined,
         email: form.email.trim() || undefined,
         phone: form.phone.trim(),
+        countryDialCode: form.countryDialCode || '90',
       },
     })
   }
@@ -402,23 +425,21 @@ function DietitiansPage() {
               placeholder="Kurum adı"
               hint="Opsiyonel"
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Telefon *"
-                filter="phone"
-                value={form.phone}
-                onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-                placeholder="05XX XXX XX XX"
-              />
-              <Input
-                label="E-posta"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                placeholder="ornek@email.com"
-                hint="Boş bırakabilirsiniz."
-              />
-            </div>
+            <PhoneInput
+              label="Telefon *"
+              value={form.phone}
+              countryDialCode={form.countryDialCode}
+              onValueChange={(phone) => setForm((s) => ({ ...s, phone }))}
+              onCountryChange={(countryDialCode) => setForm((s) => ({ ...s, countryDialCode }))}
+            />
+            <Input
+              label="E-posta"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+              placeholder="ornek@email.com"
+              hint="Boş bırakabilirsiniz."
+            />
             <div className="space-y-1.5">
               <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
               <Select value={form.gender} onValueChange={(v) => setForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
@@ -475,23 +496,21 @@ function DietitiansPage() {
               onChange={(e) => setForm((s) => ({ ...s, companyName: e.target.value }))}
               placeholder="Kurum adı"
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Telefon *"
-                filter="phone"
-                value={form.phone}
-                onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-                placeholder="05XX XXX XX XX"
-              />
-              <Input
-                label="E-posta"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                placeholder="ornek@email.com"
-                hint="Boş bırakabilirsiniz."
-              />
-            </div>
+            <PhoneInput
+              label="Telefon *"
+              value={form.phone}
+              countryDialCode={form.countryDialCode}
+              onValueChange={(phone) => setForm((s) => ({ ...s, phone }))}
+              onCountryChange={(countryDialCode) => setForm((s) => ({ ...s, countryDialCode }))}
+            />
+            <Input
+              label="E-posta"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+              placeholder="ornek@email.com"
+              hint="Boş bırakabilirsiniz."
+            />
           </ModalBody>
           <ModalFooter>
             <Button variant="outline" onClick={() => { setEditOpen(false); setSelected(null) }} disabled={updateMutation.isPending}>

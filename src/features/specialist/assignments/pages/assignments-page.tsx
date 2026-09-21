@@ -18,6 +18,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { getApiErrorMessage } from '@/lib/api-error'
 import { getExpertById, getExpertTasks, updateExpert } from '@/services/experts.service'
 import { resolveMediaUrl } from '@/lib/media-url'
+import { anamnezDisplayFields, foodDisplayFields } from '@/features/shared/client-health-display'
 
 type AssignmentRow = {
   expertId: number
@@ -350,49 +351,21 @@ export function AssignmentsPage() {
                       <div className="space-y-2">
                         <p className="text-xs font-semibold text-surface-600 uppercase tracking-wider">Anamnez</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <DetailField label="Kronik Hastalık" value={expertDetailQuery.data.anamnezForm.chronic_illness || '—'} />
-                          <DetailField label="Kullanılan İlaç" value={expertDetailQuery.data.anamnezForm.medication_used || '—'} />
-                          <DetailField label="Gıda Alerjisi" value={expertDetailQuery.data.anamnezForm.food_allergy || '—'} />
-                          <DetailField label="Meslek" value={expertDetailQuery.data.anamnezForm.profession || '—'} />
-                          <DetailField label="Eğitim" value={expertDetailQuery.data.anamnezForm.education || '—'} />
-                          <DetailField
-                            label="Boy / Kilo"
-                            value={
-                              [
-                                expertDetailQuery.data.anamnezForm.body_height != null ? `${expertDetailQuery.data.anamnezForm.body_height} cm` : null,
-                                expertDetailQuery.data.anamnezForm.body_weight ? `${expertDetailQuery.data.anamnezForm.body_weight} kg` : null,
-                              ].filter(Boolean).join(' / ') || '—'
-                            }
-                          />
-                          <DetailField label="Bel Çevresi" value={expertDetailQuery.data.anamnezForm.waist_circumference || '—'} />
-                          <DetailField label="Kalça Çevresi" value={expertDetailQuery.data.anamnezForm.hip_circumference || '—'} />
+                          {anamnezDisplayFields(expertDetailQuery.data.anamnezForm).map((f) => (
+                            <DetailField key={f.label} label={f.label} value={f.value} />
+                          ))}
                         </div>
                       </div>
                     ) : null}
 
                     {expertDetailQuery.data.foodConsumptionRecord ? (
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold text-surface-600 uppercase tracking-wider">Beslenme Kaydı</p>
+                        <p className="text-xs font-semibold text-surface-600 uppercase tracking-wider">Beslenme Anamnezi</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <DetailField label="Öğün Sayısı (Günlük)" value={expertDetailQuery.data.foodConsumptionRecord.mealsPerDay ?? '—'} />
-                          <DetailField label="Günlük Su (L)" value={expertDetailQuery.data.foodConsumptionRecord.dailyWaterLiters || '—'} />
-                          <DetailField label="Alkol" value={expertDetailQuery.data.foodConsumptionRecord.alcoholFrequency || '—'} />
-                          <DetailField label="Sigara" value={expertDetailQuery.data.foodConsumptionRecord.smokingFrequency || '—'} />
-                          <DetailField label="Kaçınılan Gıdalar" value={expertDetailQuery.data.foodConsumptionRecord.avoidedFoods || '—'} />
-                          <DetailField label="Rahatsız Eden Gıdalar" value={expertDetailQuery.data.foodConsumptionRecord.discomfortFoods || '—'} />
-                          <DetailField label="Fast Food (Günlük)" value={expertDetailQuery.data.foodConsumptionRecord.fastFoodMealsPerDay ?? '—'} />
-                          <DetailField label="Dışkılama Sıklığı" value={expertDetailQuery.data.foodConsumptionRecord.defecationFrequency || '—'} />
-                          <DetailField label="Bağırsak Sorunu" value={expertDetailQuery.data.foodConsumptionRecord.bowelIssue || '—'} />
-                          <DetailField label="Gastrointestinal" value={expertDetailQuery.data.foodConsumptionRecord.gastrointestinalDisea || '—'} />
-                          <DetailField label="Gece Yeme Alışkanlığı" value={expertDetailQuery.data.foodConsumptionRecord.nightEatingHabit == null ? '—' : (expertDetailQuery.data.foodConsumptionRecord.nightEatingHabit ? 'Evet' : 'Hayır')} />
-                          <DetailField label="Yeme Bozukluğu Davranışı" value={expertDetailQuery.data.foodConsumptionRecord.eatingDisorderBehavio == null ? '—' : (expertDetailQuery.data.foodConsumptionRecord.eatingDisorderBehavio ? 'Evet' : 'Hayır')} />
+                          {foodDisplayFields(expertDetailQuery.data.foodConsumptionRecord).map((f) => (
+                            <DetailField key={f.label} label={f.label} value={f.value} />
+                          ))}
                         </div>
-                        {expertDetailQuery.data.foodConsumptionRecord.notes ? (
-                          <div className="rounded-xl border border-surface-200 bg-panel p-3">
-                            <p className="text-xs text-surface-500">Not</p>
-                            <p className="mt-2 text-sm text-surface-700 whitespace-pre-wrap">{expertDetailQuery.data.foodConsumptionRecord.notes}</p>
-                          </div>
-                        ) : null}
                       </div>
                     ) : null}
 

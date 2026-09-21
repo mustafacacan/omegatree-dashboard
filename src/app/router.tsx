@@ -122,6 +122,8 @@ export const router = createBrowserRouter([
       { path: ROUTES.YONETICI_UZMANLAR, element: <SuspensePage><SpecialistsPage /></SuspensePage> },
       { path: ROUTES.YONETICI_RAPORLAR, element: <SuspensePage><ReportApprovalsPage /></SuspensePage> },
       { path: ROUTES.YONETICI_ISLEM_KAYITLARI, element: <SuspensePage><AuditLogsPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_DESTEK, element: <Navigate to={ROUTES.YONETICI} replace /> },
+      { path: ROUTES.YONETICI_BEKLEYEN_ISLER, element: <Navigate to={ROUTES.YONETICI} replace /> },
       { path: ROUTES.YONETICI_BANKA_BILGILERI, element: <SuspensePage><BankInfosPage /></SuspensePage> },
     ],
   },
@@ -149,6 +151,7 @@ export const router = createBrowserRouter([
       { path: ROUTES.DIYETISYEN_SIPARISLER, element: <SuspensePage><DietitianOrderPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_SIPARIS_GECMISI, element: <SuspensePage><DietitianOrderHistoryPage /></SuspensePage> },
       { path: ROUTES.DIYETISYEN_RAPORLAR, element: <SuspensePage><ReportsPage /></SuspensePage> },
+      { path: ROUTES.DIYETISYEN_DESTEK, element: <Navigate to={ROUTES.DIYETISYEN} replace /> },
     ],
   },
 
@@ -168,6 +171,7 @@ export const router = createBrowserRouter([
       { path: ROUTES.LABORATUVAR_HAVUZ, element: <SuspensePage><SamplePoolPage /></SuspensePage> },
       { path: ROUTES.LABORATUVAR_ANALIZ, element: <SuspensePage><AnalysisPage /></SuspensePage> },
       { path: ROUTES.LABORATUVAR_SONUCLAR, element: <SuspensePage><ResultsPage /></SuspensePage> },
+      { path: ROUTES.LABORATUVAR_DESTEK, element: <Navigate to={ROUTES.LABORATUVAR} replace /> },
     ],
   },
 
@@ -188,6 +192,7 @@ export const router = createBrowserRouter([
       { path: ROUTES.UZMAN_ATAMALAR, element: <SuspensePage><AssignmentsPage /></SuspensePage> },
       { path: ROUTES.UZMAN_RAPORLAR_DUZENLEYICI, element: <SuspensePage><ReportEditorPage /></SuspensePage> },
       { path: ROUTES.UZMAN_SONUCLAR, element: <SuspensePage><SpecialistResultsPage /></SuspensePage> },
+      { path: ROUTES.UZMAN_DESTEK, element: <Navigate to={ROUTES.UZMAN} replace /> },
     ],
   },
 
@@ -210,6 +215,7 @@ export const router = createBrowserRouter([
           { path: ROUTES.DANISAN_BILGILERIM, element: <SuspensePage><DanisanBilgilerimPage /></SuspensePage> },
           { path: ROUTES.DANISAN_KIT, element: <SuspensePage><DanisanKitPage /></SuspensePage> },
           { path: ROUTES.DANISAN_RAPORLAR, element: <SuspensePage><DanisanRaporlarPage /></SuspensePage> },
+          { path: ROUTES.DANISAN_DESTEK, element: <Navigate to={ROUTES.DANISAN} replace /> },
         ],
       },
     ],

@@ -131,11 +131,17 @@ export async function getProfile(): Promise<User> {
  * Giriş yapmış kullanıcının profilini günceller.
  * API: PUT /users/profile
  */
-export async function updateProfile(payload: UpdateUserPayload, currentRole: UserRole): Promise<User> {
-  const body: UpdateUserPayload = {
+export async function updateProfile(
+  payload: UpdateUserPayload & { countryDialCode?: string },
+  currentRole: UserRole,
+): Promise<User> {
+  const body: Record<string, unknown> = {
     ...payload,
     // Backend bazı ortamlarda role bekliyor olabileceği için, mevcut rolü güvenle gönderiyoruz.
     role: mapAppRoleToApiRole(currentRole),
+  }
+  if (payload.phone) {
+    body.countryDialCode = payload.countryDialCode || '90'
   }
   const { data } = await api.put<ApiUser | { data?: ApiUser } | { data?: { data?: ApiUser } }>('/users/profile', body)
   return mapApiUserToAppUser(unwrapApiUser(data))
@@ -147,6 +153,7 @@ export interface RegisterPayload {
   lastName: string
   email?: string | null
   phone: string
+  countryDialCode?: string
   role: 'dietician' | 'client'
   gender: 'male' | 'female'
 }
@@ -159,8 +166,9 @@ export async function register(payload: RegisterPayload): Promise<void> {
   await api.post('/auth/register', {
     firstName: payload.firstName,
     lastName: payload.lastName,
-    email: payload.email ?? undefined,
+    email: payload.email,
     phone: payload.phone,
+    countryDialCode: payload.countryDialCode || '90',
     role: payload.role,
     gender: payload.gender,
   })
@@ -170,8 +178,14 @@ export async function register(payload: RegisterPayload): Promise<void> {
  * Şifremi unuttum: telefona sıfırlama linki içeren SMS gönderir.
  * API: POST /auth/forgot-password body: { phone }
  */
-export async function forgotPassword(phone: string): Promise<void> {
-  await api.post('/auth/forgot-password', { phone })
+export async function forgotPassword(
+  phone: string,
+  countryDialCode = '90',
+): Promise<void> {
+  await api.post('/auth/forgot-password', {
+    phone,
+    countryDialCode,
+  })
 }
 
 /**

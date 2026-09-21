@@ -9,13 +9,19 @@ export interface AnamnezForm {
   id: number
   clientId?: number
   clientName?: string
+  age?: number
   chronicIllness?: string
+  familyChronicIllness?: string
   medicationUsed?: string
   foodAllergy?: string
   bodyWeight?: number
   bodyHeight?: number
   waistCircumference?: number
   hipCircumference?: number
+  neckCircumference?: number
+  smokingFrequency?: string
+  alcoholFrequency?: string
+  alcoholType?: string
   profession?: string
   education?: string
   createdAt: string
@@ -72,13 +78,19 @@ function mapApiAnamnez(item: unknown): AnamnezForm {
     id,
     clientId: clientId ?? undefined,
     clientName,
+    age: toNumberMaybe(rec.age),
     chronicIllness: toStringMaybe(rec.chronic_illness),
+    familyChronicIllness: toStringMaybe(rec.family_chronic_illness),
     medicationUsed: toStringMaybe(rec.medication_used),
     foodAllergy: toStringMaybe(rec.food_allergy),
     bodyWeight: toNumberMaybe(rec.body_weight),
     bodyHeight: toNumberMaybe(rec.body_height),
     waistCircumference: toNumberMaybe(rec.waist_circumference),
     hipCircumference: toNumberMaybe(rec.hip_circumference),
+    neckCircumference: toNumberMaybe(rec.neck_circumference),
+    smokingFrequency: toStringMaybe(rec.smokingFrequency),
+    alcoholFrequency: toStringMaybe(rec.alcoholFrequency),
+    alcoholType: toStringMaybe(rec.alcoholType),
     profession: toStringMaybe(rec.profession),
     education: toStringMaybe(rec.education),
     createdAt,

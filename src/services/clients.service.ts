@@ -131,13 +131,19 @@ export interface ClientDetail {
   anamnezForm?: {
     id?: number
     clientId?: number
+    age?: number
     chronicIllness?: string
+    familyChronicIllness?: string
     medicationUsed?: string
     foodAllergy?: string
     bodyWeight?: string | number
     bodyHeight?: string | number
     waistCircumference?: string | number
     hipCircumference?: string | number
+    neckCircumference?: string | number
+    smokingFrequency?: string
+    alcoholFrequency?: string
+    alcoholType?: string
     profession?: string
     education?: string
     createdAt?: string
@@ -148,17 +154,26 @@ export interface ClientDetail {
     id?: number
     clientId?: number
     mealsPerDay?: number
+    mainMealsPerDay?: number
+    snackMealsPerDay?: number
     alcoholFrequency?: string
     smokingFrequency?: string
     avoidedFoods?: string
+    avoidedFoodsReason?: string
+    foodAllergy?: string
     dailyWaterLiters?: number
     fastFoodMealsPerDay?: number
+    fastFoodDaysPerWeek?: number
+    fastFoodMealsPerWeek?: number
     defecationFrequency?: string
     discomfortFoods?: string
     bowelIssue?: string
+    bowelIssueFrequency?: string
     gastrointestinalDisease?: string
     nightEatingHabit?: boolean
     eatingDisorderBehaviors?: boolean
+    eatingDisorderBehaviorsNote?: string
+    notes?: string
     createdAt?: string
     updatedAt?: string
     deletedAt?: string | null
@@ -262,19 +277,28 @@ export async function getClientDetail(clientId: number | string): Promise<Client
       ? {
         id: asNumber(anamnez.id),
         clientId: asNumber(anamnez.clientId),
-        chronicIllness: asString(anamnez.chronic_illness),
-        medicationUsed: asString(anamnez.medication_used),
-        foodAllergy: asString(anamnez.food_allergy),
-        bodyWeight: (asString(anamnez.body_weight) ?? asNumber(anamnez.body_weight)) as string | number | undefined,
-        bodyHeight: (asString(anamnez.body_height) ?? asNumber(anamnez.body_height)) as string | number | undefined,
-        waistCircumference: (asString(anamnez.waist_circumference) ?? asNumber(anamnez.waist_circumference)) as
+        age: asNumber(anamnez.age),
+        chronicIllness: asString(anamnez.chronic_illness ?? anamnez.chronicIllness),
+        familyChronicIllness: asString(anamnez.family_chronic_illness ?? anamnez.familyChronicIllness),
+        medicationUsed: asString(anamnez.medication_used ?? anamnez.medicationUsed),
+        foodAllergy: asString(anamnez.food_allergy ?? anamnez.foodAllergy),
+        bodyWeight: (asString(anamnez.body_weight ?? anamnez.bodyWeight) ?? asNumber(anamnez.body_weight ?? anamnez.bodyWeight)) as string | number | undefined,
+        bodyHeight: (asString(anamnez.body_height ?? anamnez.bodyHeight) ?? asNumber(anamnez.body_height ?? anamnez.bodyHeight)) as string | number | undefined,
+        waistCircumference: (asString(anamnez.waist_circumference ?? anamnez.waistCircumference) ?? asNumber(anamnez.waist_circumference ?? anamnez.waistCircumference)) as
           | string
           | number
           | undefined,
-        hipCircumference: (asString(anamnez.hip_circumference) ?? asNumber(anamnez.hip_circumference)) as
+        hipCircumference: (asString(anamnez.hip_circumference ?? anamnez.hipCircumference) ?? asNumber(anamnez.hip_circumference ?? anamnez.hipCircumference)) as
           | string
           | number
           | undefined,
+        neckCircumference: (asString(anamnez.neck_circumference ?? anamnez.neckCircumference) ?? asNumber(anamnez.neck_circumference ?? anamnez.neckCircumference)) as
+          | string
+          | number
+          | undefined,
+        smokingFrequency: asString(anamnez.smokingFrequency),
+        alcoholFrequency: asString(anamnez.alcoholFrequency),
+        alcoholType: asString(anamnez.alcoholType),
         profession: asString(anamnez.profession),
         education: asString(anamnez.education),
         createdAt: asString(anamnez.createdAt),
@@ -287,17 +311,26 @@ export async function getClientDetail(clientId: number | string): Promise<Client
         id: asNumber(food.id),
         clientId: asNumber(food.clientId ?? food.client_id),
         mealsPerDay: asNumber(food.mealsPerDay ?? food.meals_per_day),
+        mainMealsPerDay: asNumber(food.mainMealsPerDay ?? food.main_meals_per_day),
+        snackMealsPerDay: asNumber(food.snackMealsPerDay ?? food.snack_meals_per_day),
         alcoholFrequency: asString(food.alcoholFrequency ?? food.alcohol_frequency),
         smokingFrequency: asString(food.smokingFrequency ?? food.smoking_frequency),
         avoidedFoods: asString(food.avoidedFoods ?? food.avoided_foods),
+        avoidedFoodsReason: asString(food.avoidedFoodsReason ?? food.avoided_foods_reason),
+        foodAllergy: asString(food.foodAllergy ?? food.food_allergy),
         dailyWaterLiters: asNumber(food.dailyWaterLiters ?? food.daily_water_liters),
         fastFoodMealsPerDay: asNumber(food.fastFoodMealsPerDay ?? food.fast_food_meals_per_day),
+        fastFoodDaysPerWeek: asNumber(food.fastFoodDaysPerWeek ?? food.fast_food_days_per_week),
+        fastFoodMealsPerWeek: asNumber(food.fastFoodMealsPerWeek ?? food.fast_food_meals_per_week),
         defecationFrequency: asString(food.defecationFrequency ?? food.defecation_frequency),
         discomfortFoods: asString(food.discomfortFoods ?? food.discomfort_foods),
         bowelIssue: asString(food.bowelIssue ?? food.bowel_issue),
+        bowelIssueFrequency: asString(food.bowelIssueFrequency ?? food.bowel_issue_frequency),
         gastrointestinalDisease: asString(food.gastrointestinalDisease ?? food.gastrointestinal_disease),
         nightEatingHabit: asBoolean(food.nightEatingHabit ?? food.night_eating_habit),
         eatingDisorderBehaviors: asBoolean(food.eatingDisorderBehaviors ?? food.eating_disorder_behaviors),
+        eatingDisorderBehaviorsNote: asString(food.eatingDisorderBehaviorsNote ?? food.eating_disorder_behaviors_note),
+        notes: asString(food.notes),
         createdAt: asString(food.createdAt),
         updatedAt: asString(food.updatedAt),
         deletedAt: (asString(food.deletedAt) ?? null) as string | null,
@@ -405,17 +438,24 @@ export async function createClient(payload: {
   firstName: string
   lastName: string
   phone: string
+  countryDialCode?: string
   email?: string
   gender: 'male' | 'female'
   identityNumber?: string
   anamnezForm?: {
+    age?: number
     chronicIllness?: string
+    familyChronicIllness?: string
     medicationUsed?: string
     foodAllergy?: string
     bodyWeight?: number
     bodyHeight?: number
     waistCircumference?: number
     hipCircumference?: number
+    neckCircumference?: number
+    smokingFrequency?: string
+    alcoholFrequency?: string
+    alcoholType?: string
     profession?: string
     education?: string
   }
@@ -426,23 +466,30 @@ export async function createClient(payload: {
       firstName: payload.firstName,
       lastName: payload.lastName,
       phone: payload.phone,
+      countryDialCode: payload.countryDialCode || '90',
       email: payload.email,
       role: 'client',
       gender: payload.gender,
       identityNumber: payload.identityNumber,
-    },
+    } as ApiCreateClientLoose['userId'],
     ...(typeof payload.dieticianId === 'number' ? { dieticianId: payload.dieticianId } : {}),
   }
 
   if (payload.anamnezForm) {
     const anamnez: Record<string, unknown> = {}
+    if (typeof payload.anamnezForm.age === 'number') anamnez.age = payload.anamnezForm.age
     if (payload.anamnezForm.chronicIllness) anamnez.chronic_illness = payload.anamnezForm.chronicIllness
+    if (payload.anamnezForm.familyChronicIllness) anamnez.family_chronic_illness = payload.anamnezForm.familyChronicIllness
     if (payload.anamnezForm.medicationUsed) anamnez.medication_used = payload.anamnezForm.medicationUsed
     if (payload.anamnezForm.foodAllergy) anamnez.food_allergy = payload.anamnezForm.foodAllergy
     if (typeof payload.anamnezForm.bodyWeight === 'number') anamnez.body_weight = payload.anamnezForm.bodyWeight
     if (typeof payload.anamnezForm.bodyHeight === 'number') anamnez.body_height = payload.anamnezForm.bodyHeight
     if (typeof payload.anamnezForm.waistCircumference === 'number') anamnez.waist_circumference = payload.anamnezForm.waistCircumference
     if (typeof payload.anamnezForm.hipCircumference === 'number') anamnez.hip_circumference = payload.anamnezForm.hipCircumference
+    if (typeof payload.anamnezForm.neckCircumference === 'number') anamnez.neck_circumference = payload.anamnezForm.neckCircumference
+    if (payload.anamnezForm.smokingFrequency) anamnez.smokingFrequency = payload.anamnezForm.smokingFrequency
+    if (payload.anamnezForm.alcoholFrequency) anamnez.alcoholFrequency = payload.anamnezForm.alcoholFrequency
+    if (payload.anamnezForm.alcoholType) anamnez.alcoholType = payload.anamnezForm.alcoholType
     if (payload.anamnezForm.profession) anamnez.profession = payload.anamnezForm.profession
     if (payload.anamnezForm.education) anamnez.education = payload.anamnezForm.education
 

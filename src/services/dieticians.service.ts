@@ -235,12 +235,14 @@ export async function createDietician(payload: {
   lastName?: string
   companyName?: string
   phone: string
+  countryDialCode?: string
   email?: string
   gender: 'male' | 'female'
   vkn?: string
 }): Promise<void> {
-  const user: CreateDieticianBody['user'] = {
+  const user = {
     phone: payload.phone.trim(),
+    countryDialCode: payload.countryDialCode || '90',
     gender: payload.gender,
     ...(payload.firstName != null && String(payload.firstName).trim()
       ? { firstName: String(payload.firstName).trim() }
@@ -254,7 +256,7 @@ export async function createDietician(payload: {
     ...(payload.email != null && String(payload.email).trim()
       ? { email: String(payload.email).trim() }
       : {}),
-  }
+  } as CreateDieticianBody['user']
 
   const body: CreateDieticianBody = {
     user,

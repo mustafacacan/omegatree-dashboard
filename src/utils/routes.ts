@@ -25,6 +25,8 @@ export const ROUTES = {
   YONETICI_RAPORLAR: '/yonetici/raporlar',
   YONETICI_ISLEM_KAYITLARI: '/yonetici/islem-kayitlari',
   YONETICI_BANKA_BILGILERI: '/yonetici/banka-bilgileri',
+  YONETICI_DESTEK: '/yonetici/destek',
+  YONETICI_BEKLEYEN_ISLER: '/yonetici/bekleyen-isler',
 
   DIYETISYEN: '/diyetisyen',
   DIYETISYEN_PROFIL: '/diyetisyen/profil',
@@ -38,6 +40,7 @@ export const ROUTES = {
   DIYETISYEN_SIPARISLER: '/diyetisyen/siparisler',
   DIYETISYEN_SIPARIS_GECMISI: '/diyetisyen/siparisler/gecmis',
   DIYETISYEN_RAPORLAR: '/diyetisyen/raporlar',
+  DIYETISYEN_DESTEK: '/diyetisyen/destek',
 
   LABORATUVAR: '/laboratuvar',
   LABORATUVAR_PROFIL: '/laboratuvar/profil',
@@ -46,6 +49,7 @@ export const ROUTES = {
   LABORATUVAR_HAVUZ: '/laboratuvar/havuz',
   LABORATUVAR_ANALIZ: '/laboratuvar/analiz',
   LABORATUVAR_SONUCLAR: '/laboratuvar/sonuclar',
+  LABORATUVAR_DESTEK: '/laboratuvar/destek',
 
   UZMAN: '/uzman',
   UZMAN_PROFIL: '/uzman/profil',
@@ -55,6 +59,7 @@ export const ROUTES = {
   UZMAN_ATAMALAR: '/uzman/atamalar',
   UZMAN_RAPORLAR_DUZENLEYICI: '/uzman/raporlar/duzenleyici',
   UZMAN_SONUCLAR: '/uzman/sonuclar',
+  UZMAN_DESTEK: '/uzman/destek',
 
   DANISAN: '/danisan',
   DANISAN_PROFIL: '/danisan/profil',
@@ -63,6 +68,7 @@ export const ROUTES = {
   DANISAN_BILGILERIM: '/danisan/bilgilerim',
   DANISAN_KIT: '/danisan/kit',
   DANISAN_RAPORLAR: '/danisan/raporlar',
+  DANISAN_DESTEK: '/danisan/destek',
 
   PAYLAS: '/paylas',
 } as const
