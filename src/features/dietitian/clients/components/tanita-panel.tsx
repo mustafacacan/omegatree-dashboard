@@ -54,7 +54,7 @@ function toFieldString(value: string | number | null | undefined, inputType: 'te
 }
 
 function buildDraftValues(row: TanitaMeasurement): TanitaEditableFields {
-  const out: TanitaEditableFields = {}
+  const out: Record<string, string | number | null> = {}
   for (const def of TANITA_FIELD_DEFS) {
     const v = row[def.key]
     if (def.inputType === 'text') {
@@ -63,7 +63,7 @@ function buildDraftValues(row: TanitaMeasurement): TanitaEditableFields {
       out[def.key] = v != null && Number.isFinite(Number(v)) ? Number(v) : null
     }
   }
-  return out
+  return out as TanitaEditableFields
 }
 
 export function TanitaPanel({ clientId }: { clientId: string | number }) {

@@ -19,7 +19,7 @@ const registerSchema = z.object({
   lastName: z.string().min(2, 'Soyad en az 2 karakter olmalı'),
   email: z.string().email('Geçerli bir e-posta girin'),
   phone: z.string().min(10, 'Geçerli bir telefon numarası girin'),
-  countryDialCode: z.string().min(1).default('90'),
+  countryDialCode: z.string().min(1),
   role: z.enum([UserRole.DIETITIAN, UserRole.DANISAN]),
   gender: z.enum(['male', 'female']),
 })

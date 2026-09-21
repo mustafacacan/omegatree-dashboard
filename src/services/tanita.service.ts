@@ -82,7 +82,9 @@ export type TanitaMeasurement = {
   updatedAt?: string
 }
 
-export type TanitaEditableFields = Partial<Pick<TanitaMeasurement, TanitaFieldKey>>
+export type TanitaEditableFields = {
+  [K in TanitaFieldKey]?: TanitaMeasurement[K] | null
+}
 
 export const TANITA_FIELD_DEFS: Array<{
   key: TanitaFieldKey

@@ -103,7 +103,7 @@ export function AnamnezStep({ onSaved }: { onSaved: () => void | Promise<void> }
         alcoholType: form.alcoholType.trim() || undefined,
         profession: form.profession.trim(),
         education: form.education.trim(),
-      } as Parameters<typeof createAnamnez>[0])
+      })
     },
     onSuccess: async () => {
       toast.success('Anamnez kaydedildi.')

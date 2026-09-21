@@ -1,4 +1,4 @@
-import { api } from '@/lib/axios'
+import { api, type ApiRequestConfig } from '@/lib/axios'
 
 function parseFilenameFromDisposition(header: string | undefined, fallback: string): string {
   if (!header) return fallback
@@ -19,12 +19,13 @@ export async function downloadBlobFromApi(
   url: string,
   fallbackFilename: string,
 ): Promise<void> {
-  const response = await api.get<Blob>(url, {
+  const config: ApiRequestConfig = {
     responseType: 'blob',
     skipAuthRedirect: true,
-  })
+  }
+  const response = await api.get<Blob>(url, config)
 
-  const blob = response.data
+  const blob = response.data instanceof Blob ? response.data : new Blob([response.data as BlobPart])
   const filename = parseFilenameFromDisposition(
     response.headers['content-disposition'] as string | undefined,
     fallbackFilename,

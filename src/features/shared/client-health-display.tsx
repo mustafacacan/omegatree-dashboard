@@ -7,7 +7,6 @@ import {
 import { labelFfqFood } from '@/lib/ffq-food-keys'
 import type { ClientDetail } from '@/services/clients.service'
 import type { AnamnezForm } from '@/services/anamnez.service'
-import type { FoodConsumptionRecord } from '@/services/food-consumption-records.service'
 import type { FoodFrequencyRecord } from '@/services/food-frequency.service'
 import type { IpaqRecord } from '@/services/ipaq.service'
 
@@ -39,8 +38,8 @@ export function anamnezDisplayFields(source: AnamnezForm | ClientDetail['anamnez
   ].map((f) => ({ ...f, value: dash(f.value) }))
 }
 
-export function foodDisplayFields(source: FoodConsumptionRecord | ClientDetail['foodConsumptionRecord'] | undefined) {
-  if (!source) return []
+export function foodDisplayFields(source: unknown) {
+  if (!source || typeof source !== 'object') return []
   const rec = source as Record<string, unknown>
   return [
     { label: 'Ana öğün / gün', value: rec.mainMealsPerDay ?? rec.main_meals_per_day },

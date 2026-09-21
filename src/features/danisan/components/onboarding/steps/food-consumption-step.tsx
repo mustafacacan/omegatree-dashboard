@@ -79,7 +79,7 @@ export function FoodConsumptionStep({ onSaved }: { onSaved: () => void | Promise
       const payload = buildBeslenmeAnamneziPayload(form)
       if (payload === 'error') throw new Error(BESLENME_REQUIRED_ERROR)
       if (!payload) throw new Error(BESLENME_REQUIRED_ERROR)
-      return upsertMyFoodConsumptionRecord(payload as Parameters<typeof upsertMyFoodConsumptionRecord>[0])
+      return upsertMyFoodConsumptionRecord(payload)
     },
     onSuccess: async () => {
       toast.success('Beslenme anamnezi kaydedildi.')

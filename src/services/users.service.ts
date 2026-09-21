@@ -5,7 +5,6 @@ import type { components } from '@/types/openapi'
 
 type ApiUser = components['schemas']['UserResponse']
 type CreateUserBody = components['schemas']['CreateUser']
-type UpdateUserBody = components['schemas']['UpdateUser']
 
 function normalizeOptionalText(value?: string) {
   const trimmed = value?.trim()
@@ -40,7 +39,7 @@ function mapAppRoleToApiRole(role: UserRole): CreateUserBody['role'] {
 function mapApiUserToAppUser(apiUser: ApiUser & { isVerified?: boolean; deletedAt?: string | null }): User {
   const isVerified = apiUser.isVerified
   const deletedAt = (apiUser as ApiUser & { deletedAt?: string | null }).deletedAt
-  let status = isVerified === false ? UserStatus.PENDING : UserStatus.ACTIVE
+  let status: UserStatus = isVerified === false ? UserStatus.PENDING : UserStatus.ACTIVE
   if (deletedAt) status = UserStatus.SUSPENDED
   return {
     id: String(apiUser.id ?? ''),

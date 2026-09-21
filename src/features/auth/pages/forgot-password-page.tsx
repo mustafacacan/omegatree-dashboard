@@ -14,7 +14,7 @@ import { PhoneInput } from '@/components/shared/phone-input'
 
 const phoneSchema = z.object({
   phone: z.string().min(10, 'Geçerli bir telefon numarası girin'),
-  countryDialCode: z.string().min(1).default('90'),
+  countryDialCode: z.string().min(1),
 })
 
 const resetSchema = z.object({

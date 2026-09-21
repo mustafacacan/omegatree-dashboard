@@ -1,9 +1,25 @@
 import { api, type ApiRequestConfig } from '@/lib/axios'
-import type { components } from '@/types/openapi'
 
 const skipAuth: ApiRequestConfig = { skipAuthRedirect: true }
 
-type ApiCreateAnamnez = components['schemas']['CreateAnamnezForm']
+/** Backend anamnez create/update payload (OpenAPI food_allergy zorunluluğu güncel değil). */
+export type CreateAnamnezPayload = {
+  age?: number
+  chronic_illness: string
+  family_chronic_illness?: string
+  medication_used: string
+  food_allergy?: string
+  body_weight: number
+  body_height: number
+  waist_circumference: number
+  hip_circumference: number
+  neck_circumference?: number
+  smokingFrequency?: string
+  alcoholFrequency?: string
+  alcoholType?: string
+  profession: string
+  education: string
+}
 
 export interface AnamnezForm {
   id: number
@@ -144,7 +160,7 @@ export async function getAnamnezById(id: number | string): Promise<AnamnezForm> 
 }
 
 /** POST /anamnez */
-export async function createAnamnez(payload: ApiCreateAnamnez): Promise<AnamnezForm> {
+export async function createAnamnez(payload: CreateAnamnezPayload): Promise<AnamnezForm> {
   const { data } = await api.post<unknown>('/anamnez', payload, skipAuth)
   return mapApiAnamnez(unwrapSingle(data))
 }
@@ -152,7 +168,7 @@ export async function createAnamnez(payload: ApiCreateAnamnez): Promise<AnamnezF
 /** PUT /anamnez/{id} */
 export async function updateAnamnez(
   id: number | string,
-  payload: Partial<ApiCreateAnamnez>
+  payload: Partial<CreateAnamnezPayload>
 ): Promise<AnamnezForm> {
   const { data } = await api.put<unknown>(`/anamnez/${id}`, payload, skipAuth)
   return mapApiAnamnez(unwrapSingle(data))
