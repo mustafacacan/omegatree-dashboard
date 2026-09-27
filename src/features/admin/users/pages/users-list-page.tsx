@@ -7,10 +7,10 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
-  Tabs, TabsList, TabsTrigger, TabsContent,
+  Tabs, TabsList, TabsTrigger,
 } from '@/components/ui'
 import { UserRole, UserStatus, USER_ROLE_LABELS } from '@/utils/constants'
-import { formatDate } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import {
   Search, Plus, MoreHorizontal, UserCheck, UserX, Shield, Eye,
@@ -36,11 +36,17 @@ import {
 } from '@/components/shared/phone-input'
 import { AdminCreateUserModal } from '@/features/admin/users/components/admin-create-user-modal'
 import type { AdminCreateUserLocationState } from '@/features/admin/users/admin-create-user-navigation'
+import {
+  buildAdminUsersListParams,
+  filterUsersForAdminTab,
+  isPassiveAdminUser,
+  type AdminUsersTab,
+} from '@/features/admin/users/admin-users-list-params'
 
 const statusLabels: Record<UserStatus, string> = {
   [UserStatus.ACTIVE]: 'Aktif',
   [UserStatus.PENDING]: 'Onay Bekliyor',
-  [UserStatus.SUSPENDED]: 'Askiya Alindi',
+  [UserStatus.SUSPENDED]: 'Pasif',
 }
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
@@ -53,7 +59,7 @@ export function UsersListPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [userTab, setUserTab] = useState<'all' | 'active' | 'pending' | 'inactive'>('active')
+  const [userTab, setUserTab] = useState<AdminUsersTab>('active')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -81,30 +87,29 @@ export function UsersListPage() {
   })
 
   const trimmedSearch = useMemo(() => search.trim(), [search])
-  const usersQuery = useQuery({
-    queryKey: [...USERS_QUERY_KEY, { page, pageSize, role: roleFilter, search: trimmedSearch, userTab }],
-    queryFn: () => {
-      const params = {
+  const listQueryParams = useMemo(
+    () =>
+      buildAdminUsersListParams({
+        userTab,
         page,
         limit: pageSize,
-        role: roleFilter !== 'all' ? (roleFilter as UserRole) : undefined,
-        search: trimmedSearch || undefined,
-        ...(userTab === 'all'
-          ? { status: 'all' as const }
-          : userTab === 'inactive'
-            ? { status: 'inactive' as const }
-            : {
-              status: 'active' as const,
-              ...(userTab === 'pending'
-                ? { isVerified: false }
-                : { isVerified: true }),
-            }),
-      }
-      return getUsersWithPagination(params)
-    },
+        roleFilter,
+        search: trimmedSearch,
+      }),
+    [userTab, page, pageSize, roleFilter, trimmedSearch],
+  )
+  const usersQuery = useQuery({
+    queryKey: [...USERS_QUERY_KEY, listQueryParams],
+    queryFn: () => getUsersWithPagination(listQueryParams),
   })
   const users: User[] = useMemo(() => usersQuery.data?.items ?? [], [usersQuery.data?.items])
-  const totalItems = usersQuery.data?.totalItems ?? users.length
+  const displayedUsers = useMemo(
+    () => filterUsersForAdminTab(users, userTab),
+    [users, userTab],
+  )
+  const tableUsers = usersQuery.isPending ? [] : displayedUsers
+  const totalItems =
+    usersQuery.isPending ? 0 : (usersQuery.data?.totalItems ?? displayedUsers.length)
   const totalPages = useMemo(() => {
     const safeSize = Math.max(1, pageSize)
     return Math.max(1, Math.ceil(totalItems / safeSize))
@@ -210,24 +215,6 @@ export function UsersListPage() {
     () => users.filter((u) => u.status === UserStatus.PENDING),
     [users]
   )
-
-  /** GET /users — status + isVerified sunucuda filtrelenir; sekme değişiminde eski sayfa verisi gösterilmesin diye ek güvenlik. */
-  const displayedUsers = useMemo(() => {
-    if (userTab === 'inactive') {
-      return users.filter((u) => Boolean(u.deletedAt) || u.status === UserStatus.SUSPENDED)
-    }
-    if (userTab === 'active') {
-      return users.filter(
-        (u) => !u.deletedAt && u.status === UserStatus.ACTIVE && u.isVerified !== false,
-      )
-    }
-    if (userTab === 'pending') {
-      return users.filter(
-        (u) => !u.deletedAt && (u.status === UserStatus.PENDING || u.isVerified === false),
-      )
-    }
-    return users
-  }, [users, userTab])
 
   const handleApprove = (user: User) => {
     setSelectedUser(user)
@@ -341,7 +328,7 @@ export function UsersListPage() {
         </div>
       )}
 
-      <Tabs value={userTab} onValueChange={(v) => { setUserTab(v as typeof userTab); setPage(1) }}>
+      <Tabs value={userTab} onValueChange={(v) => { setUserTab(v as AdminUsersTab); setPage(1) }}>
         <motion.div {...fadeUp} transition={{ duration: 0.35, delay: 0.05 }}>
           <div className="panel">
             <div className="p-4 sm:p-5 border-b border-surface-200">
@@ -417,96 +404,28 @@ export function UsersListPage() {
                 </div>
               </div>
             </div>
-            <TabsContent value="all" className="mt-0">
-              <UserTable
-                users={displayedUsers}
-                totalItems={totalItems}
-                page={effectivePage}
-                pageSize={pageSize}
-                onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
-                onPageSizeChange={(next) => {
-                  setPageSize(next)
-                  setPage(1)
-                }}
-                currentUserId={currentUser?.id}
-                onApprove={handleApprove}
-                onDelete={handleDeleteOpen}
-                onActivate={handleActivate}
-                onEditRole={openRoleEditor}
-                onEditUser={openEditUser}
-                onViewProfile={openProfile}
-                isLoading={usersQuery.isLoading}
-                isRestoring={restoreMutation.isPending}
-                showDeletedAt={userTab === 'inactive' || userTab === 'all'}
-              />
-            </TabsContent>
-            <TabsContent value="active" className="mt-0">
-              <UserTable
-                users={displayedUsers}
-                totalItems={totalItems}
-                page={effectivePage}
-                pageSize={pageSize}
-                onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
-                onPageSizeChange={(next) => {
-                  setPageSize(next)
-                  setPage(1)
-                }}
-                currentUserId={currentUser?.id}
-                onApprove={handleApprove}
-                onDelete={handleDeleteOpen}
-                onActivate={handleActivate}
-                onEditRole={openRoleEditor}
-                onEditUser={openEditUser}
-                onViewProfile={openProfile}
-                isLoading={usersQuery.isLoading}
-                isRestoring={restoreMutation.isPending}
-              />
-            </TabsContent>
-            <TabsContent value="pending" className="mt-0">
-              <UserTable
-                users={displayedUsers}
-                totalItems={totalItems}
-                page={effectivePage}
-                pageSize={pageSize}
-                onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
-                onPageSizeChange={(next) => {
-                  setPageSize(next)
-                  setPage(1)
-                }}
-                currentUserId={currentUser?.id}
-                onApprove={handleApprove}
-                onDelete={handleDeleteOpen}
-                onActivate={handleActivate}
-                onEditRole={openRoleEditor}
-                onEditUser={openEditUser}
-                onViewProfile={openProfile}
-                isLoading={usersQuery.isLoading}
-                isRestoring={restoreMutation.isPending}
-              />
-            </TabsContent>
-            <TabsContent value="inactive" className="mt-0">
-              <UserTable
-                users={displayedUsers}
-                totalItems={totalItems}
-                page={effectivePage}
-                pageSize={pageSize}
-                onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
-                onPageSizeChange={(next) => {
-                  setPageSize(next)
-                  setPage(1)
-                }}
-                currentUserId={currentUser?.id}
-                onApprove={handleApprove}
-                onDelete={handleDeleteOpen}
-                onActivate={handleActivate}
-                onEditRole={openRoleEditor}
-                onEditUser={openEditUser}
-                onViewProfile={openProfile}
-                isLoading={usersQuery.isLoading}
-                isRestoring={restoreMutation.isPending}
-                showDeletedAt
-              />
-            </TabsContent>
+            <UserTable
+              users={tableUsers}
+              totalItems={totalItems}
+              page={effectivePage}
+              pageSize={pageSize}
+              onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
+              onPageSizeChange={(next) => {
+                setPageSize(next)
+                setPage(1)
+              }}
+              currentUserId={currentUser?.id}
+              onApprove={handleApprove}
+              onDelete={handleDeleteOpen}
+              onActivate={handleActivate}
+              onEditRole={openRoleEditor}
+              onEditUser={openEditUser}
+              onViewProfile={openProfile}
+              isLoading={usersQuery.isPending || usersQuery.isFetching}
+              isRestoring={restoreMutation.isPending}
+              showDeletedAt={userTab === 'inactive' || userTab === 'all'}
+              passiveTabMode={userTab === 'inactive'}
+            />
           </div>
         </motion.div>
       </Tabs>
@@ -880,6 +799,15 @@ export function UsersListPage() {
   )
 }
 
+function PassiveAccountBadge({ className }: { className?: string }) {
+  return (
+    <Badge variant="danger" size="sm" className={cn('shrink-0', className)}>
+      <UserX className="h-3 w-3" aria-hidden />
+      Pasif
+    </Badge>
+  )
+}
+
 function UserTable({
   users,
   totalItems,
@@ -897,6 +825,7 @@ function UserTable({
   isLoading,
   isRestoring,
   showDeletedAt,
+  passiveTabMode,
 }: {
   users: User[]
   totalItems: number
@@ -914,6 +843,8 @@ function UserTable({
   isLoading?: boolean
   isRestoring?: boolean
   showDeletedAt?: boolean
+  /** Pasif sekmesi: satır ve durum sütununda hesabın pasif olduğu vurgulanır */
+  passiveTabMode?: boolean
 }) {
   const colSpan = showDeletedAt ? 8 : 7
   return (
@@ -926,7 +857,9 @@ function UserTable({
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">E-posta</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Telefon</th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Rol</th>
-              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Onay</th>
+              <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">
+                {passiveTabMode ? 'Hesap durumu' : 'Onay'}
+              </th>
               <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Kayıt Tarihi</th>
               {showDeletedAt && (
                 <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-5 py-3 text-surface-500">Pasife Alınma</th>
@@ -949,15 +882,27 @@ function UserTable({
                 </td>
               </tr>
             ) : (
-              users.map((user) => (
+              users.map((user) => {
+                const isPassive = isPassiveAdminUser(user)
+                return (
                 <tr
                   key={user.id}
-                  className="transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40"
+                  className={cn(
+                    'transition-colors border-b border-surface-200 hover:bg-surface-50 dark:hover:bg-surface-200/40',
+                    passiveTabMode && isPassive && 'bg-red-50/50 dark:bg-red-950/15',
+                  )}
                 >
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <Avatar name={`${user.firstName} ${user.lastName}`} size="sm" />
-                      <span className="text-[12px] text-surface-700">{user.firstName} {user.lastName}</span>
+                      <span
+                        className={cn(
+                          'text-[12px] truncate',
+                          passiveTabMode && isPassive ? 'text-surface-600' : 'text-surface-700',
+                        )}
+                      >
+                        {user.firstName} {user.lastName}
+                      </span>
                     </div>
                   </td>
                   <td className="px-5 py-3.5">
@@ -972,25 +917,57 @@ function UserTable({
                     </span>
                   </td>
                   <td className="px-5 py-3.5">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${user.isVerified === true
-                          ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                          : user.isVerified === false
-                            ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'
-                            : 'bg-surface-200 dark:bg-surface-300/50 text-surface-500'
-                        }`}
-                    >
-                      {user.isVerified === true ? 'Onaylı' : user.isVerified === false ? 'Beklemede' : statusLabels[user.status]}
-                    </span>
+                    {passiveTabMode && isPassive ? (
+                      <div className="flex flex-col gap-1 items-start">
+                        <PassiveAccountBadge />
+                        <span className="text-[10px] text-surface-500 leading-snug">
+                          {user.isVerified === true
+                            ? 'Giriş kapalı · önceden onaylı'
+                            : user.isVerified === false
+                              ? 'Giriş kapalı · onay bekliyordu'
+                              : 'Giriş kapalı'}
+                        </span>
+                      </div>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${user.isVerified === true
+                            ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                            : user.isVerified === false
+                              ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'
+                              : isPassive
+                                ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                : 'bg-surface-200 dark:bg-surface-300/50 text-surface-500'
+                          }`}
+                      >
+                        {isPassive
+                          ? 'Pasif'
+                          : user.isVerified === true
+                            ? 'Onaylı'
+                            : user.isVerified === false
+                              ? 'Beklemede'
+                              : statusLabels[user.status]}
+                      </span>
+                    )}
                   </td>
                   <td className="px-5 py-3.5">
                     <span className="text-[12px] text-surface-500">{formatDate(user.createdAt)}</span>
                   </td>
                   {showDeletedAt && (
                     <td className="px-5 py-3.5">
-                      <span className="text-[12px] text-surface-500">
-                        {user.deletedAt ? formatDate(user.deletedAt) : '—'}
-                      </span>
+                      {user.deletedAt ? (
+                        <span className="inline-flex flex-col gap-0.5">
+                          <span className="text-[12px] font-medium text-surface-700">
+                            {formatDate(user.deletedAt)}
+                          </span>
+                          {passiveTabMode ? (
+                            <span className="text-[10px] text-red-600/80 dark:text-red-400/90">
+                              Pasife alındı
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-surface-500">—</span>
+                      )}
                     </td>
                   )}
                   <td className="px-5 py-3.5">
@@ -1047,7 +1024,7 @@ function UserTable({
                     </DropdownMenu>
                   </td>
                 </tr>
-              ))
+              )})
             )}
           </tbody>
         </table>

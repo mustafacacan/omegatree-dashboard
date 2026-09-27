@@ -36,9 +36,20 @@ function mapAppRoleToApiRole(role: UserRole): CreateUserBody['role'] {
 }
 
 /** API UserResponse (+ isVerified, deletedAt backend) → User */
+function readApiDeletedAt(
+  apiUser: ApiUser & { deletedAt?: string | null; deleted_at?: string | null },
+): string | null | undefined {
+  const raw = apiUser.deletedAt ?? apiUser.deleted_at
+  if (raw == null) return raw
+  const normalized = String(raw).trim()
+  return normalized ? normalized : null
+}
+
 function mapApiUserToAppUser(apiUser: ApiUser & { isVerified?: boolean; deletedAt?: string | null }): User {
   const isVerified = apiUser.isVerified
-  const deletedAt = (apiUser as ApiUser & { deletedAt?: string | null }).deletedAt
+  const deletedAt = readApiDeletedAt(
+    apiUser as ApiUser & { deletedAt?: string | null; deleted_at?: string | null },
+  )
   let status: UserStatus = isVerified === false ? UserStatus.PENDING : UserStatus.ACTIVE
   if (deletedAt) status = UserStatus.SUSPENDED
   return {
