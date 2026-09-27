@@ -94,11 +94,11 @@ export function UsersListPage() {
           : userTab === 'inactive'
             ? { status: 'inactive' as const }
             : {
-                status: 'active' as const,
-                ...(userTab === 'pending'
-                  ? { isVerified: false }
-                  : { isVerified: true }),
-              }),
+              status: 'active' as const,
+              ...(userTab === 'pending'
+                ? { isVerified: false }
+                : { isVerified: true }),
+            }),
       }
       return getUsersWithPagination(params)
     },
@@ -973,13 +973,12 @@ function UserTable({
                   </td>
                   <td className="px-5 py-3.5">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${
-                        user.isVerified === true
+                      className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${user.isVerified === true
                           ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
                           : user.isVerified === false
                             ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200'
                             : 'bg-surface-200 dark:bg-surface-300/50 text-surface-500'
-                      }`}
+                        }`}
                     >
                       {user.isVerified === true ? 'Onaylı' : user.isVerified === false ? 'Beklemede' : statusLabels[user.status]}
                     </span>
