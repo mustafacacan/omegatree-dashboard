@@ -12,17 +12,24 @@ import { Mail, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { register as apiRegister } from '@/services/auth.service'
-import { PhoneInput } from '@/components/shared/phone-input'
+import { PhoneInput, validateNationalPhone } from '@/components/shared/phone-input'
 
-const registerSchema = z.object({
-  firstName: z.string().min(2, 'Ad en az 2 karakter olmalı'),
-  lastName: z.string().min(2, 'Soyad en az 2 karakter olmalı'),
-  email: z.string().email('Geçerli bir e-posta girin'),
-  phone: z.string().min(10, 'Geçerli bir telefon numarası girin'),
-  countryDialCode: z.string().min(1),
-  role: z.enum([UserRole.DIETITIAN, UserRole.DANISAN]),
-  gender: z.enum(['male', 'female']),
-})
+const registerSchema = z
+  .object({
+    firstName: z.string().min(2, 'Ad en az 2 karakter olmalı'),
+    lastName: z.string().min(2, 'Soyad en az 2 karakter olmalı'),
+    email: z.string().email('Geçerli bir e-posta girin'),
+    phone: z.string().min(1, 'Telefon numarası zorunludur'),
+    countryDialCode: z.string().min(1),
+    role: z.enum([UserRole.DIETITIAN, UserRole.DANISAN]),
+    gender: z.enum(['male', 'female']),
+  })
+  .superRefine((data, ctx) => {
+    const phoneErr = validateNationalPhone(data.phone, data.countryDialCode)
+    if (phoneErr) {
+      ctx.addIssue({ code: 'custom', message: phoneErr, path: ['phone'] })
+    }
+  })
 
 type RegisterForm = z.infer<typeof registerSchema>
 

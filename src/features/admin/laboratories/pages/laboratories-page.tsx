@@ -10,7 +10,7 @@ import {
 } from '@/components/ui'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import {
-  Search, Plus, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone, Mail,
+  Search, MoreHorizontal, Edit, Trash2, Users, MapPin, Phone, Mail,
   Loader2, Eye, FlaskConical, Package, Clock, CheckCircle, FileText,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -27,7 +27,6 @@ import {
   getLaboratoriesWithPagination,
   getLaboratoryById,
   ensureLaboratoryPrimaryKey,
-  createLaboratory,
   updateLaboratory,
   deleteLaboratory,
   getLabDietitianAssignments,
@@ -111,7 +110,6 @@ export function LaboratoriesPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [newLabOpen, setNewLabOpen] = useState(false)
   const [editLabOpen, setEditLabOpen] = useState(false)
   const [assignDietitianOpen, setAssignDietitianOpen] = useState(false)
   const [deleteLabOpen, setDeleteLabOpen] = useState(false)
@@ -148,12 +146,12 @@ export function LaboratoriesPage() {
   const { data: provinces = [] } = useQuery({
     queryKey: ['turkey', 'provinces'],
     queryFn: getProvinces,
-    enabled: newLabOpen || editLabOpen,
+    enabled: editLabOpen,
   })
   const { data: districts = [], isLoading: districtsLoading } = useQuery({
     queryKey: ['turkey', 'districts', selectedProvinceId],
     queryFn: () => getDistricts(selectedProvinceId!),
-    enabled: (newLabOpen || editLabOpen) && selectedProvinceId != null,
+    enabled: editLabOpen && selectedProvinceId != null,
   })
 
   useEffect(() => {
@@ -308,24 +306,6 @@ export function LaboratoriesPage() {
     [allLaboratories]
   )
 
-  const createMutation = useMutation({
-    mutationFn: createLaboratory,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: LABS_QUERY_KEY })
-      toast.success('Laboratuvar başarıyla oluşturuldu')
-      setNewLabOpen(false)
-      resetNewLabForm()
-    },
-    onError: (err: unknown) => {
-      console.error('[createLaboratory] error:', err)
-      const axErr = err as { response?: { status?: number; data?: unknown }; message?: string }
-      if (axErr.response) {
-        console.error('[createLaboratory] status:', axErr.response.status, 'data:', axErr.response.data)
-      }
-      toast.error(getApiErrorMessage(err, { fallback: 'Laboratuvar oluşturulamadı' }))
-    },
-  })
-
   const saveLabEditMutation = useMutation({
     mutationFn: async () => {
       if (!selectedLab) return
@@ -459,65 +439,6 @@ export function LaboratoriesPage() {
       postalCode: '',
       country: 'Turkiye',
       addressTitle: 'work',
-    })
-  }
-
-  const submitNewLab = () => {
-    if (!newLabForm.companyName.trim()) {
-      toast.error('Kurum adı zorunludur')
-      return
-    }
-    const phoneDigits = newLabForm.phone.replace(/\D/g, '')
-    if (!phoneDigits) {
-      toast.error('Telefon numarası zorunludur')
-      return
-    }
-    const phoneErr = validateNationalPhone(newLabForm.phone, newLabForm.countryDialCode)
-    if (phoneErr) {
-      toast.error(phoneErr)
-      return
-    }
-    if (!newLabForm.city.trim() || !newLabForm.district.trim()) {
-      toast.error('Şehir ve ilçe zorunludur')
-      return
-    }
-    if (!newLabForm.cargofirm.trim() || !newLabForm.cargoNumber.trim()) {
-      toast.error('Kargo firması ve kargo numarası zorunludur')
-      return
-    }
-
-    const streetVal = newLabForm.street.trim() || '-'
-    const neighborhoodVal = newLabForm.neighborhood.trim() || '-'
-    const noVal = newLabForm.no.trim()
-    const cityVal = newLabForm.city.trim()
-    const districtVal = newLabForm.district.trim()
-    const countryVal = newLabForm.country.trim() || 'Turkiye'
-    const autoFull = newLabForm.fullAddress.trim() ||
-      [streetVal !== '-' ? streetVal : null, noVal ? `No:${noVal}` : null, neighborhoodVal !== '-' ? neighborhoodVal : null, districtVal, cityVal, countryVal]
-        .filter(Boolean)
-        .join(', ')
-
-    createMutation.mutate({
-      companyName: newLabForm.companyName.trim(),
-      firstName: newLabForm.firstName.trim() || undefined,
-      lastName: newLabForm.lastName.trim() || undefined,
-      phone: phoneDigits,
-      countryDialCode: newLabForm.countryDialCode || '90',
-      gender: newLabForm.gender,
-      email: newLabForm.email.trim() || undefined,
-      cargofirm: newLabForm.cargofirm.trim(),
-      cargoNumber: newLabForm.cargoNumber.trim(),
-      address: {
-        title: newLabForm.addressTitle || 'work',
-        country: countryVal,
-        city: cityVal,
-        district: districtVal,
-        street: streetVal,
-        neighborhood: neighborhoodVal,
-        no: noVal || undefined,
-        fullAddress: autoFull || undefined,
-        postalCode: newLabForm.postalCode.trim() || '00000',
-      },
     })
   }
 
@@ -701,10 +622,6 @@ export function LaboratoriesPage() {
                       className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                     />
                   </div>
-                  <Button variant="primary" size="sm" onClick={() => setNewLabOpen(true)}>
-                    <Plus className="h-4 w-4" />
-                    Yeni Laboratuvar
-                  </Button>
                 </div>
               </div>
 
@@ -1222,181 +1139,6 @@ export function LaboratoriesPage() {
                 Düzenle
               </Button>
             )}
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* ── Create Laboratory Modal ── */}
-      <Modal open={newLabOpen} onOpenChange={setNewLabOpen}>
-        <ModalContent className="max-w-3xl w-[calc(100vw-1.5rem)] sm:w-full">
-          <ModalHeader>
-            <ModalTitle>Yeni Laboratuvar Ekle</ModalTitle>
-            <ModalDescription>Lab sorumlusu, kargo ve adres bilgilerini girin.</ModalDescription>
-          </ModalHeader>
-          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
-            <p className="form-section-title">Lab Sorumlusu</p>
-            <Input
-              label="Kurum Adı *"
-              value={newLabForm.companyName}
-              onChange={(e) => setNewLabForm((s) => ({ ...s, companyName: e.target.value }))}
-              placeholder="Laboratuvar adı"
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Ad"
-                filter="personName"
-                value={newLabForm.firstName}
-                onChange={(e) => setNewLabForm((s) => ({ ...s, firstName: e.target.value }))}
-                placeholder="Lab sorumlusu adı"
-              />
-              <Input
-                label="Soyad"
-                filter="personName"
-                value={newLabForm.lastName}
-                onChange={(e) => setNewLabForm((s) => ({ ...s, lastName: e.target.value }))}
-                placeholder="Lab sorumlusu soyadı"
-              />
-            </div>
-            <PhoneInput
-              label="Telefon"
-              value={newLabForm.phone}
-              countryDialCode={newLabForm.countryDialCode}
-              onValueChange={(phone) => setNewLabForm((s) => ({ ...s, phone }))}
-              onCountryChange={(countryDialCode) => setNewLabForm((s) => ({ ...s, countryDialCode }))}
-            />
-            <Input
-              label="E-posta"
-              type="email"
-              value={newLabForm.email}
-              onChange={(e) => setNewLabForm((s) => ({ ...s, email: e.target.value }))}
-              placeholder="lab@ornek.com"
-            />
-            <div className="space-y-1.5">
-              <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
-              <Select value={newLabForm.gender} onValueChange={(v) => setNewLabForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Erkek</SelectItem>
-                  <SelectItem value="female">Kadın</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="panel-section">
-              <p className="form-section-title">Kargo Bilgileri</p>
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label="Kargo Firması *"
-                  value={newLabForm.cargofirm}
-                  onChange={(e) => setNewLabForm((s) => ({ ...s, cargofirm: e.target.value }))}
-                  placeholder="Örn: Yurtiçi Kargo"
-                />
-                <Input
-                  label="Kargo Numarası *"
-                  value={newLabForm.cargoNumber}
-                  onChange={(e) => setNewLabForm((s) => ({ ...s, cargoNumber: e.target.value }))}
-                  placeholder="Anlaşma numarası"
-                />
-              </div>
-            </div>
-
-            <div className="panel-section">
-              <p className="form-section-title">Adres Bilgileri</p>
-              <div className="grid grid-cols-2 gap-3">
-                <Select
-                  value={selectedProvinceId != null ? String(selectedProvinceId) : ''}
-                  onValueChange={(v) => {
-                    const id = v ? Number(v) : null
-                    const province = id ? provinces.find((p) => p.id === id) : null
-                    setSelectedProvinceId(id)
-                    setNewLabForm((s) => ({
-                      ...s,
-                      city: province?.name ?? '',
-                      district: '',
-                    }))
-                  }}
-                >
-                  <SelectTrigger label="Şehir *" className="w-full">
-                    <SelectValue placeholder="İl seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {provinces.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={newLabForm.district}
-                  onValueChange={(v) => setNewLabForm((s) => ({ ...s, district: v }))}
-                  disabled={!selectedProvinceId || districtsLoading}
-                >
-                  <SelectTrigger label="İlçe *" className="w-full">
-                    <SelectValue placeholder={districtsLoading ? 'Yükleniyor...' : selectedProvinceId ? 'İlçe seçin' : 'Önce il seçin'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {districts.map((d) => (
-                      <SelectItem key={d.id} value={d.name}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-3">
-               
-                <Input
-                  label="Mahalle"
-                  value={newLabForm.neighborhood}
-                  onChange={(e) => setNewLabForm((s) => ({ ...s, neighborhood: e.target.value }))}
-                  placeholder="Mahalle"
-                />
-                 <Input
-                  label="Sokak"
-                  value={newLabForm.street}
-                  onChange={(e) => setNewLabForm((s) => ({ ...s, street: e.target.value }))}
-                  placeholder="Sokak adı"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-3 mt-3">
-                <Input
-                  label="Kapı No"
-                  value={newLabForm.no}
-                  onChange={(e) => setNewLabForm((s) => ({ ...s, no: e.target.value }))}
-                  placeholder="Örn: 10"
-                />
-                <Input
-                  label="Posta Kodu"
-                  value={newLabForm.postalCode}
-                  onChange={(e) => setNewLabForm((s) => ({ ...s, postalCode: e.target.value }))}
-                  placeholder="Örn: 34710"
-                />
-                <Input
-                  label="Ülke"
-                  value={newLabForm.country}
-                  onChange={(e) => setNewLabForm((s) => ({ ...s, country: e.target.value }))}
-                  placeholder="Turkiye"
-                />
-              </div>
-              <div className="mt-3">
-                <Input
-                  label="Açık Adres"
-                  value={newLabForm.fullAddress}
-                  onChange={(e) => setNewLabForm((s) => ({ ...s, fullAddress: e.target.value }))}
-                  placeholder="Örn: Atatürk Sokak No:10, Moda, Kadıköy, İstanbul, Türkiye"
-                />
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="outline" onClick={() => { setNewLabOpen(false); resetNewLabForm() }}>
-              İptal
-            </Button>
-            <Button variant="primary" onClick={submitNewLab} disabled={createMutation.isPending}>
-              {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Laboratuvar Oluştur
-            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

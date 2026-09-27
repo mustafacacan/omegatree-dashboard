@@ -2,7 +2,7 @@ import { api, type ApiRequestConfig } from '@/lib/axios'
 
 const skipAuth: ApiRequestConfig = { skipAuthRedirect: true }
 
-/** Backend anamnez create/update payload (OpenAPI food_allergy zorunluluğu güncel değil). */
+/** Backend POST /anamnez gövdesi (snake_case, Joi createAnamnezFormSchema). */
 export type CreateAnamnezPayload = {
   age?: number
   chronic_illness: string
@@ -19,6 +19,40 @@ export type CreateAnamnezPayload = {
   alcoholType?: string
   profession: string
   education: string
+}
+
+/** API'ye gönderilen tam gövde — backend'in beklediği zorunlu/varsayılan alanlar dahil. */
+export type AnamnezApiCreateBody = CreateAnamnezPayload & {
+  food_allergy: string
+  family_chronic_illness: string
+}
+
+/** Danışan onboarding / POST /anamnez için backend ile birebir uyumlu payload. */
+export function buildAnamnezCreatePayload(input: CreateAnamnezPayload): AnamnezApiCreateBody {
+  const body: AnamnezApiCreateBody = {
+    chronic_illness: input.chronic_illness.trim(),
+    medication_used: input.medication_used.trim(),
+    food_allergy: input.food_allergy?.trim() || 'none',
+    family_chronic_illness: input.family_chronic_illness?.trim() || 'none',
+    body_weight: Number(input.body_weight),
+    body_height: Math.round(Number(input.body_height)),
+    waist_circumference: Number(input.waist_circumference),
+    hip_circumference: Number(input.hip_circumference),
+    profession: input.profession.trim(),
+    education: input.education.trim(),
+  }
+
+  if (input.age != null && Number.isFinite(Number(input.age))) {
+    body.age = Math.round(Number(input.age))
+  }
+  if (input.neck_circumference != null && Number.isFinite(Number(input.neck_circumference))) {
+    body.neck_circumference = Number(input.neck_circumference)
+  }
+  if (input.smokingFrequency) body.smokingFrequency = input.smokingFrequency
+  if (input.alcoholFrequency) body.alcoholFrequency = input.alcoholFrequency
+  if (input.alcoholType?.trim()) body.alcoholType = input.alcoholType.trim()
+
+  return body
 }
 
 export interface AnamnezForm {
@@ -161,7 +195,8 @@ export async function getAnamnezById(id: number | string): Promise<AnamnezForm> 
 
 /** POST /anamnez */
 export async function createAnamnez(payload: CreateAnamnezPayload): Promise<AnamnezForm> {
-  const { data } = await api.post<unknown>('/anamnez', payload, skipAuth)
+  const body = buildAnamnezCreatePayload(payload)
+  const { data } = await api.post<unknown>('/anamnez', body, skipAuth)
   return mapApiAnamnez(unwrapSingle(data))
 }
 

@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
-import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/page-header'
 import {
   Button, Input, Badge, Avatar,
@@ -21,7 +22,6 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { useCurrentUser } from '@/stores/auth.store'
 import { TablePagination } from '@/components/shared/table-pagination'
 import {
-  createUser,
   updateUser,
   deleteUser,
   restoreUser,
@@ -34,6 +34,8 @@ import {
   splitPhoneForInput,
   validateNationalPhone,
 } from '@/components/shared/phone-input'
+import { AdminCreateUserModal } from '@/features/admin/users/components/admin-create-user-modal'
+import type { AdminCreateUserLocationState } from '@/features/admin/users/admin-create-user-navigation'
 
 const statusLabels: Record<UserStatus, string> = {
   [UserStatus.ACTIVE]: 'Aktif',
@@ -45,14 +47,13 @@ const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 const USERS_QUERY_KEY = ['users'] as const
 
-const roleUsesCompanyName = (role: UserRole) =>
-  role === UserRole.DIETITIAN || role === UserRole.LAB || role === UserRole.SPECIALIST
-
 export function UsersListPage() {
   const currentUser = useCurrentUser()
   const queryClient = useQueryClient()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [userTab, setUserTab] = useState<'all' | 'active' | 'pending' | 'inactive'>('all')
+  const [userTab, setUserTab] = useState<'all' | 'active' | 'pending' | 'inactive'>('active')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -61,19 +62,10 @@ export function UsersListPage() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileUser, setProfileUser] = useState<User | null>(null)
   const [newUserOpen, setNewUserOpen] = useState(false)
+  const [createInitialRole, setCreateInitialRole] = useState<UserRole>(UserRole.ADMIN)
   const [editRoleOpen, setEditRoleOpen] = useState(false)
   const [roleChangeConfirmOpen, setRoleChangeConfirmOpen] = useState(false)
   const [pendingRoleChange, setPendingRoleChange] = useState<{ id: string; from: UserRole; to: UserRole } | null>(null)
-  const [newUserForm, setNewUserForm] = useState({
-    firstName: '',
-    lastName: '',
-    companyName: '',
-    email: '',
-    phone: '',
-    countryDialCode: '90',
-    role: UserRole.ADMIN as UserRole,
-    gender: 'male' as 'male' | 'female',
-  })
   const [roleToEdit, setRoleToEdit] = useState<UserRole>(UserRole.DIETITIAN)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
@@ -103,12 +95,13 @@ export function UsersListPage() {
             ? { status: 'inactive' as const }
             : {
                 status: 'active' as const,
-                ...(userTab === 'pending' ? { isVerified: false } : {}),
+                ...(userTab === 'pending'
+                  ? { isVerified: false }
+                  : { isVerified: true }),
               }),
       }
       return getUsersWithPagination(params)
     },
-    placeholderData: keepPreviousData,
   })
   const users: User[] = useMemo(() => usersQuery.data?.items ?? [], [usersQuery.data?.items])
   const totalItems = usersQuery.data?.totalItems ?? users.length
@@ -160,19 +153,14 @@ export function UsersListPage() {
     },
   })
 
-  const createMutation = useMutation({
-    mutationFn: createUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
-      invalidateAdminSidebarCounts(queryClient)
-      setNewUserOpen(false)
-      resetNewUserForm()
-      toast.success('Kullanıcı oluşturuldu')
-    },
-    onError: (err: unknown) => {
-      toast.error(getApiErrorMessage(err, { fallback: 'Kullanıcı oluşturulamadı' }))
-    },
-  })
+  useEffect(() => {
+    const st = location.state as AdminCreateUserLocationState | null
+    if (st?.openCreateUser && st.createRole) {
+      setCreateInitialRole(st.createRole)
+      setNewUserOpen(true)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [location.pathname, location.state, navigate])
 
   const updateRoleMutation = useMutation({
     mutationFn: ({ id, role }: { id: string; role: UserRole }) => updateUser(id, { role }),
@@ -223,12 +211,20 @@ export function UsersListPage() {
     [users]
   )
 
+  /** GET /users — status + isVerified sunucuda filtrelenir; sekme değişiminde eski sayfa verisi gösterilmesin diye ek güvenlik. */
   const displayedUsers = useMemo(() => {
+    if (userTab === 'inactive') {
+      return users.filter((u) => Boolean(u.deletedAt) || u.status === UserStatus.SUSPENDED)
+    }
     if (userTab === 'active') {
-      return users.filter((u) => u.status === UserStatus.ACTIVE && u.isVerified !== false)
+      return users.filter(
+        (u) => !u.deletedAt && u.status === UserStatus.ACTIVE && u.isVerified !== false,
+      )
     }
     if (userTab === 'pending') {
-      return users.filter((u) => u.status === UserStatus.PENDING || u.isVerified === false)
+      return users.filter(
+        (u) => !u.deletedAt && (u.status === UserStatus.PENDING || u.isVerified === false),
+      )
     }
     return users
   }, [users, userTab])
@@ -236,44 +232,6 @@ export function UsersListPage() {
   const handleApprove = (user: User) => {
     setSelectedUser(user)
     setApprovalOpen(true)
-  }
-
-  const resetNewUserForm = () => {
-    setNewUserForm({
-      firstName: '',
-      lastName: '',
-      companyName: '',
-      email: '',
-      phone: '',
-      countryDialCode: '90',
-      role: UserRole.ADMIN,
-      gender: 'male',
-    })
-  }
-
-  const submitNewUser = () => {
-    if (!newUserForm.firstName.trim() || !newUserForm.lastName.trim() || !newUserForm.phone.trim()) {
-      toast.error('Ad, soyad ve telefon zorunludur')
-      return
-    }
-    const phoneErr = validateNationalPhone(newUserForm.phone, newUserForm.countryDialCode)
-    if (phoneErr) {
-      toast.error(phoneErr)
-      return
-    }
-    const companyName = roleUsesCompanyName(newUserForm.role)
-      ? newUserForm.companyName.trim() || undefined
-      : undefined
-    createMutation.mutate({
-      firstName: newUserForm.firstName.trim(),
-      lastName: newUserForm.lastName.trim(),
-      email: newUserForm.email.trim() || undefined,
-      phone: newUserForm.phone.trim(),
-      countryDialCode: newUserForm.countryDialCode || '90',
-      role: newUserForm.role,
-      gender: newUserForm.gender,
-      companyName,
-    })
   }
 
   const openRoleEditor = (user: User) => {
@@ -447,11 +405,14 @@ export function UsersListPage() {
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => setNewUserOpen(true)}
+                    onClick={() => {
+                      setCreateInitialRole(UserRole.ADMIN)
+                      setNewUserOpen(true)
+                    }}
                     className="w-full h-10 justify-center lg:w-auto lg:shrink-0 whitespace-nowrap px-4"
                   >
                     <Plus className="h-4 w-4" />
-                    Yeni Admin Ekle
+                    Yeni Kullanıcı Ekle
                   </Button>
                 </div>
               </div>
@@ -659,84 +620,11 @@ export function UsersListPage() {
         </ModalContent>
       </Modal>
 
-      {/* Create User Modal */}
-      <Modal open={newUserOpen} onOpenChange={setNewUserOpen}>
-        <ModalContent className="max-w-2xl">
-          <ModalHeader>
-            <ModalTitle>Yeni Kullanıcı Ekle</ModalTitle>
-            <ModalDescription>Yeni kullanıcıyı aktif olarak oluşturun.</ModalDescription>
-          </ModalHeader>
-          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
-            <p className="form-section-title">Kişisel Bilgiler</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Ad *"
-                filter="personName"
-                value={newUserForm.firstName}
-                onChange={(e) => setNewUserForm((s) => ({ ...s, firstName: e.target.value }))}
-                placeholder="Ad"
-              />
-              <Input
-                label="Soyad *"
-                filter="personName"
-                value={newUserForm.lastName}
-                onChange={(e) => setNewUserForm((s) => ({ ...s, lastName: e.target.value }))}
-                placeholder="Soyad"
-              />
-            </div>
-            <PhoneInput
-              label="Telefon *"
-              value={newUserForm.phone}
-              countryDialCode={newUserForm.countryDialCode}
-              onValueChange={(phone) => setNewUserForm((s) => ({ ...s, phone }))}
-              onCountryChange={(countryDialCode) => setNewUserForm((s) => ({ ...s, countryDialCode }))}
-            />
-            <Input
-              label="E-posta"
-              type="email"
-              value={newUserForm.email}
-              onChange={(e) => setNewUserForm((s) => ({ ...s, email: e.target.value }))}
-              placeholder="ornek@email.com"
-              hint="Boş bırakılabilir."
-            />
-            {roleUsesCompanyName(newUserForm.role) && (
-              <Input
-                label="Kurum Adı"
-                value={newUserForm.companyName}
-                onChange={(e) => setNewUserForm((s) => ({ ...s, companyName: e.target.value }))}
-                placeholder="Kurum adı"
-                hint="Diyetisyen, laboratuvar ve uzman hesaplarında isteğe bağlıdır."
-              />
-            )}
-            <div className="space-y-1.5">
-              <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
-              <Select
-                value={newUserForm.gender}
-                onValueChange={(v) => setNewUserForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Erkek</SelectItem>
-                  <SelectItem value="female">Kadın</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="text-[11px] text-surface-500 pt-2">
-              Şifre kullanıcıya SMS ile gönderilir.
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="outline" onClick={() => { setNewUserOpen(false); resetNewUserForm() }} disabled={createMutation.isPending}>
-              İptal
-            </Button>
-            <Button variant="primary" onClick={submitNewUser} disabled={createMutation.isPending} loading={createMutation.isPending}>
-              Kullanıcı Oluştur
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <AdminCreateUserModal
+        open={newUserOpen}
+        onOpenChange={setNewUserOpen}
+        initialRole={createInitialRole}
+      />
 
       {/* Kullanıcı bilgilerini düzenle — PUT /users/{id} */}
       <Modal

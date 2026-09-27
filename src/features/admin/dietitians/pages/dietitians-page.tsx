@@ -5,12 +5,11 @@ import {
   Button, Input, Avatar,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
-  Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
   Badge,
 } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import {
-  Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone,
+  Search, MoreHorizontal, Edit, Trash2, Mail, Phone,
   Loader2, Eye,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -20,7 +19,6 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
 import {
   getDieticiansPaginated,
-  createDietician,
   getDieticianById,
   type AdminDietitianRow,
 } from '@/services/dieticians.service'
@@ -74,7 +72,6 @@ function DietitiansPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [newOpen, setNewOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -114,20 +111,6 @@ function DietitiansPage() {
     const next = Math.min(Math.max(1, page), totalPages)
     if (next !== page) setPage(next)
   }, [totalItems, page, pageSize])
-
-  const createMutation = useMutation({
-    mutationFn: createDietician,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: DIETICIANS_ADMIN_QUERY_KEY })
-      queryClient.invalidateQueries({ queryKey: ['dieticians'] })
-      toast.success('Diyetisyen başarıyla oluşturuldu')
-      setNewOpen(false)
-      resetForm()
-    },
-    onError: (err: unknown) => {
-      toast.error(getApiErrorMessage(err, { fallback: 'Diyetisyen oluşturulamadı' }))
-    },
-  })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateUser>[1] }) =>
@@ -216,27 +199,6 @@ function DietitiansPage() {
     setDeleteOpen(true)
   }
 
-  const submitNew = () => {
-    if (!form.phone.trim()) {
-      toast.error('Telefon zorunludur')
-      return
-    }
-    const phoneErr = validateNationalPhone(form.phone, form.countryDialCode)
-    if (phoneErr) {
-      toast.error(phoneErr)
-      return
-    }
-    createMutation.mutate({
-      firstName: form.firstName.trim() || undefined,
-      lastName: form.lastName.trim() || undefined,
-      companyName: form.companyName.trim() || undefined,
-      email: form.email.trim() || undefined,
-      phone: form.phone.trim(),
-      countryDialCode: form.countryDialCode || '90',
-      gender: form.gender,
-    })
-  }
-
   const submitEdit = () => {
     if (!selected) return
     const phoneErr = validateNationalPhone(form.phone, form.countryDialCode)
@@ -289,10 +251,6 @@ function DietitiansPage() {
                   className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
-              <Button variant="primary" size="sm" onClick={() => { resetForm(); setNewOpen(true) }}>
-                <Plus className="h-4 w-4" />
-                Yeni Diyetisyen
-              </Button>
             </div>
           </div>
 
@@ -389,78 +347,6 @@ function DietitiansPage() {
                 Düzenle
               </Button>
             )}
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Yeni Diyetisyen */}
-      <Modal open={newOpen} onOpenChange={setNewOpen}>
-        <ModalContent className="max-w-2xl">
-          <ModalHeader>
-            <ModalTitle>Yeni Diyetisyen Ekle</ModalTitle>
-            <ModalDescription>Yeni diyetisyeni aktif olarak oluşturun.</ModalDescription>
-          </ModalHeader>
-          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
-            <p className="form-section-title">Kişisel Bilgiler</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Ad"
-                filter="personName"
-                value={form.firstName}
-                onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
-                placeholder="Ad"
-              />
-              <Input
-                label="Soyad"
-                filter="personName"
-                value={form.lastName}
-                onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
-                placeholder="Soyad"
-              />
-            </div>
-            <Input
-              label="Kurum Adı"
-              value={form.companyName}
-              onChange={(e) => setForm((s) => ({ ...s, companyName: e.target.value }))}
-              placeholder="Kurum adı"
-              hint="Opsiyonel"
-            />
-            <PhoneInput
-              label="Telefon *"
-              value={form.phone}
-              countryDialCode={form.countryDialCode}
-              onValueChange={(phone) => setForm((s) => ({ ...s, phone }))}
-              onCountryChange={(countryDialCode) => setForm((s) => ({ ...s, countryDialCode }))}
-            />
-            <Input
-              label="E-posta"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-              placeholder="ornek@email.com"
-              hint="Boş bırakabilirsiniz."
-            />
-            <div className="space-y-1.5">
-              <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
-              <Select value={form.gender} onValueChange={(v) => setForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Erkek</SelectItem>
-                  <SelectItem value="female">Kadın</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="text-[11px] text-surface-500 pt-2">
-              Oluşturulan hesap diyetisyen rolü ile kaydedilir.
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="outline" onClick={() => { setNewOpen(false); resetForm() }} disabled={createMutation.isPending}>
-              İptal
-            </Button>
-            <Button variant="primary" onClick={submitNew} disabled={createMutation.isPending} loading={createMutation.isPending}>
-              Diyetisyen Oluştur
-            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

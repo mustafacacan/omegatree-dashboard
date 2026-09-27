@@ -10,12 +10,19 @@ import { Lock, Eye, EyeOff, ArrowLeft, Link2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { forgotPassword, resetPassword, validateResetToken } from '@/services/auth.service'
-import { PhoneInput } from '@/components/shared/phone-input'
+import { PhoneInput, validateNationalPhone } from '@/components/shared/phone-input'
 
-const phoneSchema = z.object({
-  phone: z.string().min(10, 'Geçerli bir telefon numarası girin'),
-  countryDialCode: z.string().min(1),
-})
+const phoneSchema = z
+  .object({
+    phone: z.string().min(1, 'Telefon numarası zorunludur'),
+    countryDialCode: z.string().min(1),
+  })
+  .superRefine((data, ctx) => {
+    const phoneErr = validateNationalPhone(data.phone, data.countryDialCode)
+    if (phoneErr) {
+      ctx.addIssue({ code: 'custom', message: phoneErr, path: ['phone'] })
+    }
+  })
 
 const resetSchema = z.object({
   newPassword: z.string().min(8, 'Şifre en az 8 karakter olmalı'),

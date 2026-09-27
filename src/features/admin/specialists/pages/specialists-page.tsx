@@ -5,24 +5,19 @@ import {
   Button, Input, Avatar,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
-  Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
   Badge,
 } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import {
-  Search, Plus, MoreHorizontal, Edit, Trash2, Mail, Phone,
+  Search, MoreHorizontal, Edit, Trash2, Mail, Phone,
   Loader2, Eye,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { UserRole, UserStatus } from '@/utils/constants'
+import { UserStatus } from '@/utils/constants'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
-import {
-  createUser,
-  updateUser,
-  deleteUser,
-} from '@/services/users.service'
+import { updateUser, deleteUser } from '@/services/users.service'
 import { getExpertProfilesWithPagination } from '@/services/experts.service'
 import { getExpertProfileById, type Expert, type ExpertProfileListItem } from '@/services/experts.service'
 import {
@@ -51,7 +46,6 @@ const expertTaskStatusLabels: Record<NonNullable<Expert['status']>, string> = {
 function SpecialistsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [newOpen, setNewOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -99,20 +93,6 @@ function SpecialistsPage() {
       gender: 'male',
     })
   }
-
-  const createMutation = useMutation({
-    mutationFn: createUser,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: EXPERTS_QUERY_KEY })
-      queryClient.invalidateQueries({ queryKey: ['users'] })
-      toast.success('Uzman başarıyla oluşturuldu')
-      setNewOpen(false)
-      resetForm()
-    },
-    onError: (err: unknown) => {
-      toast.error(getApiErrorMessage(err, { fallback: 'Uzman oluşturulamadı' }))
-    },
-  })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateUser>[1] }) =>
@@ -174,28 +154,6 @@ function SpecialistsPage() {
     retry: 1,
   })
 
-  const submitNew = () => {
-    if (!form.phone.trim()) {
-      toast.error('Telefon zorunludur')
-      return
-    }
-    const phoneErr = validateNationalPhone(form.phone, form.countryDialCode)
-    if (phoneErr) {
-      toast.error(phoneErr)
-      return
-    }
-    createMutation.mutate({
-      firstName: form.firstName.trim() || undefined,
-      lastName: form.lastName.trim() || undefined,
-      companyName: form.companyName.trim() || undefined,
-      email: form.email.trim() || undefined,
-      phone: form.phone.trim(),
-      countryDialCode: form.countryDialCode || '90',
-      role: UserRole.SPECIALIST,
-      gender: form.gender,
-    })
-  }
-
   const submitEdit = () => {
     if (!selectedRow) return
     const phoneErr = validateNationalPhone(form.phone, form.countryDialCode)
@@ -248,10 +206,6 @@ function SpecialistsPage() {
                   className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
-              <Button variant="primary" size="sm" onClick={() => { resetForm(); setNewOpen(true) }}>
-                <Plus className="h-4 w-4" />
-                Yeni Uzman
-              </Button>
             </div>
           </div>
 
@@ -382,78 +336,6 @@ function SpecialistsPage() {
                 Düzenle
               </Button>
             )}
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Yeni Uzman */}
-      <Modal open={newOpen} onOpenChange={setNewOpen}>
-        <ModalContent className="max-w-2xl">
-          <ModalHeader>
-            <ModalTitle>Yeni Uzman Ekle</ModalTitle>
-            <ModalDescription>Yeni uzmanı aktif olarak oluşturun.</ModalDescription>
-          </ModalHeader>
-          <ModalBody className="space-y-3 max-h-[60vh] overflow-y-auto">
-            <p className="form-section-title">Kişisel Bilgiler</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Ad"
-                filter="personName"
-                value={form.firstName}
-                onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
-                placeholder="Ad"
-              />
-              <Input
-                label="Soyad"
-                filter="personName"
-                value={form.lastName}
-                onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
-                placeholder="Soyad"
-              />
-            </div>
-            <Input
-              label="Kurum Adı"
-              value={form.companyName}
-              onChange={(e) => setForm((s) => ({ ...s, companyName: e.target.value }))}
-              placeholder="Kurum adı"
-              hint="Opsiyonel"
-            />
-            <PhoneInput
-              label="Telefon *"
-              value={form.phone}
-              countryDialCode={form.countryDialCode}
-              onValueChange={(phone) => setForm((s) => ({ ...s, phone }))}
-              onCountryChange={(countryDialCode) => setForm((s) => ({ ...s, countryDialCode }))}
-            />
-            <Input
-              label="E-posta"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-              placeholder="ornek@email.com"
-              hint="Boş bırakabilirsiniz."
-            />
-            <div className="space-y-1.5">
-              <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
-              <Select value={form.gender} onValueChange={(v) => setForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Erkek</SelectItem>
-                  <SelectItem value="female">Kadın</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="text-[11px] text-surface-500 pt-2">
-              Oluşturulan hesap uzman (expert) rolü ile kaydedilir.
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="outline" onClick={() => { setNewOpen(false); resetForm() }} disabled={createMutation.isPending}>
-              İptal
-            </Button>
-            <Button variant="primary" onClick={submitNew} disabled={createMutation.isPending} loading={createMutation.isPending}>
-              Uzman Oluştur
-            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

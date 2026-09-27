@@ -6,22 +6,18 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter,
   Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
-  Tabs, TabsList, TabsTrigger, TabsContent,
 } from '@/components/ui'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import {
-  Search, Plus, MoreHorizontal, Mail, Phone, Loader2, Eye, Users,
+  Search, MoreHorizontal, Mail, Phone, Loader2, Eye, Users,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { TablePagination } from '@/components/shared/table-pagination'
-import { getClients, createClient, getClientDetail } from '@/services/clients.service'
+import { getClients, getClientDetail } from '@/services/clients.service'
 import type { AppClient } from '@/services/clients.service'
 import type { ClientDetail } from '@/services/clients.service'
-import { upsertFoodConsumptionRecord } from '@/services/food-consumption-records.service'
-import { useCurrentUser } from '@/stores/auth.store'
-import { UserRole } from '@/utils/constants'
 import { getDieticians, type DieticianOption } from '@/services/kits.service'
 import { addDieticianToClient, updateDieticianClient } from '@/services/dietician-clients.service'
 import { updateUser } from '@/services/users.service'
@@ -31,31 +27,6 @@ import {
   validateNationalPhone,
 } from '@/components/shared/phone-input'
 import { anamnezDisplayFields, foodDisplayFields } from '@/features/shared/client-health-display'
-import { BeslenmeAnamneziFormFields } from '@/features/shared/beslenme-anamnezi-form-fields'
-import {
-  BESLENME_REQUIRED_ERROR,
-  buildBeslenmeAnamneziPayload,
-  EMPTY_BESLENME_ANAMNEZI_FORM,
-} from '@/features/shared/beslenme-anamnezi-form.utils'
-import { FREQUENCY_OPTIONS, type FrequencyValue } from '@/lib/frequency-labels'
-import { IpaqFormFields } from '@/features/shared/ipaq-form-fields'
-import { FoodFrequencyFormFields } from '@/features/shared/food-frequency-form-fields'
-import {
-  buildIpaqPayload,
-  EMPTY_IPAQ_FORM,
-  ipaqFormHasInput,
-  validateIpaqForm,
-  type IpaqFormState,
-} from '@/features/shared/ipaq-form.utils'
-import {
-  buildEmptyFfqItems,
-  countFilledFfqItems,
-  ffqFormHasInput,
-  validateFfqForm,
-  type FoodFrequencyFormState,
-} from '@/features/shared/food-frequency-form.utils'
-import { upsertIpaqRecord } from '@/services/ipaq.service'
-import { upsertFoodFrequencyRecord } from '@/services/food-frequency.service'
 
 const fadeUp = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
@@ -63,18 +34,11 @@ const CLIENTS_QUERY_KEY = ['admin', 'clients'] as const
 
 export function ClientsPage() {
   const queryClient = useQueryClient()
-  const currentUser = useCurrentUser()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [newOpen, setNewOpen] = useState(false)
   const [viewOpen, setViewOpen] = useState(false)
   const [viewClientId, setViewClientId] = useState<number | null>(null)
-  const [tab, setTab] = useState<'personal' | 'anamnez' | 'nutrition' | 'ipaq' | 'ffq'>('personal')
-  const [ipaqForm, setIpaqForm] = useState<IpaqFormState>(EMPTY_IPAQ_FORM)
-  const [ffqItems, setFfqItems] = useState<FoodFrequencyFormState>(() => buildEmptyFfqItems())
-  const [ffqNotes, setFfqNotes] = useState('')
-  const ffqFilledCount = useMemo(() => countFilledFfqItems(ffqItems), [ffqItems])
 
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignClient, setAssignClient] = useState<AppClient | null>(null)
@@ -93,31 +57,6 @@ export function ClientsPage() {
     email: '',
   })
 
-  const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    countryDialCode: '90',
-    gender: 'male' as 'male' | 'female',
-    dieticianId: '',
-    age: '',
-    chronicIllness: '',
-    familyChronicIllness: '',
-    medicationUsed: '',
-    bodyHeight: '',
-    bodyWeight: '',
-    waistCircumference: '',
-    hipCircumference: '',
-    neckCircumference: '',
-    smokingFrequency: '' as '' | FrequencyValue,
-    alcoholFrequency: '' as '' | FrequencyValue,
-    alcoholType: '',
-    profession: '',
-    education: '',
-    ...EMPTY_BESLENME_ANAMNEZI_FORM,
-  })
-
   const DIETICIAN_NONE_VALUE = '__none__'
 
   const trimmedSearch = useMemo(() => search.trim(), [search])
@@ -130,7 +69,7 @@ export function ClientsPage() {
   const { data: dieticiansRes, isLoading: dieticiansLoading } = useQuery({
     queryKey: ['dieticians', 'options'],
     queryFn: () => getDieticians(),
-    enabled: assignOpen || newOpen,
+    enabled: assignOpen || editOpen,
     staleTime: 60_000,
     retry: 1,
   })
@@ -157,19 +96,6 @@ export function ClientsPage() {
     queryFn: () => getClientDetail(editClientId as number),
     enabled: editOpen && editClientId !== null,
     retry: 1,
-  })
-
-  const createMutation = useMutation({
-    mutationFn: createClient,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY })
-      toast.success('Danışan başarıyla oluşturuldu')
-      setNewOpen(false)
-      resetForm()
-    },
-    onError: (err: unknown) => {
-      toast.error(getApiErrorMessage(err, { fallback: 'Danışan oluşturulamadı' }))
-    },
   })
 
   const assignMutation = useMutation({
@@ -256,37 +182,6 @@ export function ClientsPage() {
     },
   })
 
-  const resetForm = () => {
-    setForm({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      countryDialCode: '90',
-      gender: 'male',
-      dieticianId: '',
-      age: '',
-      chronicIllness: '',
-      familyChronicIllness: '',
-      medicationUsed: '',
-      bodyHeight: '',
-      bodyWeight: '',
-      waistCircumference: '',
-      hipCircumference: '',
-      neckCircumference: '',
-      smokingFrequency: '',
-      alcoholFrequency: '',
-      alcoholType: '',
-      profession: '',
-      education: '',
-      ...EMPTY_BESLENME_ANAMNEZI_FORM,
-    })
-    setIpaqForm(EMPTY_IPAQ_FORM)
-    setFfqItems(buildEmptyFfqItems())
-    setFfqNotes('')
-    setTab('personal')
-  }
-
   const openView = (c: AppClient) => {
     setViewClientId(c.id)
     setViewOpen(true)
@@ -353,134 +248,6 @@ export function ClientsPage() {
     })
   }, [editOpen, editDetailData?.user?.id])
 
-  const submitNew = () => {
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim()) {
-      toast.error('Ad, soyad ve telefon zorunludur')
-      return
-    }
-    const phoneErr = validateNationalPhone(form.phone, form.countryDialCode)
-    if (phoneErr) {
-      toast.error(phoneErr)
-      return
-    }
-    const dieticianId = (() => {
-      if (currentUser?.role === UserRole.DIETITIAN && currentUser?.id) return Number(currentUser.id)
-      if (
-        currentUser?.role === UserRole.ADMIN &&
-        form.dieticianId.trim() &&
-        form.dieticianId !== DIETICIAN_NONE_VALUE
-      ) {
-        const n = Number(form.dieticianId)
-        return Number.isFinite(n) ? n : undefined
-      }
-      return undefined
-    })()
-
-    const anamnezForm = (() => {
-      const h = form.bodyHeight.trim() ? Number(form.bodyHeight) : undefined
-      const w = form.bodyWeight.trim() ? Number(form.bodyWeight) : undefined
-      const waist = form.waistCircumference.trim() ? Number(form.waistCircumference) : undefined
-      const hip = form.hipCircumference.trim() ? Number(form.hipCircumference) : undefined
-      const neck = form.neckCircumference.trim() ? Number(form.neckCircumference) : undefined
-      const age = form.age.trim() ? Number(form.age) : undefined
-      const partial: {
-        age?: number
-        chronicIllness?: string
-        familyChronicIllness?: string
-        medicationUsed?: string
-        bodyHeight?: number
-        bodyWeight?: number
-        waistCircumference?: number
-        hipCircumference?: number
-        neckCircumference?: number
-        smokingFrequency?: string
-        alcoholFrequency?: string
-        alcoholType?: string
-        profession?: string
-        education?: string
-      } = {}
-      if (form.chronicIllness.trim()) partial.chronicIllness = form.chronicIllness.trim()
-      if (form.familyChronicIllness.trim()) partial.familyChronicIllness = form.familyChronicIllness.trim()
-      if (form.medicationUsed.trim()) partial.medicationUsed = form.medicationUsed.trim()
-      if (form.profession.trim()) partial.profession = form.profession.trim()
-      if (form.education.trim()) partial.education = form.education.trim()
-      if (age !== undefined && !Number.isNaN(age)) partial.age = age
-      if (h !== undefined && !Number.isNaN(h)) partial.bodyHeight = h
-      if (w !== undefined && !Number.isNaN(w)) partial.bodyWeight = w
-      if (waist !== undefined && !Number.isNaN(waist)) partial.waistCircumference = waist
-      if (hip !== undefined && !Number.isNaN(hip)) partial.hipCircumference = hip
-      if (neck !== undefined && !Number.isNaN(neck)) partial.neckCircumference = neck
-      if (form.smokingFrequency) partial.smokingFrequency = form.smokingFrequency
-      if (form.alcoholFrequency) partial.alcoholFrequency = form.alcoholFrequency
-      if (form.alcoholType.trim()) partial.alcoholType = form.alcoholType.trim()
-      return Object.keys(partial).length ? partial : undefined
-    })()
-
-    const foodConsumptionRecord = buildBeslenmeAnamneziPayload(form)
-    if (foodConsumptionRecord === 'error') {
-      toast.error(BESLENME_REQUIRED_ERROR)
-      return
-    }
-
-    let ipaqPayload: ReturnType<typeof buildIpaqPayload> | undefined
-    if (ipaqFormHasInput(ipaqForm)) {
-      const ipaqErr = validateIpaqForm(ipaqForm)
-      if (ipaqErr) {
-        toast.error(ipaqErr)
-        return
-      }
-      ipaqPayload = buildIpaqPayload(ipaqForm)
-    }
-
-    let ffqPayload: { items: FoodFrequencyFormState; notes: string | null } | undefined
-    if (ffqFormHasInput(ffqItems, ffqNotes)) {
-      const ffqErr = validateFfqForm(ffqItems, 1)
-      if (ffqErr) {
-        toast.error(ffqErr)
-        return
-      }
-      ffqPayload = { items: ffqItems, notes: ffqNotes.trim() || null }
-    }
-
-    createMutation.mutate({
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      phone: form.phone.trim(),
-      countryDialCode: form.countryDialCode || '90',
-      email: form.email.trim() || undefined,
-      gender: form.gender,
-      ...(dieticianId ? { dieticianId } : {}),
-      ...(anamnezForm ? { anamnezForm } : {}),
-    }, {
-      onSuccess: async (created) => {
-        if (foodConsumptionRecord) {
-          try {
-            await upsertFoodConsumptionRecord({
-              clientId: created.id,
-              ...foodConsumptionRecord,
-            })
-          } catch (err: unknown) {
-            toast.error(getApiErrorMessage(err, { fallback: 'Beslenme formu kaydedilemedi' }))
-          }
-        }
-        if (ipaqPayload) {
-          try {
-            await upsertIpaqRecord({ ...ipaqPayload, clientId: created.id })
-          } catch (err: unknown) {
-            toast.error(getApiErrorMessage(err, { fallback: 'IPAQ kaydedilemedi' }))
-          }
-        }
-        if (ffqPayload) {
-          try {
-            await upsertFoodFrequencyRecord({ ...ffqPayload, clientId: created.id })
-          } catch (err: unknown) {
-            toast.error(getApiErrorMessage(err, { fallback: 'Besin tüketim sıklığı kaydedilemedi' }))
-          }
-        }
-      },
-    })
-  }
-
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader />
@@ -508,10 +275,6 @@ export function ClientsPage() {
                   className="pl-9 pr-3 py-2 text-[12px] rounded-xl w-48 outline-none transition-colors bg-panel border border-surface-200 text-surface-900 focus:border-primary-500"
                 />
               </div>
-              <Button variant="primary" size="sm" onClick={() => { resetForm(); setNewOpen(true) }}>
-                <Plus className="h-4 w-4" />
-                Yeni Danışan
-              </Button>
             </div>
           </div>
 
@@ -544,168 +307,6 @@ export function ClientsPage() {
           )}
         </div>
       </motion.div>
-
-      {/* Yeni Danışan Modal */}
-      <Modal open={newOpen} onOpenChange={(o) => { setNewOpen(o); if (!o) resetForm() }}>
-        <ModalContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <ModalHeader>
-            <ModalTitle>Yeni Danışan Ekle</ModalTitle>
-            <ModalDescription>
-              Danışan bilgileri ve isteğe bağlı anamnez alanlarını doldurun.
-            </ModalDescription>
-          </ModalHeader>
-          <ModalBody className="space-y-4">
-            <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5">
-                <TabsTrigger value="personal">Kişisel</TabsTrigger>
-                <TabsTrigger value="anamnez">Anamnez</TabsTrigger>
-                <TabsTrigger value="nutrition">Beslenme</TabsTrigger>
-                <TabsTrigger value="ipaq">IPAQ</TabsTrigger>
-                <TabsTrigger value="ffq">Besin Sıklığı</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="personal" className="mt-4">
-                <p className="form-section-title">Kişisel Bilgiler</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Ad *"
-                    filter="personName"
-                    value={form.firstName}
-                    onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
-                    placeholder="Ad"
-                  />
-                  <Input
-                    label="Soyad *"
-                    filter="personName"
-                    value={form.lastName}
-                    onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
-                    placeholder="Soyad"
-                  />
-                </div>
-                <PhoneInput
-                  label="Telefon *"
-                  value={form.phone}
-                  countryDialCode={form.countryDialCode}
-                  onValueChange={(phone) => setForm((s) => ({ ...s, phone }))}
-                  onCountryChange={(countryDialCode) => setForm((s) => ({ ...s, countryDialCode }))}
-                />
-                <Input
-                  label="E-posta"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                  placeholder="ornek@email.com"
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="block text-[13px] font-medium text-surface-700">Cinsiyet</label>
-                    <Select value={form.gender} onValueChange={(v) => setForm((s) => ({ ...s, gender: v as 'male' | 'female' }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Erkek</SelectItem>
-                        <SelectItem value="female">Kadın</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {currentUser?.role === UserRole.ADMIN && (
-                    <div className="space-y-1.5">
-                      <label className="block text-[13px] font-medium text-surface-700">Diyetisyen (Opsiyonel)</label>
-                      <Select
-                        value={form.dieticianId || DIETICIAN_NONE_VALUE}
-                        onValueChange={(v) => setForm((s) => ({ ...s, dieticianId: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={dieticiansLoading ? 'Yükleniyor...' : 'Seçin...'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={DIETICIAN_NONE_VALUE}>Seçilmedi</SelectItem>
-                          {dieticianOptions.map((d) => (
-                            <SelectItem key={d.id} value={String(d.id)}>
-                              {d.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="anamnez" className="mt-4 space-y-3">
-                <p className="form-section-title">Anamnez Bilgileri (Opsiyonel)</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input label="Yaş" type="number" value={form.age} onChange={(e) => setForm((s) => ({ ...s, age: e.target.value }))} placeholder="35" />
-                  <Input label="Boy (cm)" type="number" value={form.bodyHeight} onChange={(e) => setForm((s) => ({ ...s, bodyHeight: e.target.value }))} placeholder="178" />
-                  <Input label="Kilo (kg)" type="number" value={form.bodyWeight} onChange={(e) => setForm((s) => ({ ...s, bodyWeight: e.target.value }))} placeholder="82" />
-                  <Input label="Bel (cm)" type="number" value={form.waistCircumference} onChange={(e) => setForm((s) => ({ ...s, waistCircumference: e.target.value }))} placeholder="85" />
-                  <Input label="Kalça (cm)" type="number" value={form.hipCircumference} onChange={(e) => setForm((s) => ({ ...s, hipCircumference: e.target.value }))} placeholder="95" />
-                  <Input label="Boyun (cm)" type="number" value={form.neckCircumference} onChange={(e) => setForm((s) => ({ ...s, neckCircumference: e.target.value }))} placeholder="38" />
-                  <Input label="Meslek" value={form.profession} onChange={(e) => setForm((s) => ({ ...s, profession: e.target.value }))} placeholder="Örn: Yazılım geliştirici" />
-                  <Input label="Eğitim" value={form.education} onChange={(e) => setForm((s) => ({ ...s, education: e.target.value }))} placeholder="Örn: Lisans" />
-                </div>
-                <Input label="Kronik hastalıklar" value={form.chronicIllness} onChange={(e) => setForm((s) => ({ ...s, chronicIllness: e.target.value }))} placeholder="Yoksa 'Yok' yazın" />
-                <Input label="Ailede kronik hastalık" value={form.familyChronicIllness} onChange={(e) => setForm((s) => ({ ...s, familyChronicIllness: e.target.value }))} placeholder="Yoksa 'Yok' yazın" />
-                <Input label="Kullanılan ilaçlar" value={form.medicationUsed} onChange={(e) => setForm((s) => ({ ...s, medicationUsed: e.target.value }))} placeholder="Yoksa 'Yok' yazın" />
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="block text-[13px] font-medium text-surface-700">Sigara</label>
-                    <Select value={form.smokingFrequency || undefined} onValueChange={(v) => setForm((s) => ({ ...s, smokingFrequency: v as FrequencyValue }))}>
-                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
-                      <SelectContent>
-                        {FREQUENCY_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[13px] font-medium text-surface-700">Alkol</label>
-                    <Select value={form.alcoholFrequency || undefined} onValueChange={(v) => setForm((s) => ({ ...s, alcoholFrequency: v as FrequencyValue }))}>
-                      <SelectTrigger><SelectValue placeholder="Seçin..." /></SelectTrigger>
-                      <SelectContent>
-                        {FREQUENCY_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Input label="Alkol türü" value={form.alcoholType} onChange={(e) => setForm((s) => ({ ...s, alcoholType: e.target.value }))} placeholder="Opsiyonel" />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="nutrition" className="mt-4 space-y-3">
-                <p className="form-section-title">Beslenme Anamnezi (Opsiyonel)</p>
-                <p className="text-[12px] text-surface-500">
-                  Bu formu boş bırakabilirsiniz. Herhangi bir alan doldurulursa kaydedilir; eksik zorunlu alan varsa uyarı verilir.
-                </p>
-                <BeslenmeAnamneziFormFields
-                  form={form}
-                  onChange={(patch) => setForm((s) => ({ ...s, ...patch }))}
-                />
-              </TabsContent>
-
-              <TabsContent value="ipaq" className="mt-4 space-y-3">
-                <p className="form-section-title">IPAQ — Fiziksel Aktivite (Opsiyonel)</p>
-                <IpaqFormFields form={ipaqForm} onChange={setIpaqForm} />
-              </TabsContent>
-
-              <TabsContent value="ffq" className="mt-4 space-y-3">
-                <p className="form-section-title">Besin Tüketim Sıklığı (Opsiyonel)</p>
-                <FoodFrequencyFormFields
-                  items={ffqItems}
-                  notes={ffqNotes}
-                  onItemsChange={setFfqItems}
-                  onNotesChange={setFfqNotes}
-                  filledCount={ffqFilledCount}
-                />
-              </TabsContent>
-            </Tabs>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="outline" onClick={() => setNewOpen(false)}>İptal</Button>
-            <Button variant="primary" onClick={submitNew} disabled={createMutation.isPending}>
-              {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Kaydet
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
 
       {/* Detay Modal */}
       <Modal

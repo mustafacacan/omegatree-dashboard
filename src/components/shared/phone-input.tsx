@@ -69,21 +69,54 @@ export function splitPhoneForInput(stored?: string | null): {
   return { dial: '90', national: digits }
 }
 
+/** Türkiye ulusal numara (ülke kodu hariç) — 10 hane. */
+export const TR_NATIONAL_PHONE_LENGTH = 10
+
+/** Giriş alanındaki rakamları ulusal numaraya indirger (TR: 10 hane). */
+export function normalizeNationalPhoneDigits(
+  national: string,
+  countryDialCode = '90',
+): string {
+  let digits = String(national ?? '').replace(/\D/g, '')
+  const dial = String(countryDialCode ?? '90').replace(/\D/g, '') || '90'
+  if (!digits) return ''
+
+  if (dial === '90') {
+    if (digits.startsWith('00')) digits = digits.slice(2)
+    if (digits.startsWith(dial) && digits.length > dial.length) {
+      digits = digits.slice(dial.length)
+    }
+    if (digits.startsWith('0') && digits.length > TR_NATIONAL_PHONE_LENGTH) {
+      digits = digits.slice(1)
+    }
+  }
+
+  return digits
+}
+
 export function validateNationalPhone(
   national: string,
   countryDialCode = '90',
 ): string | null {
-  const digits = String(national ?? '').replace(/\D/g, '')
-  if (!digits) return 'Telefon numarası zorunludur'
   const dial = String(countryDialCode ?? '90').replace(/\D/g, '') || '90'
+  const digits = normalizeNationalPhoneDigits(national, dial)
+  if (!digits) return 'Telefon numarası zorunludur'
+
   if (dial === '90') {
-    const national10 = digits.startsWith('0') ? digits.slice(1) : digits
-    if (!/^5\d{9}$/.test(national10)) {
-      return 'Geçerli bir Türkiye cep telefonu girin (5XXXXXXXXX)'
+    if (digits.length !== TR_NATIONAL_PHONE_LENGTH) {
+      return `Telefon numarası ${TR_NATIONAL_PHONE_LENGTH} hane olmalıdır`
+    }
+    if (!/^5\d{9}$/.test(digits)) {
+      return `Telefon numarası ${TR_NATIONAL_PHONE_LENGTH} hane olmalı ve 5 ile başlamalıdır`
     }
     return null
   }
-  if (digits.length < 8) return 'Geçerli bir telefon numarası girin'
+
+  const country = PHONE_COUNTRY_OPTIONS.find((c) => c.dial === dial)
+  const expectedLen = country?.nationalMaxLength ?? 10
+  if (digits.length !== expectedLen) {
+    return `Telefon numarası ${expectedLen} hane olmalıdır`
+  }
   return null
 }
 
@@ -123,10 +156,7 @@ export function PhoneInput({
     placeholder ??
     (country.dial === '90' ? '5XX XXX XX XX' : 'Ulusal numara')
 
-  const maxLen =
-    country.dial === '90'
-      ? country.nationalMaxLength + 1
-      : country.nationalMaxLength
+  const maxLen = country.nationalMaxLength
 
   return (
     <div className={cn('space-y-1.5', className)}>
@@ -173,7 +203,11 @@ export function PhoneInput({
           )}
         />
       </div>
-      {error && <p className="text-xs text-danger-600">{error}</p>}
+      {error ? (
+        <p className="text-xs text-danger-600">{error}</p>
+      ) : country.dial === '90' ? (
+        <p className="text-xs text-surface-500">{TR_NATIONAL_PHONE_LENGTH} haneli cep numarası (5XXXXXXXXX)</p>
+      ) : null}
     </div>
   )
 }

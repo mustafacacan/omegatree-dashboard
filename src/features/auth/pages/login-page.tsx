@@ -11,20 +11,19 @@ import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { login as apiLogin } from '@/services/auth.service'
+import { prepareLoginKeyForApi, validateLoginKey } from '@/lib/login-key'
 
 const loginSchema = z.object({
   loginKey: z
     .string()
     .min(1, 'E-posta veya telefon girin')
     .transform((v) => v.trim())
-    .refine((v) => {
-      if (!v) return false
-      // Email
-      if (v.includes('@')) return z.string().email().safeParse(v).success
-      // Phone (digits, spaces, +, parentheses, dashes allowed)
-      const digits = v.replace(/[^\d]/g, '')
-      return digits.length >= 10
-    }, 'Gecerli bir e-posta veya telefon girin'),
+    .superRefine((v, ctx) => {
+      const err = validateLoginKey(v)
+      if (err) {
+        ctx.addIssue({ code: 'custom', message: err, path: ['loginKey'] })
+      }
+    }),
   password: z.string().min(6, 'Sifre en az 6 karakter olmali'),
   rememberMe: z.boolean().optional(),
 })
@@ -62,7 +61,8 @@ export function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setLoading(true)
     try {
-      const { user, token } = await apiLogin(data.loginKey, data.password, Boolean(data.rememberMe))
+      const loginKey = prepareLoginKeyForApi(data.loginKey)
+      const { user, token } = await apiLogin(loginKey, data.password, Boolean(data.rememberMe))
       setAuth(user, token)
       const displayName = `${user.firstName} ${user.lastName}`.trim()
       toast.success(`Hoş geldiniz, ${displayName}!`)
@@ -103,7 +103,7 @@ export function LoginPage() {
         <Input
           label="E-posta veya Telefon"
           type="text"
-          placeholder="ornek@omegatree.com veya 05xx xxx xx xx"
+          placeholder="ornek@omegatree.com veya 5XX XXX XX XX"
           leftIcon={<Mail className="h-4 w-4" />}
           error={errors.loginKey?.message}
           {...register('loginKey')}

@@ -1,3 +1,8 @@
+import {
+    humanizeValidationErrorMessage,
+    looksLikeValidationError,
+} from '@/lib/validation-error-messages'
+
 export type ApiErrorMessageOptions = {
     fallback?: string
     includeDetail?: boolean
@@ -21,6 +26,11 @@ function stripHtmlAndStack(text: string): string {
     const atStack = s.search(/\s+at\s+\S/)
     if (atStack > 0) s = s.slice(0, atStack).trim()
     return s
+}
+
+/** Axios'un varsayılan İngilizce mesajı — API gövdesindeki Türkçe mesaj tercih edilir. */
+function isGenericAxiosErrorMessage(message: string): boolean {
+    return /^request failed with status code \d+$/i.test(message.trim())
 }
 
 function extractMessageFromString(input: string): string {
@@ -220,12 +230,19 @@ export function getApiErrorMessage(err: unknown, options?: ApiErrorMessageOption
     if (errorCode === 'TICKET_ASSIGNMENT_NOT_ALLOWED') {
         return 'Bu talep için atama veya durum değişikliği yapamazsınız.'
     }
+    if (errorCode === 'VALIDATION_ERROR') {
+        const msg = extractMessageFromResponseData(data)
+        if (msg) return humanizeValidationErrorMessage(msg)
+    }
 
     const responseMessage = extractMessageFromResponseData(data)
-    const errorMessage = typeof e?.message === 'string' ? extractMessageFromString(e.message) : ''
+    const rawErrMessage = typeof e?.message === 'string' ? e.message : ''
+    const errorMessage = rawErrMessage ? extractMessageFromString(rawErrMessage) : ''
 
-    // Prefer response message if present; otherwise fall back to Error.message.
-    let primary = responseMessage || errorMessage
+    // Prefer API body; Axios'un "Request failed with status code …" metnini asla gösterme.
+    let primary =
+        responseMessage ||
+        (errorMessage && !isGenericAxiosErrorMessage(rawErrMessage) ? errorMessage : '')
 
     // HTML sayfası (404 vb.) veya anlamsız metin ise sayma; status ile Türkçe mesaj ver
     if (primary && (isHtmlResponse(primary) || primary.trim().toLowerCase().startsWith('<!doctype'))) {
@@ -243,11 +260,19 @@ export function getApiErrorMessage(err: unknown, options?: ApiErrorMessageOption
         return fallback
     }
 
+    if (status === 400 && looksLikeValidationError(primary)) {
+        return humanizeValidationErrorMessage(primary)
+    }
+
     const { translated, original, known } = translateKnownMessages(primary)
     if (!includeDetail) return translated || fallback
 
     // Bilinen hatalarda sadece Türkçe mesajı göster (stack/HTML ekranı kirletmesin)
     if (known && translated) return translated
+
+    if (looksLikeValidationError(translated)) {
+        return humanizeValidationErrorMessage(translated)
+    }
 
     // Türkçe backend mesajı zaten kullanıcıya uygunsa olduğu gibi göster
     if (/[ğüşıöçĞÜŞİÖÇ]/.test(translated) || translated.includes('Lütfen')) {

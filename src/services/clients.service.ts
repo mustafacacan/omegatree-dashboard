@@ -494,6 +494,14 @@ export async function createClient(payload: {
     if (payload.anamnezForm.education) anamnez.education = payload.anamnezForm.education
 
     if (Object.keys(anamnez).length) {
+      if (anamnez.food_allergy == null || anamnez.food_allergy === '') {
+        anamnez.food_allergy =
+          payload.anamnezForm.foodAllergy?.trim() || 'none'
+      }
+      if (anamnez.family_chronic_illness == null || anamnez.family_chronic_illness === '') {
+        anamnez.family_chronic_illness =
+          payload.anamnezForm.familyChronicIllness?.trim() || 'none'
+      }
       body.anamnezForm = anamnez as unknown as ApiCreateClient['anamnezForm']
     }
   }

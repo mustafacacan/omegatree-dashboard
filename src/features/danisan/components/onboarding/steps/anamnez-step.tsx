@@ -154,7 +154,7 @@ export function AnamnezStep({ onSaved }: { onSaved: () => void | Promise<void> }
           label="Meslek *"
           value={form.profession}
           onChange={(e) => setForm((s) => ({ ...s, profession: e.target.value }))}
-          placeholder="Örn: yazılım geliştirici"
+          placeholder="Örn: öğretmen"
           error={errors.profession}
         />
         <Input
