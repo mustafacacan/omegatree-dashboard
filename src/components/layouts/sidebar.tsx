@@ -34,6 +34,7 @@ import {
   Settings,
   History,
   Landmark,
+  Mail,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -71,6 +72,7 @@ function getNavGroups(role: UserRole): NavGroup[] {
         ]},
         { title: 'Sistem', items: [
           { label: 'Banka Bilgileri', href: ROUTES.YONETICI_BANKA_BILGILERI, icon: Landmark },
+          { label: 'Mesajlar', href: ROUTES.YONETICI_MESAJLAR, icon: Mail },
           { label: 'Ayarlar', href: ROUTES.YONETICI_AYARLAR, icon: Settings },
         ]},
       ]

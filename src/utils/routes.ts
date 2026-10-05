@@ -25,6 +25,7 @@ export const ROUTES = {
   YONETICI_RAPORLAR: '/yonetici/raporlar',
   YONETICI_ISLEM_KAYITLARI: '/yonetici/islem-kayitlari',
   YONETICI_BANKA_BILGILERI: '/yonetici/banka-bilgileri',
+  YONETICI_MESAJLAR: '/yonetici/mesajlar',
   YONETICI_DESTEK: '/yonetici/destek',
   YONETICI_BEKLEYEN_ISLER: '/yonetici/bekleyen-isler',
 

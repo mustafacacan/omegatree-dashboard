@@ -39,6 +39,7 @@ const SpecialistsPage = lazy(() => import('@/features/admin/specialists/pages/sp
 const ReportApprovalsPage = lazy(() => import('@/features/admin/reports/pages/report-approvals-page').then(m => ({ default: m.ReportApprovalsPage })))
 const AuditLogsPage = lazy(() => import('@/features/admin/audit/pages/audit-logs-page').then(m => ({ default: m.AuditLogsPage })))
 const BankInfosPage = lazy(() => import('@/features/admin/bank-infos/pages/bank-infos-page'))
+const ContactMessagesPage = lazy(() => import('@/features/admin/contact-messages/pages/contact-messages-page'))
 
 // Dietitian
 const DietitianDashboardPage = lazy(() => import('@/features/dietitian/dashboard/dietitian-dashboard-page').then(m => ({ default: m.DietitianDashboardPage })))
@@ -125,6 +126,7 @@ export const router = createBrowserRouter([
       { path: ROUTES.YONETICI_DESTEK, element: <Navigate to={ROUTES.YONETICI} replace /> },
       { path: ROUTES.YONETICI_BEKLEYEN_ISLER, element: <Navigate to={ROUTES.YONETICI} replace /> },
       { path: ROUTES.YONETICI_BANKA_BILGILERI, element: <SuspensePage><BankInfosPage /></SuspensePage> },
+      { path: ROUTES.YONETICI_MESAJLAR, element: <SuspensePage><ContactMessagesPage /></SuspensePage> },
     ],
   },
 
