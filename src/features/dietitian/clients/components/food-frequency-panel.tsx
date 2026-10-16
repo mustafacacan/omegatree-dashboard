@@ -7,7 +7,9 @@ import { FoodFrequencyFormFields } from '@/features/shared/food-frequency-form-f
 import {
   buildEmptyFfqItems,
   countFilledFfqItems,
+  getFfqFieldErrors,
   mergeFfqItems,
+  validateFfqForm,
   type FoodFrequencyFormState,
 } from '@/features/shared/food-frequency-form.utils'
 import {
@@ -27,6 +29,7 @@ export function FoodFrequencyPanel({ clientId }: { clientId: string | number }) 
   const resolvedClientId = resolveClientId(clientId)
   const [items, setItems] = useState<FoodFrequencyFormState>(() => buildEmptyFfqItems())
   const [notes, setNotes] = useState('')
+  const [showErrors, setShowErrors] = useState(false)
 
   const query = useQuery({
     queryKey: ['food-frequency-records', 'client', clientId],
@@ -62,6 +65,17 @@ export function FoodFrequencyPanel({ clientId }: { clientId: string | number }) 
   })
 
   const filledCount = useMemo(() => countFilledFfqItems(items), [items])
+  const fieldErrors = useMemo(() => (showErrors ? getFfqFieldErrors(items) : {}), [items, showErrors])
+
+  const handleSave = () => {
+    const err = validateFfqForm(items)
+    if (err) {
+      setShowErrors(true)
+      toast.error(err)
+      return
+    }
+    mutation.mutate()
+  }
 
   if (query.isLoading) {
     return (
@@ -79,8 +93,9 @@ export function FoodFrequencyPanel({ clientId }: { clientId: string | number }) 
         onItemsChange={setItems}
         onNotesChange={setNotes}
         filledCount={filledCount}
+        errors={fieldErrors}
       />
-      <Button variant="primary" size="sm" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+      <Button variant="primary" size="sm" disabled={mutation.isPending} onClick={handleSave}>
         {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
         Kaydet
       </Button>

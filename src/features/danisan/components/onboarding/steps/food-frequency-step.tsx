@@ -7,6 +7,7 @@ import { FoodFrequencyFormFields } from '@/features/shared/food-frequency-form-f
 import {
   buildEmptyFfqItems,
   countFilledFfqItems,
+  getFfqFieldErrors,
   validateFfqForm,
   type FoodFrequencyFormState,
 } from '@/features/shared/food-frequency-form.utils'
@@ -15,8 +16,10 @@ import { upsertFoodFrequencyRecord } from '@/services/food-frequency.service'
 export function FoodFrequencyStep({ onSaved }: { onSaved: () => void | Promise<void> }) {
   const [items, setItems] = useState<FoodFrequencyFormState>(() => buildEmptyFfqItems())
   const [notes, setNotes] = useState('')
+  const [showErrors, setShowErrors] = useState(false)
 
   const filledCount = useMemo(() => countFilledFfqItems(items), [items])
+  const fieldErrors = useMemo(() => (showErrors ? getFfqFieldErrors(items) : {}), [items, showErrors])
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -34,8 +37,9 @@ export function FoodFrequencyStep({ onSaved }: { onSaved: () => void | Promise<v
   })
 
   const handleSave = () => {
-    const err = validateFfqForm(items, 5)
+    const err = validateFfqForm(items)
     if (err) {
+      setShowErrors(true)
       toast.error(err)
       return
     }
@@ -51,6 +55,7 @@ export function FoodFrequencyStep({ onSaved }: { onSaved: () => void | Promise<v
         onItemsChange={setItems}
         onNotesChange={setNotes}
         filledCount={filledCount}
+        errors={fieldErrors}
       />
       <div className="pt-2">
         <Button

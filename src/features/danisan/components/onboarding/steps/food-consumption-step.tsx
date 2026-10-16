@@ -65,8 +65,13 @@ export function FoodConsumptionStep({ onSaved }: { onSaved: () => void | Promise
     if (water == null || !inRange(water, 0, 20)) e.dailyWaterLiters = 'Günlük su 0–20 L arasında olmalı.'
 
     if (!form.avoidedFoods.trim()) e.avoidedFoods = 'Kaçınılan besinler zorunludur.'
+    if (!form.avoidedFoodsReason.trim()) e.avoidedFoodsReason = 'Kaçınma sebebi zorunludur. Yoksa Yok yazın.'
+    if (!form.foodAllergy.trim()) e.foodAllergy = 'Gıda alerjisi zorunludur. Yoksa Yok yazın.'
     if (!form.defecationFrequency) e.defecationFrequency = 'Tuvalet sıklığı zorunludur.'
     if (!form.gastrointestinalDisease.trim()) e.gastrointestinalDisease = 'GIS hastalığı zorunludur.'
+    if (form.eatingDisorderBehaviors && !form.eatingDisorderBehaviorsNote.trim()) {
+      e.eatingDisorderBehaviorsNote = 'Bu soruyu işaretlediyseniz ayrıntı zorunludur.'
+    }
     if (form.bowelIssue !== 'none' && !form.bowelIssueFrequency) {
       e.bowelIssueFrequency = 'Bağırsak sorunu sıklığı zorunludur.'
     }

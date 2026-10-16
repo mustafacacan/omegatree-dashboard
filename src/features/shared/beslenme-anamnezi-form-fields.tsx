@@ -130,16 +130,18 @@ export function BeslenmeAnamneziFormFields({
         error={errors.avoidedFoods}
       />
       <Input
-        label="Kaçınma sebebiniz nedir?"
+        label="Kaçınma sebebiniz nedir? *"
         value={form.avoidedFoodsReason}
         onChange={(e) => set({ avoidedFoodsReason: e.target.value })}
-        placeholder="Örn: alerji, intolerans"
+        placeholder="Yoksa 'Yok' yazın"
+        error={errors.avoidedFoodsReason}
       />
       <Input
-        label={variant === 'onboarding' ? 'Gıda alerjiniz var mı?' : 'Gıda alerjisi'}
+        label={variant === 'onboarding' ? 'Gıda alerjiniz var mı? *' : 'Gıda alerjisi *'}
         value={form.foodAllergy}
         onChange={(e) => set({ foodAllergy: e.target.value })}
         placeholder="Yoksa 'Yok' yazın"
+        error={errors.foodAllergy}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -208,19 +210,20 @@ export function BeslenmeAnamneziFormFields({
         <Checkbox
           checked={form.nightEatingHabit}
           onCheckedChange={(v) => set({ nightEatingHabit: Boolean(v) })}
-          label="Gece yemek yeme alışkanlığınız var mı?"
+          label="Gece yemek yeme alışkanlığınız var mı? *"
         />
         <Checkbox
           checked={form.eatingDisorderBehaviors}
           onCheckedChange={(v) => set({ eatingDisorderBehaviors: Boolean(v) })}
-          label="Zaman zaman normalden çok daha fazla yediğiniz, yemeyi durdurmakta zorlandığınız ya da yedikten sonra kendinizi suçlu hissettiğiniz durumlar oluyor mu?"
+          label="Zaman zaman normalden çok daha fazla yediğiniz, yemeyi durdurmakta zorlandığınız ya da yedikten sonra kendinizi suçlu hissettiğiniz durumlar oluyor mu? *"
         />
         {form.eatingDisorderBehaviors && (
           <Input
-            label="Ayrıntı belirtir misiniz?"
+            label="Ayrıntı belirtir misiniz? *"
             value={form.eatingDisorderBehaviorsNote}
             onChange={(e) => set({ eatingDisorderBehaviorsNote: e.target.value })}
-            placeholder="İsteğe bağlı açıklama"
+            placeholder="Kısaca açıklayın"
+            error={errors.eatingDisorderBehaviorsNote}
           />
         )}
       </div>

@@ -78,7 +78,7 @@ export function resolveDanisanOptionalPayloads(
   }
 
   if (ffqFormHasInput(extras.ffqItems, extras.ffqNotes)) {
-    const ffqErr = validateFfqForm(extras.ffqItems, 1)
+    const ffqErr = validateFfqForm(extras.ffqItems)
     if (ffqErr) {
       return { ok: false, message: ffqErr }
     }

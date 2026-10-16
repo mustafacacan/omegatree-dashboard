@@ -3,8 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { OmegaTreeLogo } from '@/components/shared/omega-tree-logo'
 import { useThemeStore } from '@/stores/theme.store'
 import { publicAssetUrl } from '@/lib/media-url'
-import { cn } from '@/lib/utils'
-import { AppFooter, appFooterMainPaddingClassName } from './app-footer'
+import { AppFooter } from './app-footer'
 
 const LOGIN_BG_URL = publicAssetUrl('asset/img/home-one-bg.jpg')
 
@@ -19,9 +18,9 @@ export function AuthLayout() {
   }, [])
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#F9F7F3' }}>
+    <div className="flex h-dvh overflow-hidden" style={{ background: '#F9F7F3' }}>
       {/* Left panel - Branding */}
-      <div className="hidden lg:flex lg:w-[640px] xl:w-[740px] relative overflow-hidden">
+      <div className="relative hidden h-full overflow-hidden lg:flex lg:w-[640px] xl:w-[740px]">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url('${LOGIN_BG_URL}')` }}
@@ -71,19 +70,17 @@ export function AuthLayout() {
         </div>
       </div>
 
-      {/* Right panel - Form */}
-      <div className="relative flex min-h-screen flex-1 flex-col">
-        <div
-          className={cn(
-            'flex flex-1 items-center justify-center p-6 sm:p-8',
-            appFooterMainPaddingClassName(),
-          )}
-        >
-          <div className="w-full max-w-[400px]">
+      {/* Right panel - Form scrolls above the footer so Giriş Yap stays clickable. */}
+      <div className="relative flex h-full min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 sm:p-8">
+          <div className="m-auto w-full max-w-[400px]">
             <Outlet />
           </div>
         </div>
-        <AppFooter className="bg-[#F9F7F3]/95 supports-[backdrop-filter]:bg-[#F9F7F3]/90" />
+        <AppFooter
+          fixed={false}
+          className="bg-[#F9F7F3]/95 supports-[backdrop-filter]:bg-[#F9F7F3]/90"
+        />
       </div>
     </div>
   )

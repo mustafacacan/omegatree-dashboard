@@ -432,7 +432,7 @@ export function ClientsListPage() {
     }
 
     if (ffqFormHasInput(ffqItems, ffqNotes)) {
-      const ffqErr = validateFfqForm(ffqItems, 1)
+      const ffqErr = validateFfqForm(ffqItems)
       if (ffqErr) {
         toast.error(ffqErr)
         return

@@ -114,13 +114,23 @@ export function buildBeslenmeAnamneziPayload(
     return 'error'
   }
 
+  if (
+    !form.avoidedFoods.trim() ||
+    !form.avoidedFoodsReason.trim() ||
+    !form.foodAllergy.trim() ||
+    !form.gastrointestinalDisease.trim() ||
+    (form.eatingDisorderBehaviors && !form.eatingDisorderBehaviorsNote.trim())
+  ) {
+    return 'error'
+  }
+
   return {
     mainMealsPerDay,
     snackMealsPerDay,
     mealsPerDay: mainMealsPerDay + snackMealsPerDay,
-    avoidedFoods: form.avoidedFoods.trim() || 'none',
-    avoidedFoodsReason: form.avoidedFoodsReason.trim() || undefined,
-    foodAllergy: form.foodAllergy.trim() || 'none',
+    avoidedFoods: form.avoidedFoods.trim(),
+    avoidedFoodsReason: form.avoidedFoodsReason.trim(),
+    foodAllergy: form.foodAllergy.trim(),
     dailyWaterLiters,
     fastFoodDaysPerWeek,
     fastFoodMealsPerWeek,
@@ -130,7 +140,7 @@ export function buildBeslenmeAnamneziPayload(
       bowelIssue !== 'none' && form.bowelIssueFrequency
         ? form.bowelIssueFrequency
         : undefined,
-    gastrointestinalDisease: form.gastrointestinalDisease.trim() || 'none',
+    gastrointestinalDisease: form.gastrointestinalDisease.trim(),
     nightEatingHabit: Boolean(form.nightEatingHabit),
     eatingDisorderBehaviors: Boolean(form.eatingDisorderBehaviors),
     eatingDisorderBehaviorsNote: form.eatingDisorderBehaviorsNote.trim() || undefined,
@@ -139,4 +149,4 @@ export function buildBeslenmeAnamneziPayload(
 }
 
 export const BESLENME_REQUIRED_ERROR =
-  'Beslenme anamnezi için zorunlu alanlar: ana/ara öğün, su, dışarı gün/öğün, tuvalet sıklığı'
+  'Beslenme anamnezi için yıldızlı soruların hepsi zorunludur. Yoksa ilgili alana Yok yazın.'

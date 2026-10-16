@@ -27,16 +27,36 @@ export function mergeFfqItems(existing?: Record<string, FoodFrequencyItem> | nul
 }
 
 export function countFilledFfqItems(items: FoodFrequencyFormState): number {
-  return Object.values(items).filter((v) => v.frequency && v.frequency !== 'never').length
+  return Object.values(items).filter((v) => Boolean(v.frequency)).length
 }
 
 export function ffqFormHasInput(items: FoodFrequencyFormState, notes = ''): boolean {
   return countFilledFfqItems(items) > 0 || notes.trim() !== ''
 }
 
-export function validateFfqForm(items: FoodFrequencyFormState, minFilled = 1): string | null {
-  if (countFilledFfqItems(items) < minFilled) {
-    return `En az ${minFilled} besin için tüketim sıklığı seçmelisiniz.`
+export type FfqFieldErrors = Record<string, { frequency?: string; amount?: string }>
+
+/** Değerlendirme için her besinin sıklığı zorunlu. Tüketiliyorsa miktar da zorunlu. */
+export function getFfqFieldErrors(items: FoodFrequencyFormState): FfqFieldErrors {
+  const errors: FfqFieldErrors = {}
+  for (const group of FFQ_FOOD_GROUPS) {
+    for (const food of group.items) {
+      const row = items[food.key]
+      const frequency = row?.frequency ?? ''
+      if (!frequency) {
+        errors[food.key] = { frequency: 'Sıklık zorunludur.' }
+        continue
+      }
+      if (frequency !== 'never' && !String(row?.amount ?? '').trim()) {
+        errors[food.key] = { amount: 'Miktar zorunludur.' }
+      }
+    }
   }
-  return null
+  return errors
+}
+
+export function validateFfqForm(items: FoodFrequencyFormState): string | null {
+  const missing = Object.keys(getFfqFieldErrors(items)).length
+  if (missing === 0) return null
+  return `Değerlendirme için tüm besinler zorunludur. ${missing} besin eksik. Tüketmiyorsanız "Tüketmiyor" seçin; tüketiyorsanız miktarı da yazın.`
 }
